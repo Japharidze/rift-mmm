@@ -1,0 +1,12 @@
+-- match-v5 ships a `challenges` block of ~130 derived per-player metrics.
+-- Stored whole rather than as picked columns, on the same principle as
+-- champion_patch.raw: the crawl is the expensive part, and deciding later which
+-- fields matter must not cost another 45-minute refetch.
+--
+-- The motivating fields are skillshotsHit / skillshotsDodged /
+-- landSkillShotsEarlyGame — the only direct micro proxies available anywhere in
+-- this project. They validate labels; they never produce them.
+--
+-- Nullable: older matches predate the block, and rows crawled before this
+-- migration will not have it.
+alter table match_participant add column challenges jsonb;

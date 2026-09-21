@@ -8,6 +8,8 @@ Champion fields are keyword-only. `name`, `title` and `partype` are all text
 and adjacent, so positional arguments would let a swap through silently.
 """
 
+from collections.abc import Mapping, Sequence
+from datetime import datetime
 from typing import Any
 
 import psycopg
@@ -105,4 +107,101 @@ def upsert_champion_patch(
                 kit_text = excluded.kit_text
             """,
             (champion_id, patch_version, Jsonb(raw), kit_text),
+        )
+
+
+def count_matches(conn: psycopg.Connection) -> int:
+    with conn.cursor() as cur:
+        cur.execute("select count(*) from match")
+        return cur.fetchone()[0]  # type: ignore[index]
+
+
+def known_match_ids(conn: psycopg.Connection, match_ids: list[str]) -> set[str]:
+    """Which of these are already stored. The crawl is resumable through this:
+    a re-run skips everything it already has rather than refetching."""
+    if not match_ids:
+        return set()
+    with conn.cursor() as cur:
+        cur.execute("select match_id from match where match_id = any(%s)", (match_ids,))
+        return {row[0] for row in cur.fetchall()}
+
+
+def insert_match(
+    conn: psycopg.Connection,
+    *,
+    match_id: str,
+    platform: str,
+    queue_id: int,
+    game_version: str,
+    duration_s: int,
+    played_at: datetime,
+    seed_tier: str,
+) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            insert into match (
+                match_id, platform, queue_id, game_version,
+                duration_s, played_at, seed_tier
+            )
+            values (%s, %s, %s, %s, %s, %s, %s)
+            on conflict (match_id) do nothing
+            """,
+            (match_id, platform, queue_id, game_version, duration_s, played_at, seed_tier),
+        )
+
+
+# Built once so the column list, the placeholders and the row keys cannot drift
+# apart. sample.py maps Riot's names onto these.
+PARTICIPANT_COLUMNS = (
+    "puuid",
+    "champion_key",
+    "champion_name",
+    "team_position",
+    "win",
+    "kills",
+    "deaths",
+    "assists",
+    "skillshots_hit",
+    "skillshots_dodged",
+    "skillshots_dodged_small_window",
+    "ability_uses",
+    "vision_score_per_minute",
+    "control_wards_placed",
+    "turret_plates_taken",
+    "teleport_takedowns",
+    "dragon_takedowns",
+    "baron_takedowns",
+    "outnumbered_kills",
+    "unseen_recalls",
+    "kill_after_hidden_with_ally",
+)
+
+_PARTICIPANT_INSERT = """
+    insert into match_participant (match_id, {columns})
+    values (%s, {placeholders})
+    on conflict (match_id, puuid) do nothing
+""".format(
+    columns=", ".join(PARTICIPANT_COLUMNS),
+    placeholders=", ".join(["%s"] * len(PARTICIPANT_COLUMNS)),
+)
+
+
+def insert_match_participants(
+    conn: psycopg.Connection,
+    match_id: str,
+    rows: Sequence[Mapping[str, Any]],
+) -> None:
+    """Ten rows per match, written in one round trip.
+
+    Rows are keyed by PARTICIPANT_COLUMNS; a missing metric is None rather than
+    absent, since Riot omits fields that never applied in a given game.
+    """
+    with conn.cursor() as cur:
+        cur.executemany(
+            _PARTICIPANT_INSERT,
+            [
+                (match_id, *(r.get(col) for col in PARTICIPANT_COLUMNS))
+                for r in rows
+            ],
         )

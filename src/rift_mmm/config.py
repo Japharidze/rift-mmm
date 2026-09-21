@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     postgres_host: str = "localhost"
     postgres_port: int = 5432
 
+    # Empty by default: migrate and ingest must keep working without a Riot
+    # key. riot_api.py raises when it is actually needed and missing.
+    riot_api_key: str = ""
+
     @property
     def db_url(self) -> str:
         return make_conninfo(
