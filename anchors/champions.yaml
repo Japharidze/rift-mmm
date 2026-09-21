@@ -1,0 +1,123 @@
+# Anchor scores — the regression test for champion labelling.
+#
+# Hand-set, not generated. A labelling run that drifts outside these bands means
+# the prompt or the model changed, not the game (CLAUDE.md, Conventions).
+#
+# Band width encodes how precisely the judgment was expressed, not how much it
+# is liked. A high/mid/low bucket honestly supports about +/- 0.12; a considered
+# placement within a ranking supports about +/- 0.07. Narrowing a band past what
+# was actually expressed invents precision and produces false failures.
+#
+# Scores are absolute and independent per dimension. They do not sum to 1.
+# Two edge cases are kept in the set on purpose, to prove the scale is not
+# compressed: LeeSin sits high on all three, Garen low on all three.
+#
+# tier, per dimension:
+#   tight       Sergi's own judgment, independent of any model. Blocking.
+#   wide        Sergi knows the lane but has not played the champion. Reported,
+#               not blocking.
+#   provisional Placed or moved by the model. Reference only, never blocking —
+#               a model-set anchor cannot test a model, since agreement between
+#               two models is not evidence.
+#
+# `role` matters: the unit is champion x role, so an anchor without a role is
+# ambiguous. These are hand-assigned; champion_role is not populated yet.
+
+version: 1
+
+# The vocabulary coarse judgments were expressed in.
+buckets:
+  high: {point: 0.75, band: [0.65, 0.88]}
+  mid: {point: 0.50, band: [0.38, 0.62]}
+  low-mid: {point: 0.35, band: [0.22, 0.50]}   # hedged between low and mid
+  low: {point: 0.20, band: [0.10, 0.32]}
+
+champions:
+  - id: LeeSin
+    role: jungle
+    micro: {point: 0.90, band: [0.84, 0.96], tier: tight}
+    meso: {point: 0.80, band: [0.72, 0.88], tier: tight}
+    macro: {point: 0.82, band: [0.74, 0.90], tier: tight}
+    note: high on all three; the ceiling case for the scale
+
+  - id: Garen
+    role: top
+    micro: {point: 0.12, band: [0.06, 0.18], tier: tight}
+    meso: {point: 0.18, band: [0.11, 0.25], tier: tight}
+    macro: {point: 0.38, band: [0.30, 0.46], tier: tight}
+    note: low on all three; the floor case for the scale
+
+  - id: Riven
+    role: top
+    micro: {point: 0.87, band: [0.80, 0.94], tier: tight}
+    # Originally ranked meso first. Moved down: perfect execution trivialises
+    # Riven far more than knowing enemy intent does, and top-of-both-lists was
+    # the halo pattern. Not re-confirmed by Sergi, so it cannot block.
+    meso: {point: 0.50, band: [0.38, 0.62], tier: provisional}
+    macro: {point: 0.40, band: [0.32, 0.48], tier: tight}
+
+  - id: TwistedFate
+    role: mid
+    micro: {point: 0.52, band: [0.44, 0.60], tier: tight}
+    meso: {point: 0.72, band: [0.64, 0.80], tier: tight}
+    macro: {point: 0.90, band: [0.84, 0.96], tier: tight}
+
+  - id: Annie
+    role: mid
+    micro: {point: 0.20, band: [0.13, 0.27], tier: tight}
+    meso: {point: 0.40, band: [0.32, 0.48], tier: tight}
+    macro: {point: 0.45, band: [0.37, 0.53], tier: tight}
+
+  - id: Azir
+    role: mid
+    micro: {point: 0.75, band: [0.65, 0.88], tier: tight}
+    meso: {point: 0.50, band: [0.38, 0.62], tier: tight}
+    macro: {point: 0.75, band: [0.65, 0.88], tier: tight}
+
+  - id: Orianna
+    role: mid
+    micro: {point: 0.50, band: [0.38, 0.62], tier: tight}
+    meso: {point: 0.50, band: [0.38, 0.62], tier: tight}
+    macro: {point: 0.75, band: [0.65, 0.88], tier: tight}
+
+  - id: Zilean
+    role: support
+    micro: {point: 0.20, band: [0.10, 0.32], tier: tight}
+    meso: {point: 0.75, band: [0.65, 0.88], tier: tight}
+    macro: {point: 0.50, band: [0.38, 0.62], tier: tight}
+
+  - id: Bard
+    role: support
+    # Placed independently of the model's own read, which landed within 0.05 on
+    # all three. The only cross-checked row in the file.
+    micro: {point: 0.50, band: [0.38, 0.62], tier: tight}
+    meso: {point: 0.75, band: [0.65, 0.88], tier: tight}
+    macro: {point: 0.75, band: [0.65, 0.88], tier: tight}
+
+  - id: Pyke
+    role: support
+    micro: {point: 0.68, band: [0.55, 0.80], tier: wide}
+    # Moved to the top of meso by the model, not by Sergi.
+    meso: {point: 0.85, band: [0.72, 0.94], tier: provisional}
+    macro: {point: 0.62, band: [0.50, 0.74], tier: wide}
+
+  - id: Draven
+    role: bot
+    micro: {point: 0.82, band: [0.70, 0.92], tier: wide}
+    meso: {point: 0.35, band: [0.22, 0.48], tier: wide}
+    macro: {point: 0.25, band: [0.14, 0.36], tier: wide}
+
+  - id: Yuumi
+    role: support
+    # Q is a manually steered skillshot, so micro is not floor-level even
+    # though agency everywhere else is.
+    micro: {point: 0.35, band: [0.22, 0.50], tier: tight}
+    meso: {point: 0.20, band: [0.10, 0.32], tier: tight}
+    macro: {point: 0.20, band: [0.10, 0.32], tier: tight}
+    note: lowest-agency case; anchors the macro floor
+
+  - id: Jinx
+    role: bot
+    micro: {point: 0.50, band: [0.38, 0.62], tier: wide}
+    meso: {point: 0.20, band: [0.10, 0.32], tier: wide}
+    macro: {point: 0.20, band: [0.10, 0.32], tier: wide}
