@@ -26,23 +26,36 @@ matching or UI.
   never rendered into the prompt. MMM is derived from kit and role; handing the
   labeller an existing taxonomy anchors it to that taxonomy instead of to the
   three dimensions.
-- **Nine sub-traits**, three per dimension, feed the three aggregates. Each
-  dimension's third sub-trait is the cheat test rephrased.
+- **Sub-traits feed the three aggregates, at least three per dimension.**
+  Three is the floor: a factor with fewer indicators cannot be estimated. But
+  with exactly three the single-factor model is just-identified — fit is perfect
+  by construction and untestable — so four is where per-dimension fit can
+  actually be checked. Starting allocation is **3 / 4 / 3**, the extra on meso,
+  which is the hardest dimension to read from a kit and therefore has the
+  noisiest individual indicators. The count is an output of the pilot, not an
+  input: the factor check and run-to-run disagreement decide whether it holds.
+  The **last** sub-trait in each group is the cheat test rephrased.
 - **Scores are absolute, decimal 0–1 per dimension.** Each dimension is scored
   independently on its own 0–1 scale — they do not and must not sum to 1. A
   champion can be low on all three (0.2 / 0.3 / 0.1) or high on all three
   (0.9 / 0.8 / 0.9).
-- **Unit is champion×primary-role.** One row per champion: the role it is most
-  played in. Vector = kit + role + environment, so role still shapes the score —
-  Karthus-jungle and Karthus-mid would land differently — but only the dominant
-  role is labelled. The role term can subtract (bot lane removes macro from
-  Ziggs). Keep the schema able to hold several roles per champion even while the
-  data holds one, so Gate 1 can add rows back without a migration.
+- **Unit is champion×role, one row per role played in at least 30% of games.**
+  Vector = kit + role + environment, so role shapes the score — Karthus-jungle
+  and Karthus-mid land differently. The role term can subtract (bot lane removes
+  macro from Ziggs). The threshold is on the *secondary* share, not the primary:
+  the primary-share distribution has no natural gap to cut at, whereas "played
+  in 30% of games" says a role is genuinely how the champion is played whatever
+  the rest of the split does. Measured 2026-09-22 over 2,060 ranked solo games:
+  196 rows across 173 champions — 23 get a second row, none a third. A champion
+  flat enough that no role clears 30% must still keep its top role.
 - **Labels are append-only**, grouped by `label_run`. Re-labelling produces a
   diff, never an overwrite. Store sub-traits and aggregates both.
-- **Match data does not produce labels.** Its jobs: pick each champion's primary
-  role (position distribution), and flag drift for re-labelling
-  (win-rate-by-duration, rank-tier spread, deaths).
+- **Match data does not produce labels.** Its jobs: decide which roles each
+  champion is played in (position distribution against the 30% threshold), and
+  flag drift for re-labelling (win-rate-by-duration, rank-tier spread, deaths).
+  For drift, weight recent patches more heavily rather than filtering to them: a
+  champion that changed lanes months ago still carries the old lane in a flat
+  average.
 - **Style first, role second.** Output = MMM point → style neighbourhood → 3–5
   champions labelled by lane → user picks the lane. Result copy: these are first
   picks, the settled lane comes later.
@@ -85,6 +98,6 @@ intuition says? Go → build MVP.
 - Sub-trait wording. The main risk to label quality. Freeze before mass
   labelling; never edit mid-run.
 - Weights: equal for the pilot, then fit against the games Surnex placed himself
-  (see `docs/3m-model.md`); factor-check the nine afterwards.
+  (see `docs/3m-model.md`); factor-check the sub-traits afterwards.
 - Riot production key: apply early; design the MVP to run on cached data so
   launch never blocks on approval.
