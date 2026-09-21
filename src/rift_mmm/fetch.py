@@ -6,6 +6,8 @@ here rather than growing a client of its own.
 """
 
 import time
+from collections import deque
+from collections.abc import Sequence
 from typing import Any
 
 import httpx
@@ -13,9 +15,13 @@ import httpx
 TIMEOUT = httpx.Timeout(10.0, connect=5.0)
 USER_AGENT = "rift-mmm/0.1"
 
-MAX_ATTEMPTS = 4
+MAX_ATTEMPTS = 6
 BACKOFF_BASE = 0.5  # seconds, doubled after each failed attempt
 MAX_BACKOFF = 8.0
+# A server that says Retry-After is telling us when its window reopens, and
+# that is not ours to shorten. Capped only so a hostile value cannot hang the
+# process; MAX_BACKOFF applies to our own guesses, never to this.
+MAX_RETRY_AFTER = 180.0
 
 # Transient by convention. Everything else in 4xx is the caller's mistake and
 # retrying it just wastes time.
@@ -45,6 +51,35 @@ def close() -> None:
         _client = None
 
 
+class RateLimiter:
+    """Sliding-window limiter honouring several windows at once.
+
+    Riot enforces two simultaneously (20 per second and 100 per two minutes),
+    and the tighter one changes depending on how long the run has been going,
+    so both have to be tracked rather than just the smaller rate.
+    """
+
+    def __init__(self, windows: Sequence[tuple[int, float]]) -> None:
+        self._windows = [(limit, seconds, deque[float]()) for limit, seconds in windows]
+
+    def acquire(self) -> None:
+        while True:
+            now = time.monotonic()
+            wait = 0.0
+            for limit, seconds, hits in self._windows:
+                while hits and now - hits[0] >= seconds:
+                    hits.popleft()
+                if len(hits) >= limit:
+                    wait = max(wait, seconds - (now - hits[0]))
+            if wait <= 0:
+                break
+            time.sleep(wait)
+
+        now = time.monotonic()
+        for _, _, hits in self._windows:
+            hits.append(now)
+
+
 def _retry_after(response: httpx.Response) -> float | None:
     value = response.headers.get("Retry-After")
     if value is None:
@@ -55,16 +90,27 @@ def _retry_after(response: httpx.Response) -> float | None:
         return None  # HTTP-date form; fall back to our own backoff
 
 
-def get_json(url: str) -> Any:
-    """Fetch and parse JSON, retrying transient failures."""
+def get_json(
+    url: str,
+    *,
+    headers: dict[str, str] | None = None,
+    limiter: RateLimiter | None = None,
+) -> Any:
+    """Fetch and parse JSON, retrying transient failures.
+
+    A limiter, when given, is consumed once per attempt rather than once per
+    call: a retry is another request as far as the server is concerned.
+    """
     client = _get_client()
     delay = BACKOFF_BASE
     last_error: Exception | None = None
 
     for attempt in range(1, MAX_ATTEMPTS + 1):
-        wait = delay
+        wait = min(delay, MAX_BACKOFF)
+        if limiter is not None:
+            limiter.acquire()
         try:
-            response = client.get(url)
+            response = client.get(url, headers=headers)
         except httpx.TransportError as exc:
             last_error = exc
         else:
@@ -76,11 +122,15 @@ def get_json(url: str) -> Any:
                 request=response.request,
                 response=response,
             )
-            wait = _retry_after(response) or delay
+            retry_after = _retry_after(response)
+            if retry_after is not None:
+                # Honoured in full. Clamping it to our own backoff just retries
+                # into a window the server already said is shut.
+                wait = min(retry_after, MAX_RETRY_AFTER)
 
         if attempt == MAX_ATTEMPTS:
             break
-        time.sleep(min(wait, MAX_BACKOFF))
+        time.sleep(wait)
         delay *= 2
 
     assert last_error is not None  # the loop always runs at least once
