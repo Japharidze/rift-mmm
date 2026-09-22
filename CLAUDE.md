@@ -103,6 +103,10 @@ React frontend, same repo under /web.
 
 ## Current phase
 
+Phase 2: both gates passed, building the MVP. The next blocker is the game
+side — nothing yet turns "I played Factorio and Hearthstone" into an MMM point,
+so there is no games table and no `anchors/games.yaml`.
+
 Phase 1 done: schema, Data Dragon ingestion, the match sample, `champion_role`,
 and the first full labelling pass — 196 champion×role rows at prompt v3
 (`label_run` 9 and 10; 10 fills 8 rows lost to network errors, so the complete
@@ -137,8 +141,38 @@ Decision: the expected branch. Style neighbourhood across roles, champions
 labelled by lane, user picks. No explicit role question, and no fallback to
 role×subclass priors.
 
-**Gate 2** (after scoring engine): do synthetic personas and dry runs land where
-intuition says? Go → build MVP.
+**Gate 2 — passed 2026-09-22.** Do synthetic personas and dry runs land where
+intuition says? Seven personas, each an MMM point taken from Surnex's own game
+placements in `docs/3m-model.md` rather than invented, matched against the 196
+labelled champion×role rows:
+
+- Hearthstone / TFT (meso+macro) → Singed, Evelynn, Shaco, Teemo, Fiddlesticks
+  — the deception and setup champions, reached with no notion of "deception"
+  anywhere in the pipeline.
+- Among Us (pure meso) → Blitzcrank. Factorio (pure macro) → Nasus.
+  osu! (pure micro) → Draven. CS2 (all three) → Lee Sin.
+
+Every persona spans two or three lanes, which is the Gate 1 branch behaving as
+designed. Go → build MVP.
+
+Three limitations carried into the MVP rather than resolved:
+
+- **The champion cloud does not reach the corners.** Nothing sits below ~0.2 on
+  any axis, and four of the eight corners have no champion within 0.30 — worst
+  for pure micro (0.45) and pure meso (0.47). A pure-anything taste gets a
+  nearest match that is ranked first but is not close. **The result UI has to
+  express confidence, not just order**, or it will present a 0.45 match exactly
+  as it presents a 0.04 one.
+- **Macro is load-bearing and the least verified axis.** Removing it leaves
+  1.4/5 recommendations standing and collapses the CS2 and Street Fighter
+  personas onto one identical list, so it can be neither dropped nor
+  down-weighted. Yet its correlation with the anchors sits somewhere in
+  [0.05, 0.77] across 19 tight anchors. The product leans hardest on the
+  dimension measured worst; closing that needs more anchors, not more prompting
+  (see `docs/sub-traits.md`, v4–v6).
+- **Meso is the narrowest dimension** (sd 0.13 against micro's 0.18), and two
+  prompt versions failed to widen it. Expect it to separate less than the
+  other two.
 
 ## Open questions — discuss, don't decide in code
 
