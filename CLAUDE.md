@@ -73,6 +73,26 @@ matching or UI.
   are the regression test: a re-run that drifts from anchors means the prompt or
   model changed, not the game.
 
+## Commit style
+
+Conventional Commits, subject line only — no body, no footer beyond required
+attribution. Observed across the existing history, not aspirational:
+
+- `type(scope): subject` — `feat(sample): match-v5 crawl and participant
+  metrics`, `refactor(fetch): remove unnecessary cache managemenet`,
+  `docs: readme; role threshold and sub-trait count`.
+- Types seen: `feat`, `refactor`, `docs`. `fix` follows the same shape when it
+  comes up.
+- Scope is the module or area touched (`fetch`, `sample`, `roles`,
+  `ingestion`) — the file/dir name if there's an obvious one, not a category
+  invented for the commit. Omit it when the commit spans areas rather than
+  living in one (`feat: anchors added`, `feat: data_dragon; db`).
+- One subject line, lowercase, no trailing period. Semicolons join more than
+  one thing in that single line rather than spilling into a body
+  (`feat(fetch): rate limiting; honour Retry-After in full`).
+- Phrase it however reads clearest — imperative isn't required
+  (`feat(ingestion): done for champions` is a real commit here).
+
 ## Stack
 
 Python, PostgreSQL. Data is small — no Spark, no warehouse, no dbt. Python is
