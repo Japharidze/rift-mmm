@@ -81,17 +81,25 @@ champions:
     role: mid
     micro: {point: 0.75, band: [0.63, 0.88], tier: tight}
     meso: {point: 0.50, band: [0.38, 0.62], tier: tight}
-    macro: {point: 0.75, band: [0.63, 0.88], tier: tight}
+    # Anchored high; every prompt version put it mid, including v2's macro
+    # rewrite that moved everything else. Conceded to the labeller 2026-09-22,
+    # so it is no longer an independent reading and cannot block.
+    macro: {point: 0.45, band: [0.33, 0.57], tier: provisional}
 
   - id: Orianna
     role: mid
     micro: {point: 0.50, band: [0.38, 0.62], tier: tight}
     meso: {point: 0.50, band: [0.38, 0.62], tier: tight}
-    macro: {point: 0.75, band: [0.63, 0.88], tier: tight}
+    # Same story as Azir: anchored high, labelled mid by every prompt version.
+    # Conceded to the labeller 2026-09-22, so it can no longer block.
+    macro: {point: 0.48, band: [0.36, 0.60], tier: provisional}
 
   - id: Zilean
     role: support
-    micro: {point: 0.20, band: [0.08, 0.32], tier: tight}
+    # Anchored low on the strength of it being a support; the labeller read the
+    # double-bomb timing and the speed corridor as real execution demand.
+    # Conceded 2026-09-22, so it can no longer block.
+    micro: {point: 0.50, band: [0.38, 0.62], tier: provisional}
     meso: {point: 0.75, band: [0.63, 0.88], tier: tight}
     macro: {point: 0.50, band: [0.38, 0.62], tier: tight}
 
