@@ -103,14 +103,39 @@ React frontend, same repo under /web.
 
 ## Current phase
 
-Phase 0/1: schema + Data Dragon ingestion, then the labelling prompt.
+Phase 1 done: schema, Data Dragon ingestion, the match sample, `champion_role`,
+and the first full labelling pass — 196 champion×role rows at prompt v3
+(`label_run` 9 and 10; 10 fills 8 rows lost to network errors, so the complete
+set is the two unioned, preferring the later row per champion×role). Next is the
+scoring engine, toward Gate 2.
 
-**Gate 1** (after champion labelling): does the MMM space contain role
-information — can role be predicted from the three coordinates better than
-chance? High → role comes free. Moderate → present style neighbourhood across
-roles (expected). Near-zero → add one explicit role question. If clustering is
-incoherent: fall back to role×subclass priors blended with whatever structure
-emerged. One day, not a restart.
+**Gate 1 — passed 2026-09-22, Moderate.** Can role be predicted from the three
+coordinates better than chance? Measured by leave-one-out k-NN over all 196
+rows, chosen because it is the product's own mechanism rather than a convenient
+classifier: if role falls out of a style neighbourhood, role comes free.
+
+- **40.8%** at k=15 and **32.1%** at k=1, against a 23.5% majority-class
+  baseline and 20% chance. Real signal, well short of free. Accuracy rising
+  with k means it reads broad regional base rates, not tight neighbourhoods, so
+  32% is the honest neighbourhood number.
+- **Separation ratio 0.73** — champions sit further from their own role's
+  centroid than the centroids sit from each other. Roles overlap; they do not
+  cluster.
+- Nearly all of it is jungle (80% recall) and nearly all of it is macro
+  (centroid spread 0.24, against micro 0.12 and meso 0.10). **Top lane scores
+  15%, below chance** — it is the most average point in the space, and a
+  top-inclined user will get the least lane information from their
+  neighbourhood.
+- **The role term works.** Across the 23 two-role champions, changing only the
+  role moves the vector 0.120, against 0.350 for two random rows. Macro moves
+  0.094 and always in the right direction (top→jungle raises it, →support
+  lowers it); micro moves 0.029, which is the noise floor, so micro correctly
+  ignores role. Karthus-jungle and Karthus-mid do land differently, for the
+  right reason.
+
+Decision: the expected branch. Style neighbourhood across roles, champions
+labelled by lane, user picks. No explicit role question, and no fallback to
+role×subclass priors.
 
 **Gate 2** (after scoring engine): do synthetic personas and dry runs land where
 intuition says? Go → build MVP.
