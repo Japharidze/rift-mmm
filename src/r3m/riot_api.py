@@ -10,8 +10,8 @@ is shared across every endpoint on a client rather than one per method.
 
 from typing import Any
 
-from rift_mmm import fetch
-from rift_mmm.config import settings
+from r3m import fetch
+from r3m.config import settings
 
 QUEUE_RANKED_SOLO = 420
 RANKED_SOLO = "RANKED_SOLO_5x5"

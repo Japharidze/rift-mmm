@@ -9,7 +9,7 @@
 
 create table label_run (
     id             bigserial primary key,
-    prompt_version text not null,   -- constant in rift_mmm.labeling.prompt
+    prompt_version text not null,   -- constant in r3m.labeling.prompt
     model          text not null,   -- e.g. 'claude-opus-4-6-20260115'
     started_at     timestamptz not null default now(),
     note           text             -- free text: what changed since the last run
@@ -19,7 +19,7 @@ create table label_run (
 -- that is a view (Postgres cannot target one with a foreign key), and which
 -- roles are "live" shifts as the match sample grows. Whether a role is still
 -- above the 30% threshold at label time is an application-level check
--- (rift_mmm.labeling), not a schema constraint.
+-- (r3m.labeling), not a schema constraint.
 create table champion_label (
     id             bigserial primary key,
     label_run_id   bigint not null references label_run (id),

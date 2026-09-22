@@ -11,10 +11,10 @@ from dataclasses import dataclass, field
 
 import anthropic
 
-from rift_mmm import db
-from rift_mmm.config import settings
-from rift_mmm.labeling.prompt import PROMPT_VERSION, SYSTEM_PROMPT, build_user_message
-from rift_mmm.labeling.schema import TOOL_SCHEMA, ChampionLabel
+from r3m import db
+from r3m.config import settings
+from r3m.labeling.prompt import PROMPT_VERSION, SYSTEM_PROMPT, build_user_message
+from r3m.labeling.schema import TOOL_SCHEMA, ChampionLabel
 
 # The instructions say to default to the latest, most capable Claude model
 # when building an AI application. Overridable per run (a bulk pass over
@@ -46,7 +46,7 @@ def _client() -> anthropic.Anthropic:
     if not settings.anthropic_api_key:
         raise RuntimeError(
             "ANTHROPIC_API_KEY is not set. Add it to .env before running "
-            "rift-mmm label."
+            "r3m label."
         )
     return anthropic.Anthropic(api_key=settings.anthropic_api_key)
 

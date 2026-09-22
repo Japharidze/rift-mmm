@@ -5,7 +5,7 @@ Pure composition — the fetching, cleaning and SQL all live elsewhere.
 
 from dataclasses import dataclass
 
-from rift_mmm import data_dragon, db, kit_text
+from r3m import data_dragon, db, kit_text
 
 
 @dataclass(frozen=True)

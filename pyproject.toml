@@ -1,5 +1,5 @@
 [project]
-name = "rift-mmm"
+name = "r3m"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
-rift-mmm = "rift_mmm.cli:main"
+r3m = "r3m.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.11.30,<0.12.0"]

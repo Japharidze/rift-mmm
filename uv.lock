@@ -423,7 +423,7 @@ wheels = [
 ]
 
 [[package]]
-name = "rift-mmm"
+name = "r3m"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

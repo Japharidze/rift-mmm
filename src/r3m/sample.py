@@ -15,8 +15,8 @@ from itertools import zip_longest
 from datetime import UTC, datetime
 from typing import Any
 
-from rift_mmm import db
-from rift_mmm.riot_api import QUEUE_RANKED_SOLO, RiotApi
+from r3m import db
+from r3m.riot_api import QUEUE_RANKED_SOLO, RiotApi
 
 # Mid-ladder on purpose. The product targets newcomers, so the high-elo meta is
 # the wrong place to learn role splits from. seed_tier is stored per match so

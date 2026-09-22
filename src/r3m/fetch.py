@@ -13,7 +13,7 @@ from typing import Any
 import httpx
 
 TIMEOUT = httpx.Timeout(10.0, connect=5.0)
-USER_AGENT = "rift-mmm/0.1"
+USER_AGENT = "r3m/0.1"
 
 MAX_ATTEMPTS = 6
 BACKOFF_BASE = 0.5  # seconds, doubled after each failed attempt

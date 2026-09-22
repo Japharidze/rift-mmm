@@ -15,7 +15,7 @@ from typing import Any
 import psycopg
 from psycopg.types.json import Jsonb
 
-from rift_mmm.config import settings
+from r3m.config import settings
 
 
 def connect() -> psycopg.Connection:
@@ -256,7 +256,7 @@ def insert_label_run(
 
 
 # The ten sub-traits plus the three aggregates. Order matches
-# rift_mmm.labeling.schema.ChampionLabel's fields, but this module does not
+# r3m.labeling.schema.ChampionLabel's fields, but this module does not
 # import that class — labelling code goes through db.py, not the other way
 # round, so this takes a plain mapping instead.
 CHAMPION_LABEL_COLUMNS = (

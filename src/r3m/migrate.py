@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from rift_mmm.config import MIGRATIONS_DIR
+from r3m.config import MIGRATIONS_DIR
 
 
 def apply_migrations(conn, migrations_dir: Path = MIGRATIONS_DIR) -> list[str]:

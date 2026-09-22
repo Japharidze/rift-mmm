@@ -5,10 +5,10 @@ import time
 
 import httpx
 
-from rift_mmm import db, fetch, ingest, sample
-from rift_mmm.labeling import run as labeling_run
-from rift_mmm.migrate import apply_migrations
-from rift_mmm.riot_api import RiotApi
+from r3m import db, fetch, ingest, sample
+from r3m.labeling import run as labeling_run
+from r3m.migrate import apply_migrations
+from r3m.riot_api import RiotApi
 
 
 def _migrate(args: argparse.Namespace) -> int:
@@ -90,7 +90,7 @@ def _label(args: argparse.Namespace) -> int:
     if result.targeted == 0:
         print(
             "nothing to label: champion_role_live has no rows in scope. "
-            "It is built from match_participant, so run `rift-mmm sample` "
+            "It is built from match_participant, so run `r3m sample` "
             "first (or check --champions against champion ids that exist)."
         )
         return 1
@@ -104,7 +104,7 @@ def _label(args: argparse.Namespace) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="rift-mmm")
+    parser = argparse.ArgumentParser(prog="r3m")
     sub = parser.add_subparsers(dest="command", required=True)
 
     migrate = sub.add_parser("migrate", help="apply pending schema migrations")

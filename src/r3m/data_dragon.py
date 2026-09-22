@@ -8,7 +8,7 @@ faithful copy of the patch.
 from collections.abc import Iterator
 from typing import Any
 
-from rift_mmm.fetch import get_json
+from r3m.fetch import get_json
 
 BASE = "https://ddragon.leagueoflegends.com"
 LOCALE = "en_US"  # the labelling prompt reads English kit prose

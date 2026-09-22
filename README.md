@@ -84,9 +84,9 @@ cp .env.example .env        # fill in POSTGRES_* and RIOT_API_KEY
 docker compose up -d
 uv sync
 
-uv run rift-mmm migrate                  # apply schema migrations
-uv run rift-mmm ingest                   # load the latest Data Dragon patch
-uv run rift-mmm sample --matches 2000    # crawl ranked games (~40 min)
+uv run r3m migrate                  # apply schema migrations
+uv run r3m ingest                   # load the latest Data Dragon patch
+uv run r3m sample --matches 2000    # crawl ranked games (~40 min)
 ```
 
 `sample` takes a **total**, not an amount to add, and is resumable — an
@@ -101,8 +101,8 @@ needs `ANTHROPIC_API_KEY` and a populated match sample (`champion_role_live`
 needs rows before there is anything to label):
 
 ```bash
-uv run rift-mmm label --champions LeeSin,Garen,Riven   # pilot: anchors only
-uv run rift-mmm label                                  # every live champion x role
+uv run r3m label --champions LeeSin,Garen,Riven   # pilot: anchors only
+uv run r3m label                                  # every live champion x role
 ```
 
 **Gate 1** — does the MMM space contain role information?
