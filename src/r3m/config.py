@@ -7,6 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATIONS_DIR = ROOT / "migrations"
 DATA_DIR = ROOT / "data"
+ANCHORS_FILE = ROOT / "anchors" / "champions.yaml"
 
 
 class Settings(BaseSettings):

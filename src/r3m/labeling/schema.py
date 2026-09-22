@@ -36,8 +36,10 @@ class ChampionLabel(BaseModel):
         "Does the kit let the champion disguise intent or threaten falsely?"
     )
     meso_prediction: float = _score(
-        "Does effective use mean predicting something the enemy hasn't "
-        "shown yet, rather than reacting to something visible?"
+        "Does the kit force commitment before the enemy has shown what they "
+        "will do? Instant and point-and-click abilities are low; slow "
+        "projectiles, long casts, zones and traps aimed where the enemy will "
+        "be are high."
     )
     meso_exploitation: float = _score(
         "Does power come from reading this specific opponent's habits over "
@@ -45,20 +47,24 @@ class ChampionLabel(BaseModel):
     )
     meso_cheat: float = _score(
         "Would knowing the enemy's hidden state before it happens make this "
-        "champion dramatically stronger, independent of mechanical skill?"
+        "champion dramatically stronger than it would make an average "
+        "champion?"
     )
 
     macro_routing: float = _score(
-        "Does the champion's value come from where they spend time on the "
-        "map, rather than from fights themselves?"
+        "How many decisions about where to be does this champion's player "
+        "make, and how much do they change the game? Locked to a lane and "
+        "moving when the team moves is low; choosing objectives, abandoning "
+        "lanes, or constraining the enemy by presence is high."
     )
     macro_win_condition: float = _score(
         "Does good play mean building toward a specific late-game plan "
         "rather than winning exchanges in isolation?"
     )
     macro_cheat: float = _score(
-        "Would a perfect coach, with no mechanical or read improvement, "
-        "make this champion dramatically stronger?"
+        "Would a perfect coach, with no mechanical or read improvement, make "
+        "this champion dramatically stronger than the same coaching would "
+        "make an average champion?"
     )
 
     rationale: str = Field(

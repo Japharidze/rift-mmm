@@ -9,7 +9,7 @@ the frozen source. If the two ever disagree, docs/sub-traits.md is correct and
 this file is stale and needs a version bump.
 """
 
-PROMPT_VERSION = "v1"
+PROMPT_VERSION = "v3"
 
 SYSTEM_PROMPT = """\
 You score one League of Legends champion, in one role, on the micro / meso /
@@ -43,27 +43,45 @@ Meso
 1. deception: how much does the kit let the champion disguise intent or
    threaten falsely (fake-casts, stealth, an engage that reads as a
    disengage)?
-2. prediction: how much does effective use mean predicting something the
-   enemy hasn't shown yet (flash timing, dash direction, whether a cooldown
-   is up), rather than reacting to something visible?
+2. prediction: how much does the kit force commitment before the enemy has
+   shown what they will do? Instant, point-and-click, or mid-flight-steerable
+   abilities need little prediction -- the enemy acts and you respond. Slow
+   projectiles, long cast times, ground-targeted zones and pre-placed traps
+   must be aimed where the enemy *will* be, and score high. Judge the
+   abilities, not the fact that League rewards prediction in general.
 3. exploitation: how much does power come from reading this specific
    opponent's habits over a match, rather than executing one fixed optimal
    line?
-4. cheat: would knowing the enemy's hidden state before it happens make this
-   champion dramatically stronger, independent of mechanical skill?
+4. cheat: would knowing the enemy's hidden state (cooldowns, position, next
+   input) before it happens make this champion dramatically stronger *than it
+   would make an average champion*? Every champion gains something from it;
+   score high only where the kit turns that knowledge into something other
+   champions could not do with it.
 
 Macro
-1. routing: how much of the champion's value comes from where they spend
-   time on the map (roaming, split-push, jungle pathing, wave management)
-   rather than from fights themselves?
+1. routing (map agency): how many decisions about where to be does this
+   champion's player actually make, and how much do those decisions change
+   the game? A champion locked to one lane, who moves when the team moves,
+   scores low even though the map still matters -- those decisions are being
+   made for them. A champion who chooses between objectives, decides when to
+   abandon a lane, or whose presence elsewhere constrains what the enemy can
+   do, scores high.
 2. win_condition: how much does good play mean building toward a specific
    late-game plan (power spikes, objective timing) rather than winning
    exchanges in isolation?
 3. cheat: would a perfect coach -- telling you exactly where to be and what
    to prioritize, no mechanical or read improvement -- make this champion
-   dramatically stronger?
+   dramatically stronger *than the same coaching would make an average
+   champion*? Advice that helps any player equally is not this champion's
+   macro.
 
 Rules:
+- Use the whole 0-1 range. 0.00-0.15 means this is essentially absent: the
+  champion genuinely does almost none of it. 0.85-1.00 means it is close to
+  the strongest example in the game. If a dimension is genuinely absent for a
+  champion, say so with a low number -- do not hedge toward the middle. A
+  champion whose ten scores all sit between 0.40 and 0.60 usually means the
+  questions were not answered.
 - Scores are absolute and independent per dimension. They do not and must
   not sum to 1. A champion can be low on all ten, high on all ten, or any mix.
 - The role you are given is part of what you are scoring, not a label on top

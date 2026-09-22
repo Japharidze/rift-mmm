@@ -1,5 +1,7 @@
 # Sub-traits — frozen
 
+**Prompt v3** (2026-09-22). Version history is at the end of this file.
+
 Ten sub-traits feed the three MMM aggregates: 3 micro, 4 meso, 3 macro (the
 allocation and its rationale are in `CLAUDE.md`, Frozen decisions). Frozen
 2026-09-22. Do not edit mid-run — a re-labelling run against changed wording
@@ -25,28 +27,39 @@ game" to "what cheat breaks this champion."
 1. **Deception potential** — how much does the kit let the champion disguise
    intent or threaten falsely (fake-casts, stealth, an engage that reads as a
    disengage)?
-2. **Prediction under hidden information** — how much does effective use mean
-   predicting something the enemy hasn't shown yet (flash timing, dash
-   direction, whether a cooldown is up), rather than reacting to something
-   visible?
+2. **Prediction under hidden information** — how much does the kit force
+   commitment before the enemy has shown what they will do? Instant,
+   point-and-click, or mid-flight-steerable abilities need little prediction:
+   the enemy acts and you respond. Slow projectiles, long cast times,
+   ground-targeted zones and pre-placed traps must be aimed where the enemy
+   *will* be, and score high. Judge the abilities, not the fact that League
+   rewards prediction in general.
 3. **Opponent-specific exploitation** — how much does power come from reading
    *this* opponent's habits over a match, rather than executing one fixed
    optimal line?
 4. **Cheat test** — would knowing the enemy's hidden state (cooldowns,
-   position, next input) before it happens make this champion dramatically
-   stronger, independent of mechanical skill?
+   position, next input) before it happens make *this* champion dramatically
+   stronger than it would make an average champion? Every champion gains
+   something from it; score high only where the kit turns that knowledge into
+   something other champions could not do with it.
 
 ## Macro
 
-1. **Routing/resource value** — how much of the champion's value comes from
-   *where* they spend time on the map (roaming, split-push, jungle pathing,
-   wave management) rather than from fights themselves?
+1. **Map agency** — how many decisions about *where to be* does this
+   champion's player actually make, and how much do those decisions change the
+   game? A champion locked to one lane, who moves when the team moves, scores
+   low even though the map still matters — those decisions are being made for
+   them. A champion who chooses between objectives, decides when to abandon a
+   lane, or whose presence somewhere else constrains what the enemy can do,
+   scores high.
 2. **Win-condition construction** — how much does good play mean building
    toward a specific late-game plan (power spikes, objective timing) rather
    than winning exchanges in isolation?
 3. **Cheat test** — would a perfect coach — telling you exactly where to be
-   and what to prioritize, no mechanical or read improvement — make this
-   champion dramatically stronger?
+   and what to prioritize, no mechanical or read improvement — make *this*
+   champion dramatically stronger than the same coaching would make an average
+   champion? Advice that would help any player equally is not this champion's
+   macro.
 
 ## Why this wording, not something else
 
@@ -80,3 +93,56 @@ stress different edges of the scale rather than just the flat high/low cases:
 
 No misfires, including the two anchors hand-annotated as exceptions (Riven's
 meso, Yuumi's micro) — the harder bar than matching the easy cases.
+
+
+## Version history
+
+### v3 — 2026-09-22
+
+v2's macro rewrite worked and its global range instruction did not, which
+settled how to fix a dimension: reword the specific sub-trait, do not tell the
+model to use more of the scale. Measured v1 -> v2 over the 13 anchors, macro
+correlation went 0.58 -> 0.77 and its error on low-anchored champions nearly
+halved, while micro was unchanged and meso compressed *further* (spread 0.69x
+-> 0.63x). So meso now gets the treatment macro got, and nothing else changes:
+
+- **`meso_prediction`** asked whether good play means predicting the enemy.
+  True of every champion in a PvP game, so it measured the game, not the kit --
+  the same flaw `macro_routing` had. Now asks whether the *kit* forces
+  commitment before the enemy reveals, with instant and point-and-click
+  abilities named as the low end.
+- **`meso_cheat`** asked whether knowing hidden state would help. It helps
+  everyone. Now relative to an average champion, matching what `macro_cheat`
+  became in v2.
+
+`meso_deception` and `meso_exploitation` are untouched, as is everything in
+micro and macro, so a v2 -> v3 difference is attributable to these two.
+
+### v2 — 2026-09-22
+
+Measured against the 13 anchor champions under v1 (label_run 2), plus a
+test-retest pair (runs 1 and 3, same prompt, same model):
+
+- **macro never went below 0.37** while anchors run down to 0.20, and macro
+  correlated with the anchors at only 0.58 — the weakest of the three.
+  `macro_routing` was also the joint-noisiest sub-trait across the retest
+  (mean |diff| 0.043). Both point at the same wording: "where they spend time
+  on the map" is true of every champion, so it was being answered as *does
+  this game have macro* rather than *does this champion demand macro*.
+  Rewritten as **map agency** — decisions made, not location occupied.
+- **`macro_cheat`** let any champion score mid, since a coach helps anyone.
+  Now asks for the effect *relative to* an average champion.
+- **All three dimensions compressed** toward the middle (spread 0.66-0.69x of
+  the anchors' for meso and macro; lows pulled up, highs pulled down). Added
+  an explicit range instruction with endpoint anchors, which applies to all
+  ten sub-traits, not just macro.
+
+This bundles two interventions — the macro rewrite and the global range
+instruction. If micro shifts, it will not be attributable to one of them.
+Deliberate: both were diagnosed, and a third run to separate them costs more
+than the attribution is worth at pilot scale.
+
+### v1 — 2026-09-22
+
+First wording. Text recoverable from git history at
+`src/r3m/labeling/prompt.py`.

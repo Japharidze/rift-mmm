@@ -5,7 +5,7 @@ import time
 
 import httpx
 
-from r3m import db, fetch, ingest, sample
+from r3m import anchors, db, fetch, ingest, sample
 from r3m.labeling import run as labeling_run
 from r3m.migrate import apply_migrations
 from r3m.riot_api import RiotApi
@@ -94,13 +94,49 @@ def _label(args: argparse.Namespace) -> int:
             "first (or check --champions against champion ids that exist)."
         )
         return 1
-    print(
-        f"label_run {result.label_run_id}: {result.labelled}/{result.targeted} labelled, "
-        f"{len(result.failed)} failed"
-    )
+    if result.label_run_id is None:
+        print(
+            f"nothing labelled: all {result.targeted} failed, so no run was recorded"
+        )
+    else:
+        print(
+            f"label_run {result.label_run_id}: {result.labelled}/{result.targeted} "
+            f"labelled, {len(result.failed)} failed"
+        )
     for failure in result.failed:
         print(f"  FAILED {failure.champion_id} ({failure.role}): {failure.error}")
     return 1 if result.failed else 0
+
+
+def _check_anchors(args: argparse.Namespace) -> int:
+    result = anchors.check(label_run_id=args.run)
+    print(
+        f"label_run {result.label_run_id}  prompt {result.prompt_version}  "
+        f"{result.model}\n"
+    )
+
+    current = None
+    for c in result.comparisons:
+        if c.champion_id != current:
+            current = c.champion_id
+            print(f"{c.champion_id}")
+        mark = "pass" if c.inside else ("FAIL" if c.blocking else "miss")
+        drift = "" if c.inside else f"  {c.drift:+.2f}"
+        print(
+            f"  {c.dimension:6} {c.label:.2f}  [{c.low:.2f}-{c.high:.2f}]  "
+            f"{c.tier:12} {mark}{drift}"
+        )
+
+    print(
+        f"\n{len(result.comparisons)} scores checked, "
+        f"{len(result.failures)} blocking failures, "
+        f"{len(result.misses)} non-blocking misses"
+    )
+    if result.unlabelled:
+        print(f"not covered by this run: {', '.join(result.unlabelled)}")
+    # Non-zero on a blocking failure: this is a regression test, so it has to be
+    # usable as one from a script.
+    return 1 if result.failures else 0
 
 
 def main() -> int:
@@ -136,6 +172,15 @@ def main() -> int:
     )
     label_cmd.add_argument("--note", help="free text stored on the label_run row")
     label_cmd.set_defaults(func=_label)
+
+    check_cmd = sub.add_parser(
+        "check-anchors", help="compare a labelling run against anchors/champions.yaml"
+    )
+    check_cmd.add_argument(
+        "--run", type=int, default=None,
+        help="label_run id (default: the latest run that produced labels)",
+    )
+    check_cmd.set_defaults(func=_check_anchors)
 
     args = parser.parse_args()
     try:

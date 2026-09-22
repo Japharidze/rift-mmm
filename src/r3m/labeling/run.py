@@ -73,7 +73,18 @@ def _call(
         response = client.messages.create(
             model=model,
             max_tokens=1024,
-            system=SYSTEM_PROMPT,
+            # 82% of each call is this fixed prefix, identical for every
+            # champion. Cached, it costs a tenth on every call after the first.
+            # Render order is tools -> system -> messages, so a breakpoint on
+            # system covers the tool schema too, and the champion-specific user
+            # message stays outside the cached prefix where it belongs.
+            system=[
+                {
+                    "type": "text",
+                    "text": SYSTEM_PROMPT,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
             tools=[TOOL_SCHEMA],
             tool_choice={"type": "tool", "name": TOOL_SCHEMA["name"]},
             messages=[
@@ -114,6 +125,10 @@ def run(
     are append-only per label_run (CLAUDE.md), so a run that stopped halfway
     is not "missing rows to fill in" the way a match crawl is -- it is an
     incomplete run, and the next one is a new run rather than a continuation.
+
+    label_run.started_at is therefore the first successful label, not the
+    moment the process began -- close enough to be useful, and the difference
+    only shows when early champions fail.
     """
     client = _client()
 
@@ -124,11 +139,12 @@ def run(
             # match sample yet, so champion_role_live has nothing live in it.
             return LabelRunResult(label_run_id=None, targeted=0, labelled=0)
 
-        label_run_id = db.insert_label_run(
-            conn, prompt_version=PROMPT_VERSION, model=model, note=note
-        )
-        conn.commit()  # the run row exists even if labelling itself fails partway
-
+        # Created on the first success, not up front. A run that labels
+        # nothing -- an expired key, no credit -- then leaves no row behind, so
+        # "the latest run" never means an empty one. A run that labels some and
+        # fails the rest still gets its row, because the first success creates
+        # it before the failures matter.
+        label_run_id: int | None = None
         failed: list[LabelFailure] = []
         labelled = 0
         for target in targets:
@@ -144,6 +160,11 @@ def run(
             except Exception as exc:
                 failed.append(LabelFailure(target["champion_id"], target["role"], str(exc)))
                 continue
+
+            if label_run_id is None:
+                label_run_id = db.insert_label_run(
+                    conn, prompt_version=PROMPT_VERSION, model=model, note=note
+                )
 
             fields = label.model_dump(exclude={"rationale"})
             fields["rationale"] = label.rationale

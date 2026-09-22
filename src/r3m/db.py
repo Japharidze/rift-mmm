@@ -301,3 +301,52 @@ def insert_champion_label(
                 Jsonb(raw_response),
             ),
         )
+
+
+def latest_label_run(conn: psycopg.Connection) -> int | None:
+    """The most recent run that actually produced labels.
+
+    Not simply max(id): a run that labelled nothing leaves no row now, but
+    older databases may still hold one, and "latest run" must never mean an
+    empty one.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            select r.id from label_run r
+            join champion_label l on l.label_run_id = r.id
+            group by r.id order by r.id desc limit 1
+            """
+        )
+        row = cur.fetchone()
+        return row[0] if row else None
+
+
+def label_run_scores(
+    conn: psycopg.Connection, label_run_id: int
+) -> list[dict[str, Any]]:
+    """The three aggregates per champion x role for one run."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            select l.champion_id, l.role, l.micro, l.meso, l.macro,
+                   r.prompt_version, r.model
+            from champion_label l
+            join label_run r on r.id = l.label_run_id
+            where l.label_run_id = %s
+            order by l.champion_id
+            """,
+            (label_run_id,),
+        )
+        return [
+            {
+                "champion_id": r[0],
+                "role": r[1],
+                "micro": float(r[2]),
+                "meso": float(r[3]),
+                "macro": float(r[4]),
+                "prompt_version": r[5],
+                "model": r[6],
+            }
+            for r in cur.fetchall()
+        ]
