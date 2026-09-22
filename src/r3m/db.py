@@ -389,19 +389,28 @@ def champion_points(
 ) -> list[dict[str, Any]]:
     """Every champion x role as an MMM point, one row each.
 
-    Scoped to a single prompt version -- by default whichever the most recent
-    run used -- because scores from different wordings are not comparable and
-    mixing them would quietly blend two spaces. Within that version the latest
-    label per champion x role wins, which is what makes a gap-filling run
-    (label_run 10 over 9) union correctly instead of double-counting.
+    Scoped to a single prompt version, because scores from different wordings
+    are not comparable and mixing them would quietly blend two spaces. Within
+    that version the latest label per champion x role wins, which is what makes
+    a gap-filling run (label_run 10 over 9) union correctly instead of
+    double-counting.
+
+    The default is the version with the widest coverage, not the most recent
+    one. A rejected experiment over 35 champions is usually the newest thing in
+    the table, and defaulting to it silently scored matches against a twentieth
+    of the roster.
     """
     with conn.cursor() as cur:
         if prompt_version is None:
             cur.execute(
                 """
-                select r.prompt_version from label_run r
+                select r.prompt_version
+                from label_run r
                 join champion_label l on l.label_run_id = r.id
-                group by r.id, r.prompt_version order by r.id desc limit 1
+                group by r.prompt_version
+                order by count(distinct (l.champion_id, l.role)) desc,
+                         max(r.id) desc
+                limit 1
                 """
             )
             row = cur.fetchone()
