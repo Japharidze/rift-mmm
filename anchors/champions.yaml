@@ -37,6 +37,7 @@ version: 1
 # The vocabulary coarse judgments were expressed in.
 buckets:
   high: {point: 0.75, band: [0.65, 0.88]}
+  mid-high: {point: 0.63, band: [0.50, 0.76]}   # hedged between mid and high
   mid: {point: 0.50, band: [0.38, 0.62]}
   low-mid: {point: 0.35, band: [0.22, 0.50]}   # hedged between low and mid
   low: {point: 0.20, band: [0.10, 0.32]}
@@ -138,3 +139,84 @@ champions:
     micro: {point: 0.50, band: [0.38, 0.62], tier: wide}
     meso: {point: 0.20, band: [0.10, 0.32], tier: wide}
     macro: {point: 0.20, band: [0.10, 0.32], tier: wide}
+
+  # Added 2026-09-22 to make the anchor set fit for calibration: 13 champions
+  # could not support a per-dimension correction, and three of their scores had
+  # just been conceded to the labeller. Chosen by greedy max-min coverage over
+  # the labelled space, filtered to at-or-above median pick rate. Ranked by
+  # dimension across all twelve, then cut into buckets -- never scored champion
+  # by champion, and never shown the model's own output first.
+
+  - id: Zed
+    role: mid
+    micro: {point: 0.75, band: [0.65, 0.88], tier: tight}
+    meso: {point: 0.75, band: [0.65, 0.88], tier: tight}
+    macro: {point: 0.35, band: [0.22, 0.50], tier: tight}
+
+  - id: Smolder
+    role: bot
+    micro: {point: 0.75, band: [0.65, 0.88], tier: tight}
+    meso: {point: 0.20, band: [0.10, 0.32], tier: tight}
+    macro: {point: 0.20, band: [0.10, 0.32], tier: tight}
+
+  - id: Ashe
+    role: bot
+    micro: {point: 0.75, band: [0.65, 0.88], tier: tight}
+    meso: {point: 0.20, band: [0.10, 0.32], tier: tight}
+    macro: {point: 0.20, band: [0.10, 0.32], tier: tight}
+
+  - id: Lux
+    role: support
+    micro: {point: 0.75, band: [0.65, 0.88], tier: tight}
+    meso: {point: 0.75, band: [0.65, 0.88], tier: tight}
+    macro: {point: 0.50, band: [0.38, 0.62], tier: tight}
+
+  - id: Morgana
+    role: support
+    micro: {point: 0.50, band: [0.38, 0.62], tier: tight}
+    meso: {point: 0.75, band: [0.65, 0.88], tier: tight}
+    macro: {point: 0.50, band: [0.38, 0.62], tier: tight}
+
+  - id: Camille
+    role: top
+    micro: {point: 0.50, band: [0.38, 0.62], tier: tight}
+    meso: {point: 0.75, band: [0.65, 0.88], tier: tight}
+    macro: {point: 0.50, band: [0.38, 0.62], tier: tight}
+
+  - id: Kayn
+    role: jungle
+    micro: {point: 0.50, band: [0.38, 0.62], tier: tight}
+    meso: {point: 0.75, band: [0.65, 0.88], tier: tight}
+    macro: {point: 0.75, band: [0.65, 0.88], tier: tight}
+
+  - id: Shaco
+    role: jungle
+    # Never played; the meso bucket was also the one Sergi hedged on
+    # ("kayn or shaco"), so this whole row reports rather than blocks.
+    micro: {point: 0.50, band: [0.38, 0.62], tier: wide}
+    meso: {point: 0.63, band: [0.50, 0.76], tier: wide}
+    macro: {point: 0.75, band: [0.65, 0.88], tier: wide}
+
+  - id: Nasus
+    role: top
+    micro: {point: 0.20, band: [0.10, 0.32], tier: tight}
+    meso: {point: 0.20, band: [0.10, 0.32], tier: tight}
+    macro: {point: 0.50, band: [0.38, 0.62], tier: tight}
+
+  - id: MasterYi
+    role: jungle
+    micro: {point: 0.20, band: [0.10, 0.32], tier: tight}
+    meso: {point: 0.50, band: [0.38, 0.62], tier: tight}
+    macro: {point: 0.50, band: [0.38, 0.62], tier: tight}
+
+  - id: Teemo
+    role: top
+    micro: {point: 0.20, band: [0.10, 0.32], tier: tight}
+    meso: {point: 0.50, band: [0.38, 0.62], tier: tight}
+    macro: {point: 0.20, band: [0.10, 0.32], tier: tight}
+
+  - id: Milio
+    role: support
+    micro: {point: 0.20, band: [0.10, 0.32], tier: tight}
+    meso: {point: 0.50, band: [0.38, 0.62], tier: tight}
+    macro: {point: 0.75, band: [0.65, 0.88], tier: tight}
