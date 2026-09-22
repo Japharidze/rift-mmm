@@ -1,6 +1,6 @@
 # Sub-traits — frozen
 
-**Prompt v3** (2026-09-22). Version history is at the end of this file.
+**Prompt v3** (2026-09-22) — v4, v5 and v6 were tried and rejected; see history. Version history is at the end of this file.
 
 Ten sub-traits feed the three MMM aggregates: 3 micro, 4 meso, 3 macro (the
 allocation and its rationale are in `CLAUDE.md`, Frozen decisions). Frozen
@@ -96,6 +96,124 @@ meso, Yuumi's micro) — the harder bar than matching the easy cases.
 
 
 ## Version history
+
+### v4, v5 and v6 — tried and rejected, 2026-09-22
+
+Three consecutive attempts to fix macro by rewording `macro_routing`. All three
+are reverted; the wording below is v3's. They are recorded because the measured
+result is the most useful thing anyone reconsidering this sub-trait can have.
+
+Correlation with the 25 anchors, and bias, measured identically across versions:
+
+| version | micro | meso | **macro** | macro bias |
+| --- | --- | --- | --- | --- |
+| **v3** | 0.83 | 0.71 | **0.53** | +0.08 |
+| v5 | 0.82 | 0.68 | 0.44 | +0.10 |
+| v6 | 0.84 | 0.70 | 0.46 | +0.15 |
+
+**Every version after v3 made macro worse.** Each looked like progress while
+being judged on the five champions under discussion — Blitzcrank, Yuumi,
+Soraka, Thresh, Morgana — and each degraded ordering across the full anchor
+set. That is the lesson worth keeping: judge a prompt change on the whole
+anchor set, never on the cases that motivated it.
+
+What each attempt was, and what it did:
+
+- **v4** reframed map agency from location to decision ownership, after both
+  Sergi's ranking and `docs/champion-classes.md` showed supports underrated.
+  Null: Blitzcrank +0.05, support-specific shift ~+0.005 once global drift is
+  removed, against the +0.20 the evidence called for.
+- **v5** reframed again as *decision load* across four kinds — where to be,
+  what to invest in, whom to commit to, when to commit. The first version to
+  change the distribution's *shape* rather than shift it (support +0.07, top
+  and jungle down). Enchanters moved most: Soraka +0.13, Milio +0.13. But
+  Blitzcrank did not move and Yuumi's floor broke, 0.25 -> 0.48.
+- **v6** scored decisions on consequence rather than on how many kinds they
+  span, aiming at both defects with one edit. It fixed neither — Blitzcrank
+  +0.03, Yuumi 0.48 -> 0.55 — and lost v5's redistribution, inflating every
+  role instead.
+
+A stopping rule was committed before v6 ran: if it did not both raise
+Blitzcrank and return Yuumi to the floor, wording was done on this dimension.
+It did neither. The remaining correction is calibration against anchors, not
+prompting.
+
+Note also that macro's 0.53 at v3 is flattered: two of the 25 anchors, Azir and
+Orianna, had their macro conceded to the labeller. Across the 12 never-conceded
+anchors, v3's macro correlation was 0.13.
+
+### v6 — 2026-09-22
+
+v5 was the first version to change the *shape* of the macro distribution rather
+than shift it: support +0.07 and bot +0.05 while top and jungle fell, with the
+overall mean moving only +0.02. The enchanters moved most — Soraka +0.13, Milio
++0.13, Morgana +0.10 — which is the "whom to commit to" kind landing, and the
+reason to keep this framing.
+
+Two defects, and both trace to one word: **"score high where the kit forces
+*several* of these"** made the score count decision *kinds* rather than decision
+*stakes*.
+
+- **Blitzcrank did not move** (0.33 -> 0.32). He forces essentially one kind,
+  when to commit, but forces it constantly and losing that decision loses the
+  game. A variety-counting rule scores that low.
+- **Yuumi's floor broke** (0.25 -> 0.48). She nominally touches "whom to commit
+  to", so she was credited for a choice whose answer is always the carry.
+
+Rewritten to score on consequence, with an explicit statement that one decision
+repeated can score as high as four kinds, and that a nominal choice with a
+fixed answer scores low regardless of frequency.
+
+**Stopping rule, committed before the run:** if v6 does not both raise
+Blitzcrank and return Yuumi to the floor, wording has done what it can on this
+dimension and the remaining correction is calibration, not prompting.
+
+### v5 — 2026-09-22
+
+v4 was a null: Blitzcrank's macro moved 0.33 -> 0.38 and Thresh's 0.42 -> 0.49,
+both under the 0.08 noise ceiling, and the support-specific shift was about
++0.005 once the global drift is removed — against the +0.20 the evidence called
+for.
+
+The cause was not the input, as first supposed. Every version of this sub-trait
+since v2 asked about **location** — "map agency", "where to be", and even v4's
+correction stayed inside the frame ("who decides when to leave it"). But macro
+is the systems layer, and relocation is one decision type among several. A
+jungler decides *what to invest in*; Soraka decides *whom to peel*; Blitzcrank
+decides *when to commit*. Supports and top bruisers — the two groups the
+labeller underrated — make their decisions almost entirely in those last two
+kinds, so a question about location scored them as passengers.
+
+The information was in the kit text all along. Soraka's text says she heals an
+ally; Blitzcrank's says he pulls an enemy on a long cooldown. We were asking
+about the wrong fifth of the construct.
+
+Reframed from location to decision load, with the kinds named and declared
+equal. The stored column stays `macro_routing` — renaming it would cost a
+migration and buy nothing.
+
+### v4 — 2026-09-22
+
+v2's `macro_routing` fixed one flaw and introduced another. "A champion locked
+to one lane, who moves when the team moves, scores low" reads a support as a
+passenger, and the labeller took it literally: support has the lowest mean
+macro of any role (0.45, against jungle's 0.69), and Blitzcrank — whom coaches
+place in the highest-ceiling, most cerebral group in the game — came back at
+0.33.
+
+Two independent sources say that is wrong, which is why it is worth a version:
+
+- Sergi's own anchor ranking put Milio 3rd on macro where the labeller put it
+  10th, Morgana 6th against 12th, Lux 7th against 11th. Three of the four
+  largest disagreements were supports.
+- `docs/champion-classes.md`, distilled from coaching content that owes nothing
+  to this project, describes playmaker supports as needing wincon assessment,
+  tempo, fog and man advantage — macro by every definition in this file.
+
+So the low anchor is rewritten from *location* to *decision ownership*, vision
+and fight-timing are named as routes to agency, and the "has a lane, therefore
+low" inference is blocked outright. Nothing else changes, so a v3 -> v4
+difference is attributable to this sub-trait.
 
 ### v3 — 2026-09-22
 
