@@ -382,3 +382,54 @@ def replace_match_data_roles(conn: psycopg.Connection) -> int:
             """
         )
         return cur.rowcount
+
+
+def champion_points(
+    conn: psycopg.Connection, prompt_version: str | None = None
+) -> list[dict[str, Any]]:
+    """Every champion x role as an MMM point, one row each.
+
+    Scoped to a single prompt version -- by default whichever the most recent
+    run used -- because scores from different wordings are not comparable and
+    mixing them would quietly blend two spaces. Within that version the latest
+    label per champion x role wins, which is what makes a gap-filling run
+    (label_run 10 over 9) union correctly instead of double-counting.
+    """
+    with conn.cursor() as cur:
+        if prompt_version is None:
+            cur.execute(
+                """
+                select r.prompt_version from label_run r
+                join champion_label l on l.label_run_id = r.id
+                group by r.id, r.prompt_version order by r.id desc limit 1
+                """
+            )
+            row = cur.fetchone()
+            if row is None:
+                return []
+            prompt_version = row[0]
+
+        cur.execute(
+            """
+            select distinct on (l.champion_id, l.role)
+                   l.champion_id, c.name, l.role, l.micro, l.meso, l.macro
+            from champion_label l
+            join label_run r on r.id = l.label_run_id
+            join champion c on c.id = l.champion_id
+            where r.prompt_version = %s
+            order by l.champion_id, l.role, l.label_run_id desc
+            """,
+            (prompt_version,),
+        )
+        return [
+            {
+                "champion_id": r[0],
+                "name": r[1],
+                "role": r[2],
+                "micro": float(r[3]),
+                "meso": float(r[4]),
+                "macro": float(r[5]),
+                "prompt_version": prompt_version,
+            }
+            for r in cur.fetchall()
+        ]

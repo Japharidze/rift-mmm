@@ -5,7 +5,7 @@ import time
 
 import httpx
 
-from r3m import anchors, db, fetch, ingest, sample
+from r3m import anchors, db, fetch, ingest, sample, scoring
 from r3m.labeling import run as labeling_run
 from r3m.migrate import apply_migrations
 from r3m.riot_api import RiotApi
@@ -164,6 +164,29 @@ def _roles(args: argparse.Namespace) -> int:
     return 0
 
 
+def _match(args: argparse.Namespace) -> int:
+    point = (args.micro, args.meso, args.macro)
+    if not all(0.0 <= x <= 1.0 for x in point):
+        print("each coordinate must be between 0 and 1")
+        return 1
+
+    results = scoring.neighbourhood(point, n=args.n)
+    if not results:
+        print("no labels to match against - run `r3m label` first")
+        return 1
+
+    print(f"micro {point[0]:.2f}  meso {point[1]:.2f}  macro {point[2]:.2f}\n")
+    for m in results:
+        print(
+            f"  {m.name:16} {m.role:8} "
+            f"({m.point[0]:.2f} {m.point[1]:.2f} {m.point[2]:.2f})  d={m.distance:.3f}"
+        )
+    lanes = {m.role for m in results}
+    if len(lanes) == 1:
+        print(f"\n  all {len(results)} sit in one lane ({lanes.pop()})")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="r3m")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -211,6 +234,15 @@ def main() -> int:
         "roles", help="write champion_role from the match sample"
     )
     roles_cmd.set_defaults(func=_roles)
+
+    match_cmd = sub.add_parser(
+        "match", help="champions nearest an MMM point"
+    )
+    match_cmd.add_argument("micro", type=float)
+    match_cmd.add_argument("meso", type=float)
+    match_cmd.add_argument("macro", type=float)
+    match_cmd.add_argument("-n", type=int, default=5, help="how many (default: 5)")
+    match_cmd.set_defaults(func=_match)
 
     args = parser.parse_args()
     try:
