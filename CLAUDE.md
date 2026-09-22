@@ -34,7 +34,9 @@ matching or UI.
   which is the hardest dimension to read from a kit and therefore has the
   noisiest individual indicators. The count is an output of the pilot, not an
   input: the factor check and run-to-run disagreement decide whether it holds.
-  The **last** sub-trait in each group is the cheat test rephrased.
+  The **last** sub-trait in each group is the cheat test rephrased. Wording is
+  frozen in `docs/sub-traits.md` — that file is the source of truth, not this
+  bullet.
 - **Scores are absolute, decimal 0–1 per dimension.** Each dimension is scored
   independently on its own 0–1 scale — they do not and must not sum to 1. A
   champion can be low on all three (0.2 / 0.3 / 0.1) or high on all three
@@ -115,8 +117,6 @@ intuition says? Go → build MVP.
 
 ## Open questions — discuss, don't decide in code
 
-- Sub-trait wording. The main risk to label quality. Freeze before mass
-  labelling; never edit mid-run.
 - Weights: equal for the pilot, then fit against the games Surnex placed himself
   (see `docs/3m-model.md`); factor-check the sub-traits afterwards.
 - Riot production key: apply early; design the MVP to run on cached data so
