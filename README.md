@@ -95,8 +95,15 @@ there. Riot development keys expire every 24 hours.
 
 ## Status
 
-Phase 0/1. Champion ingestion and the match sample are done; the labelling
-prompt is next, and is blocked on freezing the sub-trait wording.
+Phase 0/1. Champion ingestion, the match sample, and the labelling prompt are
+in place. Sub-trait wording is frozen (`docs/sub-traits.md`); a labelling run
+needs `ANTHROPIC_API_KEY` and a populated match sample (`champion_role_live`
+needs rows before there is anything to label):
+
+```bash
+uv run rift-mmm label --champions LeeSin,Garen,Riven   # pilot: anchors only
+uv run rift-mmm label                                  # every live champion x role
+```
 
 **Gate 1** — does the MMM space contain role information?
 **Gate 2** — do synthetic personas land where intuition says?

@@ -6,6 +6,7 @@ import time
 import httpx
 
 from rift_mmm import db, fetch, ingest, sample
+from rift_mmm.labeling import run as labeling_run
 from rift_mmm.migrate import apply_migrations
 from rift_mmm.riot_api import RiotApi
 
@@ -78,6 +79,30 @@ def _sample(args: argparse.Namespace) -> int:
     return 0
 
 
+def _label(args: argparse.Namespace) -> int:
+    champions = args.champions.split(",") if args.champions else None
+    print(
+        f"labelling {'all live champion x role rows' if champions is None else champions} "
+        f"with {args.model} ...",
+        flush=True,
+    )
+    result = labeling_run.run(model=args.model, champions=champions, note=args.note)
+    if result.targeted == 0:
+        print(
+            "nothing to label: champion_role_live has no rows in scope. "
+            "It is built from match_participant, so run `rift-mmm sample` "
+            "first (or check --champions against champion ids that exist)."
+        )
+        return 1
+    print(
+        f"label_run {result.label_run_id}: {result.labelled}/{result.targeted} labelled, "
+        f"{len(result.failed)} failed"
+    )
+    for failure in result.failed:
+        print(f"  FAILED {failure.champion_id} ({failure.role}): {failure.error}")
+    return 1 if result.failed else 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="rift-mmm")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -100,6 +125,17 @@ def main() -> int:
     )
     sample_cmd.add_argument("--platform", default="euw1", help="e.g. euw1, na1, kr")
     sample_cmd.set_defaults(func=_sample)
+
+    label_cmd = sub.add_parser("label", help="label champion x role rows with the MMM sub-traits")
+    label_cmd.add_argument(
+        "--model", default=labeling_run.DEFAULT_MODEL,
+        help=f"Anthropic model id (default: {labeling_run.DEFAULT_MODEL})",
+    )
+    label_cmd.add_argument(
+        "--champions", help="comma-separated champion ids to label (default: every live role)"
+    )
+    label_cmd.add_argument("--note", help="free text stored on the label_run row")
+    label_cmd.set_defaults(func=_label)
 
     args = parser.parse_args()
     try:

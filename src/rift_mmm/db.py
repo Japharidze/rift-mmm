@@ -205,3 +205,99 @@ def insert_match_participants(
                 for r in rows
             ],
         )
+
+
+def labelling_targets(
+    conn: psycopg.Connection, champion_ids: Sequence[str] | None = None
+) -> list[dict[str, str]]:
+    """Champion x role pairs due a label, with the kit text to label them from.
+
+    Reads champion_role_live rather than champion_role: the unit of labelling
+    is every role a champion is genuinely played in (the 30% rule), not just
+    the fixture-seeded primary. kit_text comes from the champion's current
+    patch (champion.last_patch) — labelling always runs against the latest
+    ingested kit, never a stale one a re-ingest has since moved past.
+    """
+    where = ""
+    params: tuple[Any, ...] = ()
+    if champion_ids:
+        where = "where cr.champion_id = any(%s)"
+        params = (list(champion_ids),)
+    with conn.cursor() as cur:
+        cur.execute(
+            f"""
+            select cr.champion_id, cr.role::text, c.name, c.title, cp.kit_text
+            from champion_role_live cr
+            join champion c on c.id = cr.champion_id
+            join champion_patch cp
+                on cp.champion_id = c.id and cp.patch_version = c.last_patch
+            {where}
+            order by cr.champion_id, cr.role
+            """,
+            params,
+        )
+        cols = ("champion_id", "role", "name", "title", "kit_text")
+        return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
+
+
+def insert_label_run(
+    conn: psycopg.Connection, *, prompt_version: str, model: str, note: str | None = None
+) -> int:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            insert into label_run (prompt_version, model, note)
+            values (%s, %s, %s)
+            returning id
+            """,
+            (prompt_version, model, note),
+        )
+        return cur.fetchone()[0]  # type: ignore[index]
+
+
+# The ten sub-traits plus the three aggregates. Order matches
+# rift_mmm.labeling.schema.ChampionLabel's fields, but this module does not
+# import that class — labelling code goes through db.py, not the other way
+# round, so this takes a plain mapping instead.
+CHAMPION_LABEL_COLUMNS = (
+    "micro_precision", "micro_execution", "micro_cheat",
+    "meso_deception", "meso_prediction", "meso_exploitation", "meso_cheat",
+    "macro_routing", "macro_win_condition", "macro_cheat",
+    "micro", "meso", "macro",
+    "rationale",
+)
+
+_CHAMPION_LABEL_INSERT = """
+    insert into champion_label (
+        label_run_id, champion_id, role, {columns}, raw_response
+    )
+    values (%s, %s, %s::role_t, {placeholders}, %s)
+""".format(
+    columns=", ".join(CHAMPION_LABEL_COLUMNS),
+    placeholders=", ".join(["%s"] * len(CHAMPION_LABEL_COLUMNS)),
+)
+
+
+def insert_champion_label(
+    conn: psycopg.Connection,
+    *,
+    label_run_id: int,
+    champion_id: str,
+    role: str,
+    fields: Mapping[str, Any],
+    raw_response: dict[str, Any],
+) -> None:
+    """fields must carry every name in CHAMPION_LABEL_COLUMNS; raw_response is
+    the full structured-output payload, kept so a row can be reviewed or
+    replayed without another model call."""
+    with conn.cursor() as cur:
+        cur.execute(
+            _CHAMPION_LABEL_INSERT,
+            (
+                label_run_id,
+                champion_id,
+                role,
+                *(fields[col] for col in CHAMPION_LABEL_COLUMNS),
+                Jsonb(raw_response),
+            ),
+        )

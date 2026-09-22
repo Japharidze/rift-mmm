@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     # key. riot_api.py raises when it is actually needed and missing.
     riot_api_key: str = ""
 
+    # Same reasoning: everything but labelling must keep working without it.
+    # rift_mmm.labeling.run raises when it is actually needed and missing.
+    anthropic_api_key: str = ""
+
     @property
     def db_url(self) -> str:
         return make_conninfo(
