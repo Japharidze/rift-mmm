@@ -139,6 +139,31 @@ def _check_anchors(args: argparse.Namespace) -> int:
     return 1 if result.failures else 0
 
 
+def _roles(args: argparse.Namespace) -> int:
+    with db.connect() as conn, conn.transaction():
+        written = db.replace_match_data_roles(conn)
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                select count(*), count(*) filter (where is_primary),
+                       count(distinct champion_id)
+                from champion_role where source = 'match_data'
+                """
+            )
+            total, primary, champions = cur.fetchone()  # type: ignore[misc]
+    if written == 0:
+        print(
+            "champion_role_live is empty, so nothing was written. It is built "
+            "from match_participant - run `r3m sample` first."
+        )
+        return 1
+    print(
+        f"champion_role: {total} rows across {champions} champions "
+        f"({primary} primary, {total - primary} secondary)"
+    )
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="r3m")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -181,6 +206,11 @@ def main() -> int:
         help="label_run id (default: the latest run that produced labels)",
     )
     check_cmd.set_defaults(func=_check_anchors)
+
+    roles_cmd = sub.add_parser(
+        "roles", help="write champion_role from the match sample"
+    )
+    roles_cmd.set_defaults(func=_roles)
 
     args = parser.parse_args()
     try:

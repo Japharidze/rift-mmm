@@ -350,3 +350,35 @@ def label_run_scores(
             }
             for r in cur.fetchall()
         ]
+
+
+def replace_match_data_roles(conn: psycopg.Connection) -> int:
+    """Write champion_role from champion_role_live.
+
+    Replaces rather than appends: champion_role describes which roles are
+    currently played, so a role that has fallen below the threshold should
+    leave. Only source='match_data' rows are touched, so a hand-curated
+    fixture row would survive. Labels are unaffected -- champion_label carries
+    its own role column rather than pointing here.
+
+    is_primary is the highest share, broken by role name when two are exactly
+    equal. The tie-break is arbitrary but deterministic, and it has to exist:
+    champion_role_one_primary allows exactly one primary per champion, and
+    Yone sits at top 0.50 / mid 0.49.
+    """
+    with conn.cursor() as cur:
+        cur.execute("delete from champion_role where source = 'match_data'")
+        cur.execute(
+            """
+            insert into champion_role (champion_id, role, is_primary, source)
+            select
+                champion_id,
+                role,
+                row_number() over (
+                    partition by champion_id order by share desc, role
+                ) = 1,
+                'match_data'
+            from champion_role_live
+            """
+        )
+        return cur.rowcount
