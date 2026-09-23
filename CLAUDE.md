@@ -111,9 +111,12 @@ React frontend, same repo under /web.
 
 ## Current phase
 
-Phase 2: both gates passed, building the MVP. The next blocker is the game
-side — nothing yet turns "I played Factorio and Hearthstone" into an MMM point,
-so there is no games table and no `anchors/games.yaml`.
+Phase 2: both gates passed, building the MVP. The game side is done —
+`game`/`game_label` tables, `anchors/games.yaml`, `labeling/games.py`
+(prompt games-v2), and `quiz.py` turn a player's picks into an MMM point and a
+confidence-banded style neighbourhood (`scoring.py`), all reachable from the
+CLI (`r3m quiz`, `r3m match`). The `/web` frontend named in Stack has not been
+started.
 
 Phase 1 done: schema, Data Dragon ingestion, the match sample, `champion_role`,
 and the first full labelling pass — 196 champion×role rows at prompt v3
