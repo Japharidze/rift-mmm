@@ -22,6 +22,21 @@ from r3m import db
 DIMENSIONS = ("micro", "meso", "macro")
 
 
+# Set from the space, not picked. The median distance between a champion and
+# its nearest neighbour is 0.051 across the 196 rows, so:
+#
+#   <= 0.10   within two champion-widths - as close as champions sit to each
+#             other, so the match is real rather than nominal
+#   <= 0.25   five champion-widths; a recognisable neighbourhood, not a twin
+#   >  0.25   the nearest champion is far enough that the ranking is ordering
+#             noise. Says more about the champion cloud than about the player.
+#
+# Gate 2 recorded that a 0.45 match must not be presented like a 0.04 one; this
+# is where that becomes something the UI can act on. Measured 2026-09-23.
+CLOSE = 0.10
+FAIR = 0.25
+
+
 @dataclass(frozen=True)
 class Match:
     champion_id: str
@@ -29,6 +44,14 @@ class Match:
     role: str
     point: tuple[float, float, float]
     distance: float
+
+    @property
+    def confidence(self) -> str:
+        if self.distance <= CLOSE:
+            return "close"
+        if self.distance <= FAIR:
+            return "fair"
+        return "distant"
 
 
 def _point(row: dict[str, Any]) -> tuple[float, float, float]:

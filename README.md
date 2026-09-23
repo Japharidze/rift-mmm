@@ -93,6 +93,23 @@ uv run r3m sample --matches 2000    # crawl ranked games (~40 min)
 interrupted crawl keeps everything it stored, and re-running continues from
 there. Riot development keys expire every 24 hours.
 
+### Trying the quiz
+
+```bash
+uv run r3m quiz --interactive          # asks, adapts, stops when confident
+uv run r3m quiz --games cs2,elden-ring # non-interactive
+uv run r3m quiz --list                 # the game bank
+uv run r3m match 0.85 0.80 0.85        # straight from an MMM point
+```
+
+The quiz reports what it could not read rather than guessing it, and labels
+each match `close`, `fair` or `distant`. Those bands come from the space
+itself: the median distance between a champion and its nearest neighbour is
+0.051, so `close` is within two champion-widths and `distant` is beyond five.
+A taste at the edges of the space — pure micro, say — has no close champion at
+all, because every League champion carries some of all three demands. The
+result says so.
+
 ### Moving to another machine
 
 The data is small and expensive to regenerate — the labels are API spend, and

@@ -186,7 +186,8 @@ def _match(args: argparse.Namespace) -> int:
     for m in results:
         print(
             f"  {m.name:16} {m.role:8} "
-            f"({m.point[0]:.2f} {m.point[1]:.2f} {m.point[2]:.2f})  d={m.distance:.3f}"
+            f"({m.point[0]:.2f} {m.point[1]:.2f} {m.point[2]:.2f})  "
+            f"d={m.distance:.3f}  {m.confidence}"
         )
     lanes = {m.role for m in results}
     if len(lanes) == 1:
@@ -317,9 +318,16 @@ def _quiz(args: argparse.Namespace) -> int:
         mark = f"{dim.informative} clear pick(s)" if dim.read else "NOT READ"
         print(f"  {d:6} {dim.value:.2f}   {mark}")
 
+    matches = quiz_mod.champions_for(est, n=args.n)
     print("\nclosest champions")
-    for m in quiz_mod.champions_for(est, n=args.n):
-        print(f"  {m.name:16}{m.role:8} d={m.distance:.2f}")
+    for m in matches:
+        print(f"  {m.name:16}{m.role:8} d={m.distance:.2f}  {m.confidence}")
+    if all(m.confidence == "distant" for m in matches):
+        print(
+            "\n  Nothing lands close. League champions all carry some of all "
+            "three\n  demands, so a taste at the edges of the space has no real "
+            "neighbour -\n  treat these as the nearest thing, not as a fit."
+        )
 
     # The frozen decision: report an unread dimension, never impute it, and
     # make the gap a retry hook rather than an apology.
