@@ -1,0 +1,28 @@
+/* Deliberately plain. Design comes later; this is only enough to read. */
+:root { --fg: #1a1a1a; --dim: #6b6b6b; --line: #e0e0e0; --bg: #fff; }
+@media (prefers-color-scheme: dark) {
+  :root { --fg: #ededed; --dim: #9a9a9a; --line: #333; --bg: #161616; }
+}
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font: 16px/1.5 system-ui, sans-serif; }
+main { max-width: 34rem; margin: 0 auto; padding: 2rem 1rem; }
+h1 { font-size: 1.1rem; font-weight: 600; margin: 0 0 1.5rem; }
+button { font: inherit; padding: .5rem 1.25rem; margin-right: .5rem;
+  border: 1px solid var(--line); background: none; color: inherit;
+  border-radius: 6px; cursor: pointer; }
+button:hover { border-color: var(--fg); }
+.q { font-size: 1.35rem; margin: 2rem 0 1.5rem; }
+.progress { color: var(--dim); font-size: .85rem; }
+table { border-collapse: collapse; width: 100%; margin: .5rem 0 1.5rem; }
+td { padding: .35rem 0; border-bottom: 1px solid var(--line); }
+td.r { text-align: right; color: var(--dim); }
+.close { color: #1a7f37; } .fair { color: #9a6700; } .distant { color: var(--dim); }
+.note { border-left: 3px solid var(--line); padding-left: .75rem;
+  color: var(--dim); margin: 1.5rem 0; }
+.gloss { color: var(--dim); font-size: .85rem; }
+.champ { padding: .6rem 0; border-bottom: 1px solid var(--line); }
+.tag { font-size: .75rem; margin-left: .5rem; }
+.q.pending { opacity: .25; }
+.key { opacity: .4; font-size: .75rem; }
+button.link { border: none; padding: 0; text-decoration: underline;
+  color: var(--dim); }

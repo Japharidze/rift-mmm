@@ -285,35 +285,44 @@ def _quiz(args: argparse.Namespace) -> int:
     seen: list[str] = []
     if args.interactive:
         served: list[str] = []
-        picked: list[str] = []
-        print("Answer y if you have played it, anything else for no.\n")
-        while (item := quiz_mod.next_item(served, picked, rows)) is not None:
+        loved: list[str] = []
+        disliked: list[str] = []
+        print("l = loved it,  d = played it but it did not stick,  "
+              "anything else = never played\n")
+        while (item := quiz_mod.next_item(served, loved, disliked, rows)) is not None:
             label = item["name"] + (f" ({item['mode']})" if item["mode"] else "")
             answer = input(f"  {len(served) + 1}. {label}? ").strip().lower()
             served.append(item["game_id"])
-            if answer.startswith("y"):
-                picked.append(item["game_id"])
-        if not picked:
-            print("\nnothing picked, so there is nothing to go on.")
+            if answer.startswith("l"):
+                loved.append(item["game_id"])
+            elif answer.startswith("d"):
+                disliked.append(item["game_id"])
+        if not loved:
+            print("\nnothing you enjoyed, so there is no positive signal to go on.")
             return 1
-        args.games = ",".join(picked)
+        args.games = ",".join(loved)
+        args.dislikes = ",".join(disliked)
         seen = served
-        print(f"\nasked {len(served)}, you played {len(picked)}")
+        print(f"\nasked {len(served)}: {len(loved)} loved, {len(disliked)} bounced off")
 
     if not args.games:
         print("pass --games with comma-separated ids, --interactive, or --list")
         return 1
 
     try:
-        est = quiz_mod.estimate(args.games.split(","), rows=rows)
+        est = quiz_mod.estimate(
+            args.games.split(","),
+            args.dislikes.split(",") if args.dislikes else [],
+            rows=rows,
+        )
     except ValueError as exc:
         print(exc)
         return 1
 
     for g in est.unknown:
         print(f"  unknown game, ignored: {g}")
-    print("\nyou picked")
-    for g in est.picked:
+    print("\nyou enjoyed")
+    for g in est.loved:
         print(f"  {g['name'][:26]:28}{g['micro']:.2f} {g['meso']:.2f} {g['macro']:.2f}")
 
     print("\nyour profile")
@@ -337,7 +346,7 @@ def _quiz(args: argparse.Namespace) -> int:
     # make the gap a retry hook rather than an apology.
     for d in est.unread:
         # everything already shown, not only what was picked
-        shown = seen or [g["game_id"] for g in est.picked]
+        shown = seen or est.answered
         more = quiz_mod.suggest_for(d, exclude=shown, rows=rows, n=4)
         print(f"\n  we could not read your {d}. Played any of these?")
         print("    " + ", ".join(f"{g['name']}" for g in more))
@@ -401,7 +410,9 @@ def main() -> int:
     quiz_cmd = sub.add_parser(
         "quiz", help="games you have played -> an MMM point -> champions"
     )
-    quiz_cmd.add_argument("--games", help="comma-separated game ids")
+    quiz_cmd.add_argument("--games", help="comma-separated ids of games you enjoyed")
+    quiz_cmd.add_argument("--dislikes", default="",
+                          help="comma-separated ids you played but bounced off")
     quiz_cmd.add_argument("--list", action="store_true", help="show the bank")
     quiz_cmd.add_argument("--interactive", action="store_true",
                           help="be asked, one game at a time")

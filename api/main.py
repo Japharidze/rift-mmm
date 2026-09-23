@@ -41,7 +41,8 @@ class Game(BaseModel):
 
 class NextRequest(BaseModel):
     served: list[str] = Field(default_factory=list)
-    picked: list[str] = Field(default_factory=list)
+    loved: list[str] = Field(default_factory=list)
+    disliked: list[str] = Field(default_factory=list)
 
 
 class NextResponse(BaseModel):
@@ -54,6 +55,8 @@ class Dimension(BaseModel):
     value: float
     informative: int
     read: bool
+    label: str
+    gloss: str
 
 
 class Match(BaseModel):
@@ -62,10 +65,14 @@ class Match(BaseModel):
     role: str
     distance: float
     confidence: str
+    # None when no dimension is both decided and shared — an absent reason
+    # beats a manufactured one.
+    because: str | None = None
 
 
 class ResultRequest(BaseModel):
-    picked: list[str]
+    loved: list[str]
+    disliked: list[str] = Field(default_factory=list)
     n: int = 5
 
 
@@ -91,7 +98,7 @@ def games() -> list[Game]:
 
 @app.post("/quiz/next", response_model=NextResponse)
 def next_item(req: NextRequest) -> NextResponse:
-    item = quiz.next_item(req.served, req.picked, _games())
+    item = quiz.next_item(req.served, req.loved, req.disliked, _games())
     return NextResponse(
         item=None if item is None
         else Game(id=item["game_id"], name=item["name"], mode=item["mode"]),
@@ -103,19 +110,23 @@ def next_item(req: NextRequest) -> NextResponse:
 def result(req: ResultRequest) -> Result:
     rows = _games()
     try:
-        est = quiz.estimate(req.picked, rows=rows)
+        est = quiz.estimate(req.loved, req.disliked, rows=rows)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return Result(
         point=list(est.point),
         dimensions={
-            d: Dimension(value=e.value, informative=e.informative, read=e.read)
+            d: Dimension(
+                value=e.value, informative=e.informative, read=e.read,
+                label=quiz.LABELS[d][0], gloss=quiz.LABELS[d][1],
+            )
             for d, e in est.dimensions.items()
         },
         champions=[
             Match(champion_id=m.champion_id, name=m.name, role=m.role,
-                  distance=round(m.distance, 3), confidence=m.confidence)
+                  distance=round(m.distance, 3), confidence=m.confidence,
+                  because=quiz.explain(est, m))
             for m in quiz.champions_for(est, n=req.n)
         ],
         unknown=est.unknown,
@@ -123,7 +134,7 @@ def result(req: ResultRequest) -> Result:
             d: [
                 Game(id=g["game_id"], name=g["name"], mode=g["mode"])
                 for g in quiz.suggest_for(
-                    d, exclude=[p["game_id"] for p in est.picked], rows=rows, n=4
+                    d, exclude=est.answered, rows=rows, n=4
                 )
             ]
             for d in est.unread

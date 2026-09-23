@@ -93,7 +93,20 @@ uv run r3m sample --matches 2000    # crawl ranked games (~40 min)
 interrupted crawl keeps everything it stored, and re-running continues from
 there. Riot development keys expire every 24 hours.
 
-### Trying the quiz
+### Running it
+
+Two processes: the API, and the frontend that talks to it.
+
+```bash
+uv run r3m serve --reload      # http://127.0.0.1:8000
+cd web && npm install && npm run dev   # http://localhost:5173
+```
+
+Vite proxies `/api` to the API, so the frontend has no base URL to configure.
+The HTTP layer under `api/` imports `r3m` and never the other way round — it is
+a surface over the package, not part of it.
+
+### Trying the quiz from the command line
 
 ```bash
 uv run r3m quiz --interactive          # asks, adapts, stops when confident
