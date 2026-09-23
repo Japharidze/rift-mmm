@@ -24,6 +24,25 @@
 # failure that cost three prompt versions on the champion side
 # (docs/sub-traits.md, v4–v6).
 #
+# ## A known flaw in the conversion, found 2026-09-23
+#
+# Surnex's categories are about **proportion**; this file's scale is about
+# **magnitude**. He groups Factorio and tic-tac-toe as "pure macro" because
+# macro is all there is to either — not because both demand a lot of it.
+# Factorio does; tic-tac-toe is solved and demands almost none. CLAUDE.md fixes
+# our scores as absolute magnitudes, so for the trivial or solved entries the
+# conversion overstates them, and the labeller's much lower score is the better
+# answer (tic-tac-toe macro: anchor 0.92, labelled 0.18).
+#
+# Affected: tic-tac-toe, connect-4, rock-paper-scissors, battleship,
+# aim-trainers, rubiks-cube, 8-ball-pool. They carry `bank: false` below.
+# Excluding them lifts macro's correlation from 0.54 to 0.60 across the set.
+#
+# Left unrescored on purpose: the placements are Surnex's, the error is in the
+# conversion, and re-placing them is Sergi's call rather than a patch. They are
+# also useless as quiz items regardless — nobody lists tic-tac-toe as a game
+# they play, which is why `bank: false` costs nothing.
+#
 # ## Tiers
 #
 #   source       Surnex's own placement, converted by the mapping. Blocking.
@@ -71,6 +90,7 @@ games:
       is the whole point of the pair"
 
   - id: aim-trainers
+    bank: false
     name: Aim trainers
     category: pure_micro
     micro: {point: 0.92, band: [0.82, 1.00], tier: source}
@@ -79,6 +99,7 @@ games:
 
   # ---- pure meso ----------------------------------------------------------
   - id: rock-paper-scissors
+    bank: false
     name: Rock-paper-scissors
     category: pure_meso
     micro: {point: 0.12, band: [0.02, 0.22], tier: source}
@@ -116,6 +137,7 @@ games:
     macro: {point: 0.92, band: [0.82, 1.00], tier: source}
 
   - id: connect-4
+    bank: false
     name: Connect 4
     category: pure_macro
     micro: {point: 0.12, band: [0.02, 0.22], tier: source}
@@ -123,6 +145,7 @@ games:
     macro: {point: 0.92, band: [0.82, 1.00], tier: source}
 
   - id: tic-tac-toe
+    bank: false
     name: Tic-tac-toe
     category: pure_macro
     micro: {point: 0.12, band: [0.02, 0.22], tier: source}
@@ -160,6 +183,7 @@ games:
     note: speedrunning context
 
   - id: rubiks-cube
+    bank: false
     name: Rubik's cube speedrunning
     category: micro_macro
     micro: {point: 0.80, band: [0.68, 0.92], tier: source}
@@ -167,6 +191,7 @@ games:
     macro: {point: 0.80, band: [0.68, 0.92], tier: source}
 
   - id: 8-ball-pool
+    bank: false
     name: 8-ball pool
     category: micro_macro
     micro: {point: 0.80, band: [0.68, 0.92], tier: source}
@@ -264,6 +289,7 @@ games:
     macro: {point: 0.80, band: [0.68, 0.92], tier: source}
 
   - id: battleship
+    bank: false
     name: Battleship
     category: meso_macro
     micro: {point: 0.18, band: [0.06, 0.30], tier: source}
