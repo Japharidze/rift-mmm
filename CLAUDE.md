@@ -115,8 +115,10 @@ Phase 2: both gates passed, building the MVP. The game side is done —
 `game`/`game_label` tables, `anchors/games.yaml`, `labeling/games.py`
 (prompt games-v2), and `quiz.py` turn a player's picks into an MMM point and a
 confidence-banded style neighbourhood (`scoring.py`), all reachable from the
-CLI (`r3m quiz`, `r3m match`). The `/web` frontend named in Stack has not been
-started.
+CLI (`r3m quiz`, `r3m match`). Two things remain: a full champion relabel at
+the current prompt (`docs/sub-traits.md` is v8; the 196-row set below still
+reflects v3, since a relabel is one pass and routing kept changing under it —
+see v4–v9 there), and the `/web` frontend named in Stack, not started.
 
 Phase 1 done: schema, Data Dragon ingestion, the match sample, `champion_role`,
 and the first full labelling pass — 196 champion×role rows at prompt v3
@@ -180,7 +182,8 @@ Three limitations carried into the MVP rather than resolved:
   down-weighted. Yet its correlation with the anchors sits somewhere in
   [0.05, 0.77] across 19 tight anchors. The product leans hardest on the
   dimension measured worst; closing that needs more anchors, not more prompting
-  (see `docs/sub-traits.md`, v4–v6).
+  (see `docs/sub-traits.md`, v4–v6 and v9 — four attempts at `macro_routing`
+  now, each trading one failure mode for its opposite).
 - **Meso is the narrowest dimension** (sd 0.13 against micro's 0.18), and two
   prompt versions failed to widen it. Expect it to separate less than the
   other two.

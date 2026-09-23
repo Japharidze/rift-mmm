@@ -1,11 +1,11 @@
 # Sub-traits — frozen
 
-**Prompt v8** (2026-09-24) — v4, v5 and v6 were tried and rejected on
-`macro_routing`; see history. v7 tried `micro_precision`/`micro_execution` and
-`macro_win_condition`; the micro change was reverted after its control
-(Kog'Maw) moved more than the motivating case, the win_condition change was
-kept. v8 is that combination: v3's micro wording, v7's win_condition wording,
-`macro_routing` still untouched. Version history is at the end of this file.
+**Prompt v8** (2026-09-24) — v4, v5, v6 and now v9 have all been tried and
+rejected on `macro_routing`; see history. v7 tried `micro_precision`/
+`micro_execution` and `macro_win_condition`; micro was reverted (Kog'Maw
+control), win_condition was kept, giving v8 — currently live. `macro_routing`
+is v3's original wording, unresolved after four attempts. Version history is
+at the end of this file.
 
 Ten sub-traits feed the three MMM aggregates: 3 micro, 4 meso, 3 macro (the
 allocation and its rationale are in `CLAUDE.md`, Frozen decisions). Frozen
@@ -58,7 +58,7 @@ game" to "what cheat breaks this champion."
    low even though the map still matters — those decisions are being made for
    them. A champion who chooses between objectives, decides when to abandon a
    lane, or whose presence somewhere else constrains what the enemy can do,
-   scores high.
+   scores high. (v3's wording; v9 tried and reverted, see version history.)
 2. **Win-condition construction** — how much does good play mean actively
    deciding *when and how* to pursue a late-game plan, rather than converging
    on one because it exists? A stacking or scaling mechanic is not enough by
@@ -206,6 +206,83 @@ Not yet re-measured against the full anchor set as its own combined version —
 the pieces are each validated individually (win_condition against its
 motivating cases + Kassadin; micro's revert is a return to the already-known
 v3 numbers), but a full v8 pass has not been run.
+
+### v9 — 2026-09-24
+
+Fourth attempt at `macro_routing` (after v4/v5/v6, all reverted), on top of
+v8's kept win_condition wording and reverted micro wording. Changed alone, not
+bundled with anything else, so any pass-rate movement is attributable to it.
+
+**Prediction and stopping rule, registered before running:**
+
+- Controls chosen to be high-macro for *different reasons*, so the rewrite has
+  to discriminate rather than just shift the whole distribution up or down:
+  **TwistedFate** (global presence via R), **Shen** (map agency through his
+  ult), **Nasus** (scaling/win_condition only — genuinely low routing, no map
+  presence, no roam threat).
+- **Target shape, not just a pass rate:** Teemo's macro should drop,
+  TwistedFate and Shen should hold. If the rewrite drops all three, including
+  Nasus, it cut macro generally rather than fixing the specific "presence
+  constrains the enemy" over-read — the same failure mode v4-v6 kept
+  producing, just not yet caught by a control this precise.
+- This run also doubles as v8's first full 25-anchor pass, since neither of
+  its two component changes (win_condition, the micro revert) has been
+  measured together before.
+
+**Result (label_run 19, all 25 anchors + Shen):** the three controls behaved
+exactly as predicted at the sub-trait level —
+
+| champion | role | routing before | routing after | verdict |
+| --- | --- | --- | --- | --- |
+| Nasus (control) | low agency | 0.55 | 0.35 | correctly dropped |
+| Shen (control) | ult = agency | 0.92 | 0.85 | held |
+| TwistedFate (control) | ult = agency | 0.97 | 0.95 | held |
+| Teemo (motivating) | passive traps | 0.70 | 0.65 | barely moved |
+
+Teemo's own rationale shows why: *"a shroom carpet is a live map-control
+decision — though once the mushrooms are down they work without him... macro
+is real but moderate"* — the wording did stop crediting the mushrooms
+specifically, but the model then credited his genuine side-lane split-push
+threat instead, landing at nearly the same number for a different, more
+defensible reason. Not obviously a bug; arguably a more honest score for a
+real (if secondary) macro lever Teemo does have.
+
+**But the full anchor set moved the wrong way.** Blocking failures: 32/75,
+against v8's 30/75 — macro specifically got worse (13/25 vs 11/25), not
+better. The controls passed; the set did not, which is exactly the lesson
+already on record from v4–v6: judge against the whole set, not the cases that
+motivated the change. New failures the controls didn't catch:
+
+- **Milio's macro got worse, not better** (0.42 → 0.33, against v3's already
+  established Milio at 0.38 — anchor wants 0.65–0.88). His rationale: *"he is
+  tethered to his carry, rarely roams to change the map... enabling whoever is
+  fed rather than branching objective decisions."* Coherent — and it is the
+  **exact defect v4 and v5 were written to fix**: a routing question framed
+  around the champion's own movement structurally underrates low-mobility,
+  high-decision-density roles (enchanter supports), because their macro comes
+  from decision *timing*, not physical presence. v9 partially fixed the
+  passive-tool over-read (Teemo, in a limited way) by leaning harder into
+  "the champion's own body," which reopened the support-underrating problem
+  v4/v5 fought from the other direction. MasterYi and Camille newly failed on
+  macro too, in the same direction.
+- **Meso, untouched this round, moved from 9/25 to 12/25 blocking on the same
+  wording** — a same-prompt re-sample swinging by 3 failures out of 25 is
+  larger than the anchor file's own test-retest note (mean 0.02–0.03, max
+  0.08) would suggest, and is a caution for reading any single run's
+  before/after delta too literally, this one included.
+
+**Verdict: reverted.** `macro_routing` returns to v3's wording. Four attempts
+(v4, v5, v6, v9) have now each traded one failure mode for its opposite —
+under-crediting stationary decision-makers vs. over-crediting passive
+map-wide effects — without wording that avoids both at once. That pattern
+across four tries, each independently diagnosed and each producing a new
+version of the same underlying tension, is itself the finding: this looks
+less like unfound wording and more like the sub-trait's honest resolution
+limit under prompt-only correction. Recommendation: stop rewording
+`macro_routing`. The remaining error is a candidate for calibration against
+anchors (weighting, or a documented confidence band) rather than a fifth
+prompt attempt — consistent with `CLAUDE.md`'s existing Gate 2 note that macro
+is "load-bearing and the least verified axis."
 
 ### v4, v5 and v6 — tried and rejected, 2026-09-22
 
