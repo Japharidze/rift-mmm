@@ -220,7 +220,11 @@ def _label_games(args: argparse.Namespace) -> int:
 
 def _dump(args: argparse.Namespace) -> int:
     counts = dump_mod.row_counts()
-    path = dump_mod.dump()
+    try:
+        path = dump_mod.dump(force=args.force)
+    except RuntimeError as exc:
+        print(exc)
+        return 1
     size = path.stat().st_size / 1_000_000
     print(f"wrote {path.relative_to(dump_mod.ROOT)}  ({size:.1f} MB)")
     for table, n in counts.items():
@@ -394,6 +398,8 @@ def main() -> int:
     quiz_cmd.set_defaults(func=_quiz)
 
     dump_cmd = sub.add_parser("dump", help="write a data-only dump to dumps/")
+    dump_cmd.add_argument("--force", action="store_true",
+                          help="overwrite even if the existing dump is larger")
     dump_cmd.set_defaults(func=_dump)
 
     restore_cmd = sub.add_parser(

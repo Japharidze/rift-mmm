@@ -42,9 +42,21 @@ def _args() -> list[str]:
     ]
 
 
-def dump(path: Path | None = None) -> Path:
-    """Write a gzipped data-only dump. Named by date, so a second dump on the
-    same day replaces it rather than accumulating near-identical blobs in git."""
+def dump(path: Path | None = None, force: bool = False) -> Path:
+    """Write a gzipped data-only dump, named by date.
+
+    Same-day dumps replace each other rather than piling near-identical blobs
+    into git — which is fine on one machine and dangerous across two. If
+    labelling ran elsewhere, was dumped, and committed, then dumping here
+    silently overwrites work this database has never seen. That happened on
+    2026-09-23: a dump carrying two extra runs and 53 extra labels was
+    replaced by a smaller one, and only the git blob made it recoverable.
+
+    So a dump that would drop rows the existing file has is refused. The
+    comparison counts rows rather than bytes: gzip output varies by tens of
+    bytes for identical data, so a size check false-positives on every ordinary
+    re-dump. `force` overrides once you have looked.
+    """
     DUMP_DIR.mkdir(exist_ok=True)
     path = path or DUMP_DIR / f"{datetime.now(UTC):%Y-%m-%d}.sql.gz"
     result = subprocess.run(
@@ -60,9 +72,42 @@ def dump(path: Path | None = None) -> Path:
         ],
         env=_env(), capture_output=True, check=True,
     )
+    if path.exists() and not force:
+        existing = _counts_in(path.read_bytes())
+        fresh = _counts_in(gzip.compress(result.stdout))
+        lost = {t: (existing[t], fresh[t]) for t in existing if fresh[t] < existing[t]}
+        if lost:
+            detail = ", ".join(f"{t} {a} -> {b}" for t, (a, b) in lost.items())
+            raise RuntimeError(
+                f"{path.name} holds rows this database does not: {detail}. "
+                "Another machine probably dumped work that was never restored "
+                "here. `git log -- dumps/` shows its history; restore it first, "
+                "or pass --force if you are sure."
+            )
+
     with gzip.open(path, "wb") as fh:
         fh.write(result.stdout)
     return path
+
+
+# The tables whose loss would actually cost something. Counted rather than
+# weighed, so ordinary gzip variation cannot trip the guard.
+_GUARDED = ("champion_label", "game_label", "label_run", "match_participant")
+
+
+def _counts_in(blob: bytes) -> dict[str, int]:
+    """Rows per guarded table inside a gzipped pg_dump, without a database."""
+    text = gzip.decompress(blob).decode(errors="replace")
+    counts = {}
+    for table in _GUARDED:
+        marker = f"COPY public.{table} ("
+        start = text.find(marker)
+        if start == -1:
+            counts[table] = 0
+            continue
+        body = text[text.index("\n", start) + 1:]
+        counts[table] = body[: body.index("\n\\.")].count("\n") + 1
+    return counts
 
 
 def latest() -> Path | None:
