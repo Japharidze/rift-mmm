@@ -28,6 +28,10 @@
 #
 #   source       Surnex's own placement, converted by the mapping. Blocking.
 #   tight        Sergi's judgment, independently placed. Blocking.
+#   wide         Sergi's judgment too, but deliberately given wider bands than
+#                the category-derived ones: one person's placement of one game
+#                carries less than a placement the model's author made himself.
+#                Blocking, but forgiving.
 #   provisional  Placed or moved by a model. Reports, never blocks.
 
 version: 1
@@ -366,14 +370,89 @@ games:
     note: "the target game itself — never served in the quiz, kept because it is
       the one placement that says where the whole space is centred for us"
 
-  # ---- mid-range: NOT YET PLACED ------------------------------------------
-  # Surnex has no centre, so these complete the coverage his explanation did not
-  # need. They must be placed by Sergi, by dimension, without seeing a model's
-  # output first — the same procedure as the champion anchors, and the same
-  # reason. Left unplaced rather than guessed.
+  # ---- mid-range and the low corner ---------------------------------------
+  # Placed by Sergi 2026-09-23, without reference to any model output.
+  # These complete a coverage Surnex's explanation never needed: he placed
+  # poles, edges and corners because extremes teach the model, and nothing
+  # in the middle or at the origin.
   #
-  #   stardew-valley    Stardew Valley
-  #   rocket-league     (already placed by Surnex — use his)
-  #   hades             Hades
-  #   valheim           Valheim
-  #   age-of-empires-2  Age of Empires II
+  # The low corner matters most. Without it the 14 champions that sit low on
+  # all three - Garen, Cho'Gath, Lulu, Malzahar - are unreachable, and a
+  # newcomer whose honest answer is "I like relaxed games" gets pushed toward
+  # a pole they did not ask for. Landing that user on Garen is correct advice,
+  # not a failure of the model.
+
+  - id: stardew-valley
+    name: Stardew Valley
+    category: placed
+    micro: {point: 0.15, band: [0.00, 0.30], tier: wide}
+    meso: {point: 0.05, band: [0.00, 0.20], tier: wide}
+    macro: {point: 0.55, band: [0.40, 0.70], tier: wide}
+    note: >-
+      the clean macro-without-meso anchor Surnex's list lacks: crop and season
+      planning, building allocation, and no opponent at all, so meso floors out
+
+  - id: hades
+    name: Hades
+    category: placed
+    micro: {point: 0.65, band: [0.50, 0.80], tier: wide}
+    meso: {point: 0.20, band: [0.05, 0.35], tier: wide}
+    macro: {point: 0.50, band: [0.35, 0.65], tier: wide}
+    note: >-
+      dodge-and-execute moment to moment, with real build and mirror planning
+      across runs. Meso is not zero but is prediction against a patterned system
+      rather than against a person
+
+  - id: valheim
+    name: Valheim
+    category: placed
+    micro: {point: 0.30, band: [0.15, 0.45], tier: wide}
+    meso: {point: 0.10, band: [0.00, 0.25], tier: wide}
+    macro: {point: 0.50, band: [0.35, 0.65], tier: wide}
+    note: >-
+      combat has real timing in the parry, but the bulk is logistics, base
+      planning and progression gating
+
+  - id: age-of-empires-2
+    name: Age of Empires II
+    category: placed
+    micro: {point: 0.55, band: [0.40, 0.70], tier: wide}
+    meso: {point: 0.55, band: [0.40, 0.70], tier: wide}
+    macro: {point: 0.80, band: [0.65, 0.95], tier: wide}
+    note: >-
+      high on all three without being a modern shooter: build orders and economy
+      are macro, unit micro is genuine, and against a human the scouting and
+      feinting is heavy meso. The counter-anchor proving that region is
+      expressible by something other than CS2
+
+  - id: animal-crossing
+    name: Animal Crossing
+    category: placed
+    micro: {point: 0.10, band: [0.00, 0.25], tier: wide}
+    meso: {point: 0.05, band: [0.00, 0.20], tier: wide}
+    macro: {point: 0.20, band: [0.05, 0.35], tier: wide}
+
+  - id: candy-crush
+    name: Candy Crush
+    category: placed
+    micro: {point: 0.15, band: [0.00, 0.30], tier: wide}
+    meso: {point: 0.05, band: [0.00, 0.20], tier: wide}
+    macro: {point: 0.25, band: [0.10, 0.40], tier: wide}
+
+  - id: cookie-clicker
+    name: Cookie Clicker
+    category: placed
+    micro: {point: 0.05, band: [0.00, 0.20], tier: wide}
+    meso: {point: 0.00, band: [0.00, 0.15], tier: wide}
+    macro: {point: 0.20, band: [0.05, 0.35], tier: wide}
+
+  - id: minecraft-creative
+    name: Minecraft (creative)
+    category: placed
+    micro: {point: 0.10, band: [0.00, 0.25], tier: wide}
+    meso: {point: 0.05, band: [0.00, 0.20], tier: wide}
+    macro: {point: 0.25, band: [0.10, 0.40], tier: wide}
+    note: >-
+      creative mode specifically. Survival sits elsewhere, and plain "Minecraft"
+      is ambiguous between them - which matters for the quiz bank, where it is
+      the highest-reach title on earth and one of the least discriminating

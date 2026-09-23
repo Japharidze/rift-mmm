@@ -61,6 +61,14 @@ matching or UI.
 - **Style first, role second.** Output = MMM point → style neighbourhood → 3–5
   champions labelled by lane → user picks the lane. Result copy: these are first
   picks, the settled lane comes later.
+- **A dimension the quiz could not read is reported, never imputed.** If a user
+  picks no games that load on a dimension, recommend from the two that were
+  measured and say the third is open — then offer a short second round serving
+  only items loaded on the missing one. Filling the gap with the midpoint is how
+  confident nonsense ships, and the honest version is a retry hook rather than
+  an apology. The champion side has the same requirement arriving from the other
+  direction: a match 0.45 away must not be presented like one 0.04 away
+  (Gate 2, limitations).
 - **No agent framework for labelling.** Plain loop, versioned system prompt,
   structured output, retries.
 - **Never use the abbreviation "KYS"** anywhere — toxic meaning in gaming. Check
