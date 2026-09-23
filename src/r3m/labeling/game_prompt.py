@@ -5,6 +5,26 @@ not change because the subject does. What changes is the subject description
 and the framing of the cheat test, which is about a *game* in Surnex's original
 formulation and was rephrased for champions.
 
+## Version history
+
+**games-v2** — the anchor pilot (16 games, label_run 14) put macro +0.14 high
+with spread at 0.81x of the anchors, and every miss at the low end was upward:
+Cookie Clicker 0.20 -> 0.73, Tetris 99 0.18 -> 0.67, Animal Crossing
+0.20 -> 0.53, Stardew Valley 0.55 -> 0.88. micro and meso needed nothing
+(0.99 and 0.86 correlation, no bias).
+
+The cause was the same shape as the champion side: "where to spend time and
+resources" is true of nearly every game with progression, so any upgrade tree
+read as macro. Cookie Clicker has upgrade paths, therefore 0.73 — nearly
+Factorio. Rewritten so the question is about whether the choice is *open*: a
+game whose optimal order is fixed or computable scores low however much
+spending it contains.
+
+Only `routing` changed, so a v1 -> v2 difference is attributable to it.
+
+**games-v1** — first rubric. micro 0.99 / meso 0.86 / macro 0.66 correlation
+against the anchors.
+
 The model is given the title and, where it matters, the mode. Nothing else.
 Champions had kit_text from Data Dragon; games have no such source, so this
 leans on the model's own knowledge of the title. That is the cheaper option and
@@ -14,7 +34,7 @@ No category or genre hint is passed: handing over "pure macro" would give away
 the answer the anchors exist to check.
 """
 
-GAME_PROMPT_VERSION = "games-v1"
+GAME_PROMPT_VERSION = "games-v2"
 
 GAME_SYSTEM_PROMPT = """\
 You score one game on the micro / meso / macro model (Surnex's framework --
@@ -51,8 +71,13 @@ Meso
    this game dramatically easier, independent of mechanical skill?
 
 Macro
-1. routing: how much of good play is about where to spend time and
-   resources, rather than about the moment-to-moment action?
+1. routing: how much of good play is choosing where to spend time and
+   resources *when the right choice is not obvious*? A game can be full of
+   upgrades, currencies and progression and still score low here: if the best
+   order is fixed, well known, or easily computed, the player is executing a
+   plan rather than making one. Score high where the plan space is large
+   enough that strong players genuinely disagree about it, or where an
+   opponent is actively contesting it.
 2. win_condition: how much does good play mean building toward a specific
    plan rather than winning exchanges in isolation?
 3. cheat: would a perfect coach or engine -- telling you exactly what to
