@@ -279,8 +279,24 @@ def _quiz(args: argparse.Namespace) -> int:
                   f"{r['micro']:.2f} {r['meso']:.2f} {r['macro']:.2f}")
         return 0
 
+    if args.interactive:
+        served: list[str] = []
+        picked: list[str] = []
+        print("Answer y if you have played it, anything else for no.\n")
+        while (item := quiz_mod.next_item(served, picked, rows)) is not None:
+            label = item["name"] + (f" ({item['mode']})" if item["mode"] else "")
+            answer = input(f"  {len(served) + 1}. {label}? ").strip().lower()
+            served.append(item["game_id"])
+            if answer.startswith("y"):
+                picked.append(item["game_id"])
+        if not picked:
+            print("\nnothing picked, so there is nothing to go on.")
+            return 1
+        args.games = ",".join(picked)
+        print(f"\nasked {len(served)}, you played {len(picked)}")
+
     if not args.games:
-        print("pass --games with comma-separated ids, or --list to see them")
+        print("pass --games with comma-separated ids, --interactive, or --list")
         return 1
 
     try:
@@ -364,6 +380,8 @@ def main() -> int:
     )
     quiz_cmd.add_argument("--games", help="comma-separated game ids")
     quiz_cmd.add_argument("--list", action="store_true", help="show the bank")
+    quiz_cmd.add_argument("--interactive", action="store_true",
+                          help="be asked, one game at a time")
     quiz_cmd.add_argument("-n", type=int, default=5)
     quiz_cmd.set_defaults(func=_quiz)
 

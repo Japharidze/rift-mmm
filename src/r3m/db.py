@@ -446,19 +446,20 @@ def champion_points(
 
 def upsert_game(
     conn: psycopg.Connection, *, game_id: str, name: str,
-    mode: str | None, is_anchor: bool,
+    mode: str | None, is_anchor: bool, in_bank: bool = True,
 ) -> None:
     with conn.cursor() as cur:
         cur.execute(
             """
-            insert into game (id, name, mode, is_anchor)
-            values (%s, %s, %s, %s)
+            insert into game (id, name, mode, is_anchor, in_bank)
+            values (%s, %s, %s, %s, %s)
             on conflict (id) do update set
                 name = excluded.name,
                 mode = excluded.mode,
-                is_anchor = excluded.is_anchor
+                is_anchor = excluded.is_anchor,
+                in_bank = excluded.in_bank
             """,
-            (game_id, name, mode, is_anchor),
+            (game_id, name, mode, is_anchor, in_bank),
         )
 
 
@@ -535,7 +536,7 @@ def game_points(
         cur.execute(
             """
             select distinct on (l.game_id)
-                   l.game_id, g.name, g.mode, l.micro, l.meso, l.macro
+                   l.game_id, g.name, g.mode, g.in_bank, l.micro, l.meso, l.macro
             from game_label l
             join label_run r on r.id = l.label_run_id
             join game g on g.id = l.game_id
@@ -545,8 +546,8 @@ def game_points(
             (prompt_version,),
         )
         return [
-            {"game_id": r[0], "name": r[1], "mode": r[2],
-             "micro": float(r[3]), "meso": float(r[4]), "macro": float(r[5]),
+            {"game_id": r[0], "name": r[1], "mode": r[2], "in_bank": r[3],
+             "micro": float(r[4]), "meso": float(r[5]), "macro": float(r[6]),
              "prompt_version": prompt_version}
             for r in cur.fetchall()
         ]

@@ -105,9 +105,56 @@ def suggest_for(dimension: str, exclude: list[str],
     if rows is None:
         with db.connect() as conn:
             rows = db.game_points(conn)
-    candidates = [r for r in rows if r["game_id"] not in exclude]
+    candidates = [r for r in rows
+                  if r["game_id"] not in exclude and r.get("in_bank", True)]
     return sorted(candidates, key=lambda r: -abs(r[dimension] - 0.5))[:n]
 
 
 def champions_for(est: Estimate, n: int = 5) -> list[scoring.Match]:
     return scoring.neighbourhood(est.point, n=n)
+
+
+# Three openers, chosen to be widely recognised and to sit far apart in the
+# space: creative Minecraft is low on everything, Elden Ring is micro+macro,
+# Among Us is meso. Everyone's first screens are familiar, and three answers
+# already touch all three dimensions.
+#
+# Placeholder until reach data exists. The real rule weights candidates by how
+# many people have played them as well as by information gain, and without
+# Steam or Twitch numbers this is judgment standing in for measurement.
+OPENER = ("minecraft-creative", "elden-ring", "among-us")
+
+MAX_ITEMS = 10
+
+
+def next_item(
+    served: list[str], picked: list[str], rows: list[dict[str, Any]]
+) -> dict[str, Any] | None:
+    """The next game to ask about, or None when the quiz should stop.
+
+    Fixed opener, then adaptive: serve whatever best settles the dimension
+    currently least covered. Stops when every dimension is read or the bank
+    budget is spent — a count alone would let three micro-ish picks end a quiz
+    with meso and macro unmeasured.
+    """
+    by_id = {r["game_id"]: r for r in rows if r.get("in_bank", True)}
+    if len(served) >= MAX_ITEMS:
+        return None
+
+    for game_id in OPENER:
+        if game_id not in served and game_id in by_id:
+            return by_id[game_id]
+
+    if picked:
+        est = estimate(picked, rows=rows)
+        if not est.unread:
+            return None
+        # least covered first, so a dimension with nothing beats one with one
+        target = min(est.unread, key=lambda d: est.dimensions[d].informative)
+    else:
+        target = "micro"
+
+    candidates = [r for gid, r in by_id.items() if gid not in served]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda r: abs(r[target] - 0.5))
