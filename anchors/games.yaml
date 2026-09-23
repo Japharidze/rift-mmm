@@ -1,0 +1,379 @@
+# Anchor scores for games — the other half of the MMM space.
+#
+# Champions and games share one absolute 0–1 scale per dimension. That is what
+# makes matching a player's taste against a champion mean anything, so these
+# two files are calibrated against each other, not independently.
+#
+# ## Where the numbers come from
+#
+# Surnex placed these games himself (docs/3m-model.md, from the two videos).
+# He placed them into *categories* — "pure micro", "micro + meso", "all three"
+# — not onto numbers. The numbers below come from applying the mapping in
+# `categories` mechanically, so each value traces to his category rather than
+# to anyone's opinion of the game. Where he stated an ordering inside a
+# category ("CS2 macro relatively lowest"), that is applied as an override and
+# his wording is kept in the note.
+#
+# ## Why there is no centre
+#
+# Surnex's examples are all poles, edges and corners. That is a property of his
+# *explanation*, not of the space: extremes teach a model more clearly than
+# middling cases. So the mid-range entries at the bottom are not patching a gap
+# in his model — they complete a coverage his purpose never needed. Without
+# them, scale compression in the middle is invisible, which is exactly the
+# failure that cost three prompt versions on the champion side
+# (docs/sub-traits.md, v4–v6).
+#
+# ## Tiers
+#
+#   source       Surnex's own placement, converted by the mapping. Blocking.
+#   tight        Sergi's judgment, independently placed. Blocking.
+#   provisional  Placed or moved by a model. Reports, never blocks.
+
+version: 1
+
+categories:
+  # dimension named -> 0.92; the others -> 0.12. Poles define what 1.0 means.
+  pure:        {high: 0.92, low: 0.12, band: 0.10}
+  # both named -> 0.80; the third -> 0.18.
+  pair:        {high: 0.80, low: 0.18, band: 0.12}
+  # all three high, balance unstated unless overridden per game.
+  all_three:   {high: 0.78, band: 0.12}
+
+games:
+  # ---- pure micro ---------------------------------------------------------
+  - id: osu
+    name: "osu!"
+    category: pure_micro
+    micro: {point: 0.92, band: [0.82, 1.00], tier: source}
+    meso: {point: 0.12, band: [0.02, 0.22], tier: source}
+    macro: {point: 0.12, band: [0.02, 0.22], tier: source}
+    note: named as the reference point for pure micro
+
+  - id: geometry-dash
+    name: Geometry Dash
+    category: pure_micro
+    micro: {point: 0.92, band: [0.82, 1.00], tier: source}
+    meso: {point: 0.12, band: [0.02, 0.22], tier: source}
+    macro: {point: 0.12, band: [0.02, 0.22], tier: source}
+
+  - id: tetris
+    name: Tetris
+    category: pure_micro
+    micro: {point: 0.92, band: [0.82, 1.00], tier: source}
+    meso: {point: 0.12, band: [0.02, 0.22], tier: source}
+    macro: {point: 0.12, band: [0.02, 0.22], tier: source}
+    note: "original Tetris only; Tetris 99 is placed separately, the difference
+      is the whole point of the pair"
+
+  - id: aim-trainers
+    name: Aim trainers
+    category: pure_micro
+    micro: {point: 0.92, band: [0.82, 1.00], tier: source}
+    meso: {point: 0.12, band: [0.02, 0.22], tier: source}
+    macro: {point: 0.12, band: [0.02, 0.22], tier: source}
+
+  # ---- pure meso ----------------------------------------------------------
+  - id: rock-paper-scissors
+    name: Rock-paper-scissors
+    category: pure_meso
+    micro: {point: 0.12, band: [0.02, 0.22], tier: source}
+    meso: {point: 0.92, band: [0.82, 1.00], tier: source}
+    macro: {point: 0.12, band: [0.02, 0.22], tier: source}
+    note: his purest example of meso
+
+  - id: among-us
+    name: Among Us
+    category: pure_meso
+    micro: {point: 0.12, band: [0.02, 0.22], tier: source}
+    meso: {point: 0.92, band: [0.82, 1.00], tier: source}
+    macro: {point: 0.12, band: [0.02, 0.22], tier: source}
+
+  - id: liars-bar
+    name: Liar's Bar
+    category: pure_meso
+    micro: {point: 0.12, band: [0.02, 0.22], tier: source}
+    meso: {point: 0.92, band: [0.82, 1.00], tier: source}
+    macro: {point: 0.12, band: [0.02, 0.22], tier: source}
+
+  # ---- pure macro ---------------------------------------------------------
+  - id: factorio
+    name: Factorio
+    category: pure_macro
+    micro: {point: 0.12, band: [0.02, 0.22], tier: source}
+    meso: {point: 0.12, band: [0.02, 0.22], tier: source}
+    macro: {point: 0.92, band: [0.82, 1.00], tier: source}
+
+  - id: poly-bridge
+    name: Poly Bridge
+    category: pure_macro
+    micro: {point: 0.12, band: [0.02, 0.22], tier: source}
+    meso: {point: 0.12, band: [0.02, 0.22], tier: source}
+    macro: {point: 0.92, band: [0.82, 1.00], tier: source}
+
+  - id: connect-4
+    name: Connect 4
+    category: pure_macro
+    micro: {point: 0.12, band: [0.02, 0.22], tier: source}
+    meso: {point: 0.12, band: [0.02, 0.22], tier: source}
+    macro: {point: 0.92, band: [0.82, 1.00], tier: source}
+
+  - id: tic-tac-toe
+    name: Tic-tac-toe
+    category: pure_macro
+    micro: {point: 0.12, band: [0.02, 0.22], tier: source}
+    meso: {point: 0.12, band: [0.02, 0.22], tier: source}
+    macro: {point: 0.92, band: [0.82, 1.00], tier: source}
+
+  # ---- micro + macro ------------------------------------------------------
+  - id: elden-ring
+    name: Elden Ring
+    category: micro_macro
+    micro: {point: 0.80, band: [0.68, 0.92], tier: source}
+    meso: {point: 0.18, band: [0.06, 0.30], tier: source}
+    macro: {point: 0.80, band: [0.68, 0.92], tier: source}
+
+  - id: jump-king
+    name: Jump King
+    category: micro_macro
+    micro: {point: 0.80, band: [0.68, 0.92], tier: source}
+    meso: {point: 0.18, band: [0.06, 0.30], tier: source}
+    macro: {point: 0.80, band: [0.68, 0.92], tier: source}
+
+  - id: getting-over-it
+    name: Getting Over It
+    category: micro_macro
+    micro: {point: 0.80, band: [0.68, 0.92], tier: source}
+    meso: {point: 0.18, band: [0.06, 0.30], tier: source}
+    macro: {point: 0.80, band: [0.68, 0.92], tier: source}
+
+  - id: mario-64
+    name: Super Mario 64
+    category: micro_macro
+    micro: {point: 0.80, band: [0.68, 0.92], tier: source}
+    meso: {point: 0.18, band: [0.06, 0.30], tier: source}
+    macro: {point: 0.80, band: [0.68, 0.92], tier: source}
+    note: speedrunning context
+
+  - id: rubiks-cube
+    name: Rubik's cube speedrunning
+    category: micro_macro
+    micro: {point: 0.80, band: [0.68, 0.92], tier: source}
+    meso: {point: 0.18, band: [0.06, 0.30], tier: source}
+    macro: {point: 0.80, band: [0.68, 0.92], tier: source}
+
+  - id: 8-ball-pool
+    name: 8-ball pool
+    category: micro_macro
+    micro: {point: 0.80, band: [0.68, 0.92], tier: source}
+    meso: {point: 0.18, band: [0.06, 0.30], tier: source}
+    macro: {point: 0.80, band: [0.68, 0.92], tier: source}
+    note: "his stated outlier — PvP but almost no room for mind games, which is
+      why it sits in micro+macro rather than micro+meso"
+
+  # ---- micro + meso -------------------------------------------------------
+  - id: street-fighter
+    name: Street Fighter
+    category: micro_meso
+    micro: {point: 0.80, band: [0.68, 0.92], tier: source}
+    meso: {point: 0.80, band: [0.68, 0.92], tier: source}
+    macro: {point: 0.18, band: [0.06, 0.30], tier: source}
+
+  - id: tekken
+    name: Tekken
+    category: micro_meso
+    micro: {point: 0.80, band: [0.68, 0.92], tier: source}
+    meso: {point: 0.80, band: [0.68, 0.92], tier: source}
+    macro: {point: 0.18, band: [0.06, 0.30], tier: source}
+
+  - id: smash-bros
+    name: Super Smash Bros.
+    category: micro_meso
+    micro: {point: 0.80, band: [0.68, 0.92], tier: source}
+    meso: {point: 0.80, band: [0.68, 0.92], tier: source}
+    macro: {point: 0.18, band: [0.06, 0.30], tier: source}
+
+  - id: brawlhalla
+    name: Brawlhalla
+    category: micro_meso
+    micro: {point: 0.80, band: [0.68, 0.92], tier: source}
+    meso: {point: 0.80, band: [0.68, 0.92], tier: source}
+    macro: {point: 0.18, band: [0.06, 0.30], tier: source}
+
+  - id: mario-kart
+    name: Mario Kart
+    category: micro_meso
+    micro: {point: 0.80, band: [0.68, 0.92], tier: source}
+    meso: {point: 0.80, band: [0.68, 0.92], tier: source}
+    macro: {point: 0.18, band: [0.06, 0.30], tier: source}
+
+  - id: fall-guys
+    name: Fall Guys
+    category: micro_meso
+    micro: {point: 0.80, band: [0.68, 0.92], tier: source}
+    meso: {point: 0.80, band: [0.68, 0.92], tier: source}
+    macro: {point: 0.18, band: [0.06, 0.30], tier: source}
+
+  - id: gang-beasts
+    name: Gang Beasts
+    category: micro_meso
+    micro: {point: 0.80, band: [0.68, 0.92], tier: source}
+    meso: {point: 0.80, band: [0.68, 0.92], tier: source}
+    macro: {point: 0.18, band: [0.06, 0.30], tier: source}
+
+  - id: tetris-99
+    name: Tetris 99
+    category: micro_meso
+    micro: {point: 0.80, band: [0.68, 0.92], tier: source}
+    meso: {point: 0.80, band: [0.68, 0.92], tier: source}
+    macro: {point: 0.18, band: [0.06, 0.30], tier: source}
+    note: "garbage targeting is what adds the meso over original Tetris — the
+      cleanest natural experiment in his set"
+
+  # ---- meso + macro -------------------------------------------------------
+  - id: hearthstone
+    name: Hearthstone
+    category: meso_macro
+    micro: {point: 0.18, band: [0.06, 0.30], tier: source}
+    meso: {point: 0.80, band: [0.68, 0.92], tier: source}
+    macro: {point: 0.80, band: [0.68, 0.92], tier: source}
+
+  - id: tft
+    name: Teamfight Tactics
+    category: meso_macro
+    micro: {point: 0.18, band: [0.06, 0.30], tier: source}
+    meso: {point: 0.80, band: [0.68, 0.92], tier: source}
+    macro: {point: 0.80, band: [0.68, 0.92], tier: source}
+
+  - id: pokemon-vgc
+    name: Pokémon VGC
+    category: meso_macro
+    micro: {point: 0.18, band: [0.06, 0.30], tier: source}
+    meso: {point: 0.80, band: [0.68, 0.92], tier: source}
+    macro: {point: 0.80, band: [0.68, 0.92], tier: source}
+
+  - id: balatro
+    name: Balatro
+    category: meso_macro
+    micro: {point: 0.18, band: [0.06, 0.30], tier: source}
+    meso: {point: 0.80, band: [0.68, 0.92], tier: source}
+    macro: {point: 0.80, band: [0.68, 0.92], tier: source}
+
+  - id: battleship
+    name: Battleship
+    category: meso_macro
+    micro: {point: 0.18, band: [0.06, 0.30], tier: source}
+    meso: {point: 0.80, band: [0.68, 0.92], tier: source}
+    macro: {point: 0.80, band: [0.68, 0.92], tier: source}
+
+  - id: phasmophobia
+    name: Phasmophobia
+    category: meso_macro
+    micro: {point: 0.18, band: [0.06, 0.30], tier: source}
+    meso: {point: 0.80, band: [0.68, 0.92], tier: source}
+    macro: {point: 0.80, band: [0.68, 0.92], tier: source}
+
+  - id: chess
+    name: Chess
+    category: meso_macro
+    micro: {point: 0.18, band: [0.06, 0.30], tier: source}
+    meso: {point: 0.80, band: [0.68, 0.92], tier: source}
+    macro: {point: 0.80, band: [0.68, 0.92], tier: source}
+    note: "theoretically pure macro but meso-heavy at the human level, since you
+      optimise against a specific opponent's habits. Placed at the human level,
+      which is how it is played — the same 'score it as commonly played' rule
+      the model applies to formats"
+
+  # ---- all three ----------------------------------------------------------
+  - id: cs2
+    name: Counter-Strike 2
+    category: all_three
+    micro: {point: 0.92, band: [0.82, 1.00], tier: source}
+    meso: {point: 0.78, band: [0.66, 0.90], tier: source}
+    macro: {point: 0.55, band: [0.43, 0.67], tier: source}
+    note: "override from his stated balance — micro extremely high (aimbot alone
+      nearly wins), meso high (the wallhack experiments), macro relatively lowest"
+
+  - id: rocket-league
+    name: Rocket League
+    category: all_three
+    micro: {point: 0.90, band: [0.78, 1.00], tier: source}
+    meso: {point: 0.50, band: [0.38, 0.62], tier: source}
+    macro: {point: 0.70, band: [0.58, 0.82], tier: source}
+    note: "override from his stated ordering — micro dominant (bots beat
+      semi-pros), then macro, meso last since all information is knowable"
+
+  - id: apex-legends
+    name: Apex Legends
+    category: all_three
+    micro: {point: 0.78, band: [0.66, 0.90], tier: source}
+    meso: {point: 0.78, band: [0.66, 0.90], tier: source}
+    macro: {point: 0.78, band: [0.66, 0.90], tier: source}
+    note: "he calls it remarkably balanced — aimbot, wallhacks or perfect ring
+      knowledge each give a real chance"
+
+  - id: overwatch
+    name: Overwatch
+    category: all_three
+    micro: {point: 0.78, band: [0.66, 0.90], tier: source}
+    meso: {point: 0.78, band: [0.66, 0.90], tier: source}
+    macro: {point: 0.78, band: [0.66, 0.90], tier: source}
+    note: "he splits it by role — DPS micro, tank meso, support macro. Placed
+      unsplit here; if the quiz ever asks which role someone played, this is the
+      entry that should become three"
+
+  - id: dota-2
+    name: Dota 2
+    category: all_three
+    micro: {point: 0.78, band: [0.66, 0.90], tier: source}
+    meso: {point: 0.78, band: [0.66, 0.90], tier: source}
+    macro: {point: 0.78, band: [0.66, 0.90], tier: source}
+
+  - id: valorant
+    name: Valorant
+    category: all_three
+    micro: {point: 0.78, band: [0.66, 0.90], tier: source}
+    meso: {point: 0.78, band: [0.66, 0.90], tier: source}
+    macro: {point: 0.78, band: [0.66, 0.90], tier: source}
+
+  - id: marvel-rivals
+    name: Marvel Rivals
+    category: all_three
+    micro: {point: 0.78, band: [0.66, 0.90], tier: source}
+    meso: {point: 0.78, band: [0.66, 0.90], tier: source}
+    macro: {point: 0.78, band: [0.66, 0.90], tier: source}
+
+  - id: rainbow-six
+    name: Rainbow Six Siege
+    category: all_three
+    micro: {point: 0.78, band: [0.66, 0.90], tier: source}
+    meso: {point: 0.78, band: [0.66, 0.90], tier: source}
+    macro: {point: 0.78, band: [0.66, 0.90], tier: source}
+
+  - id: wow
+    name: World of Warcraft
+    category: all_three
+    micro: {point: 0.78, band: [0.66, 0.90], tier: source}
+    meso: {point: 0.78, band: [0.66, 0.90], tier: source}
+    macro: {point: 0.78, band: [0.66, 0.90], tier: source}
+
+  - id: league-of-legends
+    name: League of Legends
+    category: all_three
+    micro: {point: 0.78, band: [0.66, 0.90], tier: source}
+    meso: {point: 0.78, band: [0.66, 0.90], tier: source}
+    macro: {point: 0.78, band: [0.66, 0.90], tier: source}
+    note: "the target game itself — never served in the quiz, kept because it is
+      the one placement that says where the whole space is centred for us"
+
+  # ---- mid-range: NOT YET PLACED ------------------------------------------
+  # Surnex has no centre, so these complete the coverage his explanation did not
+  # need. They must be placed by Sergi, by dimension, without seeing a model's
+  # output first — the same procedure as the champion anchors, and the same
+  # reason. Left unplaced rather than guessed.
+  #
+  #   stardew-valley    Stardew Valley
+  #   rocket-league     (already placed by Surnex — use his)
+  #   hades             Hades
+  #   valheim           Valheim
+  #   age-of-empires-2  Age of Empires II
