@@ -9,7 +9,7 @@ the frozen source. If the two ever disagree, docs/sub-traits.md is correct and
 this file is stale and needs a version bump.
 """
 
-PROMPT_VERSION = "v3"
+PROMPT_VERSION = "v8"
 
 SYSTEM_PROMPT = """\
 You score one League of Legends champion, in one role, on the micro / meso /
@@ -66,9 +66,15 @@ Macro
    made for them. A champion who chooses between objectives, decides when to
    abandon a lane, or whose presence elsewhere constrains what the enemy can
    do, scores high.
-2. win_condition: how much does good play mean building toward a specific
-   late-game plan (power spikes, objective timing) rather than winning
-   exchanges in isolation?
+2. win_condition: how much does good play mean actively deciding when and
+   how to pursue a late-game plan, rather than converging on one because it
+   exists? A stacking or scaling mechanic is not enough by itself: if the
+   target and timing are the same regardless of what the enemy does -- farm
+   safely, hit the number, you are strong -- that is a fixed progression, not
+   a decision. Score high only where the plan's timing or shape branches on
+   the game state: contesting objectives around it, choosing when to force a
+   fight versus scale further, or reacting to what the enemy is doing to
+   reach it.
 3. cheat: would a perfect coach -- telling you exactly where to be and what
    to prioritize, no mechanical or read improvement -- make this champion
    dramatically stronger *than the same coaching would make an average

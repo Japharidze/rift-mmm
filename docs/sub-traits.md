@@ -1,6 +1,11 @@
 # Sub-traits — frozen
 
-**Prompt v3** (2026-09-22) — v4, v5 and v6 were tried and rejected; see history. Version history is at the end of this file.
+**Prompt v8** (2026-09-24) — v4, v5 and v6 were tried and rejected on
+`macro_routing`; see history. v7 tried `micro_precision`/`micro_execution` and
+`macro_win_condition`; the micro change was reverted after its control
+(Kog'Maw) moved more than the motivating case, the win_condition change was
+kept. v8 is that combination: v3's micro wording, v7's win_condition wording,
+`macro_routing` still untouched. Version history is at the end of this file.
 
 Ten sub-traits feed the three MMM aggregates: 3 micro, 4 meso, 3 macro (the
 allocation and its rationale are in `CLAUDE.md`, Frozen decisions). Frozen
@@ -16,9 +21,11 @@ game" to "what cheat breaks this champion."
 ## Micro
 
 1. **Precision demand** — how much do the core abilities require landing
-   skillshots or precise placement, vs. auto-target or self-cast?
+   skillshots or precise placement, vs. auto-target or self-cast? (Reverted to
+   v3's wording at v8 — see version history, v7.)
 2. **Execution/combo demand** — how much does effective use require chaining
    abilities in a tight timing window (cancels, resets, combo order)?
+   (Reverted to v3's wording at v8 — see version history, v7.)
 3. **Cheat test** — would perfect inputs (every skillshot lands, every combo
    flawless, zero misclicks) alone make this champion dramatically stronger?
 
@@ -52,9 +59,15 @@ game" to "what cheat breaks this champion."
    them. A champion who chooses between objectives, decides when to abandon a
    lane, or whose presence somewhere else constrains what the enemy can do,
    scores high.
-2. **Win-condition construction** — how much does good play mean building
-   toward a specific late-game plan (power spikes, objective timing) rather
-   than winning exchanges in isolation?
+2. **Win-condition construction** — how much does good play mean actively
+   deciding *when and how* to pursue a late-game plan, rather than converging
+   on one because it exists? A stacking or scaling mechanic is not enough by
+   itself: if the target and timing are the same regardless of what the enemy
+   does — farm safely, hit the number, you are strong — that is a fixed
+   progression, not a decision. Score high only where the plan's timing or
+   shape branches on the game state: contesting objectives around it,
+   choosing when to force a fight versus scale further, or reacting to what
+   the enemy is doing to reach it.
 3. **Cheat test** — would a perfect coach — telling you exactly where to be
    and what to prioritize, no mechanical or read improvement — make *this*
    champion dramatically stronger than the same coaching would make an average
@@ -96,6 +109,103 @@ meso, Yuumi's micro) — the harder bar than matching the easy cases.
 
 
 ## Version history
+
+### v7 — 2026-09-24
+
+Anchor check on the canonical v3 set (runs 9+10, 196 rows, matched by role)
+found 31/75 blocking failures on the 25 tight anchors — 9 micro, 9 meso, 13
+macro — traced to stored rationale text, not generic noise:
+
+- **`micro_precision`/`micro_execution` are ability-cast-specific**
+  ("vs. auto-target or self-cast" frames autoattacking as inherently low
+  precision), so champions whose test is auto-attack positioning and kiting
+  rather than ability skillshots score low regardless of how demanding that
+  positioning actually is. Ashe is the clean case: micro 0.43 against an
+  anchor band of 0.65–0.88, because her rationale scored the ability kit
+  ("mechanical load is modest") and never asked about auto-attack spacing.
+- **`macro_win_condition` credits any scaling mechanic as a "plan"**, with no
+  test for whether the plan is a genuine decision or a fixed target every
+  player converges on the same way. Smolder (0.64 against 0.10–0.32) and
+  Teemo (0.68 against 0.10–0.32) are both rationalised as "building toward a
+  specific spike" — true, but the spike's timing does not depend on what the
+  enemy does, which is exactly what the sub-trait failed to ask.
+
+`macro_routing` is not touched this round even though it produced the most
+failures (13/25): three prior rewrites (v4, v5, v6, below) already failed on
+this sub-trait specifically, changing it alongside two other sub-traits would
+make any pass-rate movement unattributable to any one of the three, and
+`macro_win_condition` is adjacent to it (Teemo's routing rationale — "shroom
+placement... constrains enemy routing" — may partly be win_condition's
+scaling-credit bug leaking into routing's score). Routing gets re-measured
+after this run, not rewritten blind.
+
+**Prediction, registered before running** (label_run TBD, 25 anchors +
+Kog'Maw + Kassadin as controls):
+
+| champion | before (micro/meso/macro) | expected | why |
+| --- | --- | --- | --- |
+| Ashe (anchor) | 0.43 / 0.59 / — | micro up toward 0.65–0.88, meso down toward 0.10–0.32 | the motivating case |
+| Kog'Maw (control) | 0.56 / — / — | little to no change | near-zero mobility — a fix that lifts him anyway is pattern-matching on auto-attack damage, not reading the kit |
+| Smolder (anchor) | — / — / 0.64 | down toward 0.10–0.32 | the motivating case |
+| Teemo (anchor) | — / — / 0.68 | down toward 0.10–0.32, but possibly not all the way if routing's own credit is doing some of the work | motivating case, adjacent-dimension leakage |
+| Kassadin (control) | — / — / 0.77 | little to no change | late-game plan genuinely branches on lane state and enemy position — a real decision, not a fixed breakpoint |
+
+**Stopping rule, committed before the run:** win_condition and micro count as
+fixed only if Kog'Maw and Kassadin do not move materially alongside the
+motivating cases. A version that raises Ashe's micro but also raises Kog'Maw's,
+or lowers Smolder's macro but also lowers Kassadin's, has pattern-matched on
+class rather than read the kit, and is reverted like v4–v6.
+
+**Result, measured against all 25 anchors + both controls (label_run 18):**
+
+| champion | dim | v3 | v7 | delta |
+| --- | --- | --- | --- | --- |
+| Ashe (motivating) | micro | 0.43 | 0.54 | +0.11, still fails (band 0.65–0.88) |
+| Ashe (motivating) | meso | 0.59 | 0.59 | unchanged — meso wasn't in scope this round; the prediction table above should not have listed this as an expected move, that was an error in the prediction, not the fix |
+| **Kog'Maw (control)** | micro | 0.56 | **0.82** | **+0.26 — larger than Ashe's own move** |
+| Smolder (motivating) | macro | 0.64 | 0.57 | -0.07, still fails (band 0.10–0.32) |
+| Teemo (motivating) | macro | 0.68 | 0.66 | -0.02, barely moved |
+| Kassadin (control) | macro | 0.77 | 0.76 | -0.01, held |
+
+Overall: 30/75 blocking failures against v3's 31/75 (micro 10/25, meso 9/25,
+macro 11/25) — statistically flat, not the clean improvement hoped for.
+Orianna and Camille (real ability-combo kits, not auto-attack-centric) also
+drifted further over their micro bands under the new wording (+0.03 and
++0.05), a second sign the precision rewrite was reading as a general "raise
+micro" signal rather than a kit-specific one.
+
+**Verdict, applying the stopping rule as committed:**
+
+- **`micro_precision`/`micro_execution`: reverted.** Kog'Maw moved more than
+  the motivating case despite an explicit instruction not to score high "just
+  because a champion deals damage through auto attacks" — his own rationale
+  argued the *absence* of mobility tools makes spacing *harder*, which the
+  wording did not anticipate or block. Textbook pattern-match, exactly what
+  the control was built to catch.
+- **`macro_win_condition`: kept.** Kassadin held flat, so it passes its own
+  stopping test even though it did not fully fix Smolder or Teemo. Teemo
+  barely moving at all (-0.02) is itself informative: it says his over-score
+  is coming mostly from `macro_routing` (untouched this round), not
+  `win_condition` — consistent with the reasoning for leaving routing alone
+  and re-measuring it before rewriting it.
+
+Net effect: the live prompt is neither v3 nor v7, but a new combination —
+v3's micro wording restored, v7's win_condition wording kept, routing still
+untouched. That is **v8**, below.
+
+### v8 — 2026-09-24
+
+Carries forward from v7: `macro_win_condition` kept as written there (see the
+v7 result above), `micro_precision`/`micro_execution` reverted to v3's wording
+after the Kog'Maw control caught it pattern-matching. `macro_routing` remains
+untouched, now with two data points (v7's Teemo, this section's reasoning)
+suggesting its own rewrite should target the "presence constrains the enemy"
+clause specifically rather than routing wholesale.
+
+Not yet re-measured against the full anchor set as its own combined version —
+the pieces are each validated individually (win_condition against its
+motivating cases + Kassadin; micro's revert is a return to the already-known
+v3 numbers), but a full v8 pass has not been run.
 
 ### v4, v5 and v6 — tried and rejected, 2026-09-22
 
