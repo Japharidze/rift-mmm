@@ -78,6 +78,8 @@ def _sample(args: argparse.Namespace) -> int:
         f"stored {result.stored} new matches "
         f"({result.total} total, {result.requests} API calls)"
     )
+    if result.stored:
+        _autodump()
     return 0
 
 
@@ -107,6 +109,8 @@ def _label(args: argparse.Namespace) -> int:
         )
     for failure in result.failed:
         print(f"  FAILED {failure.champion_id} ({failure.role}): {failure.error}")
+    if result.labelled:
+        _autodump()
     return 1 if result.failed else 0
 
 
@@ -163,6 +167,7 @@ def _roles(args: argparse.Namespace) -> int:
         f"champion_role: {total} rows across {champions} champions "
         f"({primary} primary, {total - primary} secondary)"
     )
+    _autodump()
     return 0
 
 
@@ -210,6 +215,8 @@ def _label_games(args: argparse.Namespace) -> int:
               f"labelled, {len(result.failed)} failed")
     for failure in result.failed:
         print(f"  FAILED {failure.champion_id}: {failure.error}")
+    if result.labelled:
+        _autodump()
     return 1 if result.failed else 0
 
 
@@ -237,6 +244,26 @@ def _restore(args: argparse.Namespace) -> int:
     for table, n in dump_mod.row_counts().items():
         print(f"  {table:20}{n:>8}")
     return 0
+
+
+def _autodump() -> None:
+    """Refresh the dump after a run that cost real money or time.
+
+    Best effort, and deliberately incapable of failing the caller: a 45-minute
+    crawl or a $4 labelling pass must not exit non-zero because pg_dump is
+    missing on this machine. Worst case you get a warning and run `r3m dump`
+    yourself.
+
+    It writes the file but does not commit it. A dump sitting next to the
+    database protects against a dropped volume, not against changing machines —
+    that needs it pushed, and committing on someone's behalf is a step too far.
+    """
+    try:
+        path = dump_mod.dump()
+    except Exception as exc:  # noqa: BLE001 - a backup must never fail the run
+        print(f"  (could not refresh the dump: {exc}; run `r3m dump` when you can)")
+        return
+    print(f"  dump refreshed: {path.relative_to(dump_mod.ROOT)} — commit it to keep it")
 
 
 def main() -> int:
