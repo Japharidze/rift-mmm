@@ -504,3 +504,49 @@ def insert_game_label(
             (label_run_id, game_id,
              *(fields[c] for c in _GAME_LABEL_COLUMNS), Jsonb(dict(raw_response))),
         )
+
+
+def game_points(
+    conn: psycopg.Connection, prompt_version: str | None = None
+) -> list[dict[str, Any]]:
+    """Every game as an MMM point, one row each.
+
+    Same rules as champion_points: scoped to one prompt version, widest
+    coverage by default rather than newest, latest label per game within it.
+    `bank` is carried through so the quiz can exclude items that make fine
+    anchors and useless questions.
+    """
+    with conn.cursor() as cur:
+        if prompt_version is None:
+            cur.execute(
+                """
+                select r.prompt_version
+                from label_run r join game_label l on l.label_run_id = r.id
+                group by r.prompt_version
+                order by count(distinct l.game_id) desc, max(r.id) desc
+                limit 1
+                """
+            )
+            row = cur.fetchone()
+            if row is None:
+                return []
+            prompt_version = row[0]
+
+        cur.execute(
+            """
+            select distinct on (l.game_id)
+                   l.game_id, g.name, g.mode, l.micro, l.meso, l.macro
+            from game_label l
+            join label_run r on r.id = l.label_run_id
+            join game g on g.id = l.game_id
+            where r.prompt_version = %s
+            order by l.game_id, l.label_run_id desc
+            """,
+            (prompt_version,),
+        )
+        return [
+            {"game_id": r[0], "name": r[1], "mode": r[2],
+             "micro": float(r[3]), "meso": float(r[4]), "macro": float(r[5]),
+             "prompt_version": prompt_version}
+            for r in cur.fetchall()
+        ]

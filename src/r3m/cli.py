@@ -6,7 +6,7 @@ from pathlib import Path
 
 import httpx
 
-from r3m import anchors, db, dump as dump_mod, fetch, ingest, sample, scoring
+from r3m import anchors, db, dump as dump_mod, fetch, ingest, quiz as quiz_mod, sample, scoring
 from r3m.labeling import games as labeling_games
 from r3m.labeling import run as labeling_run
 from r3m.migrate import apply_migrations
@@ -266,6 +266,55 @@ def _autodump() -> None:
     print(f"  dump refreshed: {path.relative_to(dump_mod.ROOT)} — commit it to keep it")
 
 
+def _quiz(args: argparse.Namespace) -> int:
+    with db.connect() as conn:
+        rows = db.game_points(conn)
+    if not rows:
+        print("no games labelled yet - run `r3m label-games` first")
+        return 1
+
+    if args.list:
+        for r in sorted(rows, key=lambda r: r["game_id"]):
+            print(f"  {r['game_id']:22}{r['name'][:28]:30}"
+                  f"{r['micro']:.2f} {r['meso']:.2f} {r['macro']:.2f}")
+        return 0
+
+    if not args.games:
+        print("pass --games with comma-separated ids, or --list to see them")
+        return 1
+
+    try:
+        est = quiz_mod.estimate(args.games.split(","), rows=rows)
+    except ValueError as exc:
+        print(exc)
+        return 1
+
+    for g in est.unknown:
+        print(f"  unknown game, ignored: {g}")
+    print("\nyou picked")
+    for g in est.picked:
+        print(f"  {g['name'][:26]:28}{g['micro']:.2f} {g['meso']:.2f} {g['macro']:.2f}")
+
+    print("\nyour profile")
+    for d in quiz_mod.DIMENSIONS:
+        dim = est.dimensions[d]
+        mark = f"{dim.informative} clear pick(s)" if dim.read else "NOT READ"
+        print(f"  {d:6} {dim.value:.2f}   {mark}")
+
+    print("\nclosest champions")
+    for m in quiz_mod.champions_for(est, n=args.n):
+        print(f"  {m.name:16}{m.role:8} d={m.distance:.2f}")
+
+    # The frozen decision: report an unread dimension, never impute it, and
+    # make the gap a retry hook rather than an apology.
+    for d in est.unread:
+        picks = [g["game_id"] for g in est.picked]
+        more = quiz_mod.suggest_for(d, exclude=picks, rows=rows, n=4)
+        print(f"\n  we could not read your {d}. Played any of these?")
+        print("    " + ", ".join(f"{g['name']}" for g in more))
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="r3m")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -309,6 +358,14 @@ def main() -> int:
     )
     label_games_cmd.add_argument("--note", help="what changed since the last run")
     label_games_cmd.set_defaults(func=_label_games)
+
+    quiz_cmd = sub.add_parser(
+        "quiz", help="games you have played -> an MMM point -> champions"
+    )
+    quiz_cmd.add_argument("--games", help="comma-separated game ids")
+    quiz_cmd.add_argument("--list", action="store_true", help="show the bank")
+    quiz_cmd.add_argument("-n", type=int, default=5)
+    quiz_cmd.set_defaults(func=_quiz)
 
     dump_cmd = sub.add_parser("dump", help="write a data-only dump to dumps/")
     dump_cmd.set_defaults(func=_dump)
