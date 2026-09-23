@@ -93,6 +93,27 @@ uv run r3m sample --matches 2000    # crawl ranked games (~40 min)
 interrupted crawl keeps everything it stored, and re-running continues from
 there. Riot development keys expire every 24 hours.
 
+### Moving to another machine
+
+The data is small and expensive to regenerate — the labels are API spend, and
+the match sample is a 45-minute crawl that draws a *different* random sample
+each time. So it is dumped into the repo rather than rebuilt:
+
+```bash
+uv run r3m dump      # writes dumps/YYYY-MM-DD.sql.gz, ~2 MB
+```
+
+On the new machine, after `docker compose up -d` and `uv sync`:
+
+```bash
+uv run r3m migrate   # schema, from the migration files
+uv run r3m restore   # data, from the newest dump
+```
+
+Dumps are **data only** — schema always comes from migrations, so the two
+cannot drift. `restore` refuses a database that already has rows, because a
+data-only dump appends rather than replaces.
+
 ## Status
 
 Phase 0/1. Champion ingestion, the match sample, and the labelling prompt are

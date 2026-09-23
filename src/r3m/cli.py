@@ -2,10 +2,11 @@
 
 import argparse
 import time
+from pathlib import Path
 
 import httpx
 
-from r3m import anchors, db, fetch, ingest, sample, scoring
+from r3m import anchors, db, dump as dump_mod, fetch, ingest, sample, scoring
 from r3m.labeling import games as labeling_games
 from r3m.labeling import run as labeling_run
 from r3m.migrate import apply_migrations
@@ -212,6 +213,32 @@ def _label_games(args: argparse.Namespace) -> int:
     return 1 if result.failed else 0
 
 
+def _dump(args: argparse.Namespace) -> int:
+    counts = dump_mod.row_counts()
+    path = dump_mod.dump()
+    size = path.stat().st_size / 1_000_000
+    print(f"wrote {path.relative_to(dump_mod.ROOT)}  ({size:.1f} MB)")
+    for table, n in counts.items():
+        print(f"  {table:20}{n:>8}")
+    return 0
+
+
+def _restore(args: argparse.Namespace) -> int:
+    path = Path(args.file) if args.file else dump_mod.latest()
+    if path is None:
+        print("no dump found in dumps/")
+        return 1
+    try:
+        dump_mod.restore(path)
+    except RuntimeError as exc:
+        print(exc)
+        return 1
+    print(f"restored {path.name}")
+    for table, n in dump_mod.row_counts().items():
+        print(f"  {table:20}{n:>8}")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="r3m")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -255,6 +282,15 @@ def main() -> int:
     )
     label_games_cmd.add_argument("--note", help="what changed since the last run")
     label_games_cmd.set_defaults(func=_label_games)
+
+    dump_cmd = sub.add_parser("dump", help="write a data-only dump to dumps/")
+    dump_cmd.set_defaults(func=_dump)
+
+    restore_cmd = sub.add_parser(
+        "restore", help="load a dump into an empty, already-migrated database"
+    )
+    restore_cmd.add_argument("--file", help="dump to load (default: newest in dumps/)")
+    restore_cmd.set_defaults(func=_restore)
 
     check_cmd = sub.add_parser(
         "check-anchors", help="compare a labelling run against anchors/champions.yaml"
