@@ -50,9 +50,8 @@ class Comparison:
 
 @dataclass(frozen=True)
 class CheckResult:
-    label_run_id: int
     prompt_version: str
-    model: str
+    rows: int
     comparisons: list[Comparison]
     unlabelled: list[str]   # anchors the run did not cover
 
@@ -71,17 +70,23 @@ def load(path: Path = ANCHORS_FILE) -> dict[str, dict[str, Any]]:
     return {entry["id"]: entry for entry in data["champions"]}
 
 
-def check(label_run_id: int | None = None, path: Path = ANCHORS_FILE) -> CheckResult:
+def check(prompt_version: str | None = None, path: Path = ANCHORS_FILE) -> CheckResult:
+    """Grade a prompt version's labels against the anchors.
+
+    Scoped by prompt version rather than by run, and via db.champion_points so
+    there is exactly one rule in the codebase for "which labels are current".
+    There used to be two, and only one got fixed when the default changed from
+    newest-run to widest-coverage — so this quietly graded a rejected 35-row
+    experiment instead of the 196-row production set. A regression test that
+    scores the wrong data is worse than none.
+    """
     anchors = load(path)
 
     with db.connect() as conn:
-        run_id = label_run_id or db.latest_label_run(conn)
-        if run_id is None:
-            raise RuntimeError("no labelling run has produced any labels yet")
-        scores = db.label_run_scores(conn, run_id)
+        scores = db.champion_points(conn, prompt_version=prompt_version)
 
     if not scores:
-        raise RuntimeError(f"label_run {run_id} has no labels")
+        raise RuntimeError("no labels to check - run `r3m label` first")
 
     labelled = {s["champion_id"]: s for s in scores}
     comparisons = [
@@ -99,9 +104,8 @@ def check(label_run_id: int | None = None, path: Path = ANCHORS_FILE) -> CheckRe
     ]
 
     return CheckResult(
-        label_run_id=run_id,
         prompt_version=scores[0]["prompt_version"],
-        model=scores[0]["model"],
+        rows=len(scores),
         comparisons=comparisons,
         unlabelled=sorted(cid for cid in anchors if cid not in labelled),
     )

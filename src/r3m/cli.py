@@ -115,11 +115,8 @@ def _label(args: argparse.Namespace) -> int:
 
 
 def _check_anchors(args: argparse.Namespace) -> int:
-    result = anchors.check(label_run_id=args.run)
-    print(
-        f"label_run {result.label_run_id}  prompt {result.prompt_version}  "
-        f"{result.model}\n"
-    )
+    result = anchors.check(prompt_version=args.prompt_version)
+    print(f"prompt {result.prompt_version}  ({result.rows} champion x role rows)\n")
 
     current = None
     for c in result.comparisons:
@@ -280,6 +277,7 @@ def _quiz(args: argparse.Namespace) -> int:
                   f"{r['micro']:.2f} {r['meso']:.2f} {r['macro']:.2f}")
         return 0
 
+    seen: list[str] = []
     if args.interactive:
         served: list[str] = []
         picked: list[str] = []
@@ -294,6 +292,7 @@ def _quiz(args: argparse.Namespace) -> int:
             print("\nnothing picked, so there is nothing to go on.")
             return 1
         args.games = ",".join(picked)
+        seen = served
         print(f"\nasked {len(served)}, you played {len(picked)}")
 
     if not args.games:
@@ -332,8 +331,9 @@ def _quiz(args: argparse.Namespace) -> int:
     # The frozen decision: report an unread dimension, never impute it, and
     # make the gap a retry hook rather than an apology.
     for d in est.unread:
-        picks = [g["game_id"] for g in est.picked]
-        more = quiz_mod.suggest_for(d, exclude=picks, rows=rows, n=4)
+        # everything already shown, not only what was picked
+        shown = seen or [g["game_id"] for g in est.picked]
+        more = quiz_mod.suggest_for(d, exclude=shown, rows=rows, n=4)
         print(f"\n  we could not read your {d}. Played any of these?")
         print("    " + ", ".join(f"{g['name']}" for g in more))
     return 0
@@ -406,8 +406,8 @@ def main() -> int:
         "check-anchors", help="compare a labelling run against anchors/champions.yaml"
     )
     check_cmd.add_argument(
-        "--run", type=int, default=None,
-        help="label_run id (default: the latest run that produced labels)",
+        "--prompt-version", default=None,
+        help="which prompt version's labels to grade (default: widest coverage)",
     )
     check_cmd.set_defaults(func=_check_anchors)
 

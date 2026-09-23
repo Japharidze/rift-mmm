@@ -19,9 +19,10 @@ on the strength of one macro-ish pick; the plain mean keeps them correctly on
 Garen and Dr. Mundo but flattens the eclectic player. The upper-half mean
 holds both.
 
-Caveat worth knowing: with two picks the upper half *is* the higher one, so
-the rule degenerates to max at small n. Four hand-made personas is also a thin
-basis for a choice like this - revisit it against real sessions.
+The upper half is floored at two elements, which matters at exactly two
+picks: taking one per dimension independently would invent a point no game
+occupies. Four hand-made personas is a thin basis for a choice like this -
+revisit it against real sessions.
 
 The part that is not simple is **coverage**. Picking a game is a positive
 signal; *not* picking one is ambiguous — it could mean dislike or could mean
@@ -86,7 +87,13 @@ def estimate(game_ids: list[str], rows: list[dict[str, Any]] | None = None) -> E
     dims = {}
     for d in DIMENSIONS:
         values = [p[d] for p in picked]
-        upper = sorted(values)[len(values) // 2:]
+        # At least two picks in the upper half. With exactly two picks a
+        # plain upper half is one element *per dimension independently*, so
+        # osu! + Factorio would give (1.00, 0.12, 0.92): maximum micro from one
+        # and maximum macro from the other, a player neither game describes and
+        # no game occupies. Taking two collapses that case to the plain mean.
+        keep = max(2, len(values) // 2)
+        upper = sorted(values)[-keep:]
         dims[d] = DimensionEstimate(
             value=round(st.mean(upper), 2),
             informative=sum(1 for v in values if abs(v - 0.5) >= INFORMATIVE),
@@ -101,6 +108,10 @@ def suggest_for(dimension: str, exclude: list[str],
     Sorted by how far they sit from the middle on it — the ones that take the
     clearest side. This is the retry hook the unread-dimension decision calls
     for, not a general recommender.
+
+    `exclude` must be everything already *served*, not just what was picked:
+    offering someone a game they declined thirty seconds ago reads as the quiz
+    not listening.
     """
     if rows is None:
         with db.connect() as conn:
