@@ -1,6 +1,7 @@
 """Command line entry point."""
 
 import argparse
+import sys
 import time
 from pathlib import Path
 
@@ -343,6 +344,16 @@ def _quiz(args: argparse.Namespace) -> int:
     return 0
 
 
+def _serve(args: argparse.Namespace) -> int:
+    import uvicorn
+
+    # api/ is not part of the installed package — it imports r3m, not the other
+    # way round, so the HTTP layer stays something you could delete.
+    sys.path.insert(0, str(dump_mod.ROOT / "api"))
+    uvicorn.run("main:app", host=args.host, port=args.port, reload=args.reload)
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="r3m")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -396,6 +407,12 @@ def main() -> int:
                           help="be asked, one game at a time")
     quiz_cmd.add_argument("-n", type=int, default=5)
     quiz_cmd.set_defaults(func=_quiz)
+
+    serve_cmd = sub.add_parser("serve", help="run the HTTP API for the frontend")
+    serve_cmd.add_argument("--host", default="127.0.0.1")
+    serve_cmd.add_argument("--port", type=int, default=8000)
+    serve_cmd.add_argument("--reload", action="store_true")
+    serve_cmd.set_defaults(func=_serve)
 
     dump_cmd = sub.add_parser("dump", help="write a data-only dump to dumps/")
     dump_cmd.add_argument("--force", action="store_true",
