@@ -6,6 +6,7 @@ import time
 import httpx
 
 from r3m import anchors, db, fetch, ingest, sample, scoring
+from r3m.labeling import games as labeling_games
 from r3m.labeling import run as labeling_run
 from r3m.migrate import apply_migrations
 from r3m.riot_api import RiotApi
@@ -187,6 +188,30 @@ def _match(args: argparse.Namespace) -> int:
     return 0
 
 
+def _label_games(args: argparse.Namespace) -> int:
+    games = args.games.split(",") if args.games else None
+    print(f"labelling {'all games' if games is None else games} with {args.model} ...",
+          flush=True)
+    try:
+        result = labeling_games.run(model=args.model, games=games, note=args.note)
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code not in (401, 403):
+            raise
+        print("Anthropic rejected the API key - check ANTHROPIC_API_KEY in .env")
+        return 1
+    if result.targeted == 0:
+        print("nothing to label: the game table is empty")
+        return 1
+    if result.label_run_id is None:
+        print(f"nothing labelled: all {result.targeted} failed, so no run was recorded")
+    else:
+        print(f"label_run {result.label_run_id}: {result.labelled}/{result.targeted} "
+              f"labelled, {len(result.failed)} failed")
+    for failure in result.failed:
+        print(f"  FAILED {failure.champion_id}: {failure.error}")
+    return 1 if result.failed else 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="r3m")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -220,6 +245,16 @@ def main() -> int:
     )
     label_cmd.add_argument("--note", help="free text stored on the label_run row")
     label_cmd.set_defaults(func=_label)
+
+    label_games_cmd = sub.add_parser(
+        "label-games", help="label games with the MMM sub-traits"
+    )
+    label_games_cmd.add_argument("--model", default=labeling_run.DEFAULT_MODEL)
+    label_games_cmd.add_argument(
+        "--games", help="comma-separated game ids (default: every game in the table)"
+    )
+    label_games_cmd.add_argument("--note", help="what changed since the last run")
+    label_games_cmd.set_defaults(func=_label_games)
 
     check_cmd = sub.add_parser(
         "check-anchors", help="compare a labelling run against anchors/champions.yaml"

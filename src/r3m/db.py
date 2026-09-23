@@ -442,3 +442,65 @@ def champion_points(
             }
             for r in cur.fetchall()
         ]
+
+
+def upsert_game(
+    conn: psycopg.Connection, *, game_id: str, name: str,
+    mode: str | None, is_anchor: bool,
+) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            insert into game (id, name, mode, is_anchor)
+            values (%s, %s, %s, %s)
+            on conflict (id) do update set
+                name = excluded.name,
+                mode = excluded.mode,
+                is_anchor = excluded.is_anchor
+            """,
+            (game_id, name, mode, is_anchor),
+        )
+
+
+def game_labelling_targets(
+    conn: psycopg.Connection, game_ids: Sequence[str] | None = None
+) -> list[dict[str, Any]]:
+    """Games to label. Only the title and mode are returned — deliberately.
+
+    Nothing about category or genre reaches the prompt; passing it would hand
+    the labeller the answer the anchors exist to check.
+    """
+    sql = "select id, name, mode from game"
+    params: tuple[Any, ...] = ()
+    if game_ids is not None:
+        sql += " where id = any(%s)"
+        params = (list(game_ids),)
+    sql += " order by id"
+    with conn.cursor() as cur:
+        cur.execute(sql, params)
+        return [{"game_id": r[0], "name": r[1], "mode": r[2]} for r in cur.fetchall()]
+
+
+_GAME_LABEL_COLUMNS = (
+    "micro_precision", "micro_execution", "micro_cheat",
+    "meso_deception", "meso_prediction", "meso_exploitation", "meso_cheat",
+    "macro_routing", "macro_win_condition", "macro_cheat",
+    "micro", "meso", "macro", "rationale",
+)
+
+
+def insert_game_label(
+    conn: psycopg.Connection, *, label_run_id: int, game_id: str,
+    fields: Mapping[str, Any], raw_response: Mapping[str, Any],
+) -> None:
+    cols = ", ".join(_GAME_LABEL_COLUMNS)
+    marks = ", ".join(["%s"] * len(_GAME_LABEL_COLUMNS))
+    with conn.cursor() as cur:
+        cur.execute(
+            f"""
+            insert into game_label (label_run_id, game_id, {cols}, raw_response)
+            values (%s, %s, {marks}, %s)
+            """,
+            (label_run_id, game_id,
+             *(fields[c] for c in _GAME_LABEL_COLUMNS), Jsonb(dict(raw_response))),
+        )
