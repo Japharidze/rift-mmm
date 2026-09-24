@@ -207,3 +207,48 @@ rows. Same title, different mode, different point, no migration.
 **A reach signal**, to decide the grid by recognisability rather than by hand.
 Bimodal playtime beats review score: it separates games people bounce off from
 games nobody tried, and that distinction is the quiz's whole subject.
+
+
+## A loved game's low coordinates are not evidence — found 2026-09-24
+
+The first test against a known taste, and the quiz got it backwards.
+
+    champions Sergi plays or likes (19)   0.68 / 0.60 / 0.57
+    his quiz result                       0.34 / 0.32 / 0.69
+    distance                              0.457   (CLOSE is 0.10)
+
+He loved Valheim, Factorio and Hades. The estimator is arithmetically right --
+those three alone give 0.44 / 0.20 / 0.72, and his dislikes moved it a little
+further. The error lives almost entirely in **meso: 0.20 against 0.60**.
+
+All three games are single-player or co-op. None has a human opponent, so all
+three score 0.12-0.25 on a dimension defined as "reacting to the unpredictable
+behaviour of people". Meanwhile he mains Thresh, Bard and Zilean, three of the
+most meso-heavy champions in the game.
+
+**The defect: loving a low-meso game is treated as evidence of disliking meso.**
+It is evidence of liking that game. Loving Factorio says "I like planning"
+loudly and says nothing about mind-games, because the question never arose --
+Factorio has no opponent to outguess. But the estimator averages all three
+coordinates of every loved game, so Factorio's 0.12 lands as a positive vote
+for this player being low-meso.
+
+`INFORMATIVE` makes it worse. The test is |x - 0.5| >= 0.25, so Factorio at
+0.12 counts as strongly informative about meso, and the result showed a
+confident 0.32 rather than "not enough to tell". **The frozen rule says an
+unread dimension is reported, never imputed. Here it imputed and called it
+read.**
+
+This is the problem the original upper-half mean was reaching for. It was
+replaced by a plain weighted mean once negative evidence existed, on the
+grounds that dislikes removed the ambiguity. They do not: his dislikes were
+not the problem, his loves were over-read.
+
+The missing asymmetry: **a high coordinate in a loved game is strong evidence;
+a low one is weak or none.** How to express that is a modelling decision and
+is not decided here.
+
+Sergi's call, 2026-09-24: **expand the bank first.** The three games he loved
+were all builders because the grid's low-macro and PvP-light regions are what
+they are; a wider bank is a precondition for testing any change to how loved
+games load.
