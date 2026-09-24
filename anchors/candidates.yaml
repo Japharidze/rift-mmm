@@ -38,13 +38,74 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 candidates:
   - id: Zoe
     role: mid
     micro: high
     meso: high
     macro: mid
-    tier: TODO
+    tier: tight
     class: Lane bully mages  (purist)
     demands: "Lane fundamentals, tempo, resets; patience over aggression."
     live_roles: [mid]
@@ -55,7 +116,7 @@ candidates:
     micro: mid
     meso: mid
     macro: mid-high
-    tier: TODO
+    tier: tight
     class: Lane bully mages
     demands: "Lane fundamentals, tempo, resets; patience over aggression."
     live_roles: [mid, bot]
@@ -66,7 +127,7 @@ candidates:
     micro: low-mid
     meso: low
     macro: mid
-    tier: TODO
+    tier: wide
     class: Scaling mages  (purist)
     demands: "Saying no; knowing your spikes; summoner intentionality."
     live_roles: [mid]
@@ -77,7 +138,7 @@ candidates:
     micro: low
     meso: mid
     macro: mid
-    tier: TODO
+    tier: tight
     class: Scaling mages
     demands: "Saying no; knowing your spikes; summoner intentionality."
     live_roles: [mid]
@@ -88,7 +149,7 @@ candidates:
     micro: low-mid
     meso: mid-high
     macro: mid
-    tier: TODO
+    tier: tight
     class: Scaling mages
     demands: "Saying no; knowing your spikes; summoner intentionality."
     live_roles: [mid]
@@ -99,7 +160,7 @@ candidates:
     micro: mid-high
     meso: mid-high
     macro: mid
-    tier: TODO
+    tier: tight
     class: Mobile mages  (purist)
     demands: "Mobility as a tool to create advantage, not as an escape."
     live_roles: [mid]
@@ -110,7 +171,7 @@ candidates:
     micro: high
     meso: mid-high
     macro: low-mid
-    tier: TODO
+    tier: wide
     class: AP assassins  (purist)
     demands: "Fog; deciding *when to show yourself*; precise target selection."
     live_roles: [mid]
@@ -121,7 +182,7 @@ candidates:
     micro: mid-high
     meso: mid
     macro: mid-high
-    tier: TODO
+    tier: tight
     class: AP assassins
     demands: "Fog; deciding *when to show yourself*; precise target selection."
     live_roles: [jungle, mid]
@@ -132,7 +193,7 @@ candidates:
     micro: high
     meso: mid-high
     macro: low-mid
-    tier: TODO
+    tier: tight
     class: AD assassins  (purist)
     demands: "As above, plus: must impose threat even to farm."
     live_roles: [jungle, mid]
@@ -143,7 +204,7 @@ candidates:
     micro: mid-high
     meso: mid
     macro: low-mid
-    tier: TODO
+    tier: wide
     class: AD assassins
     demands: "As above, plus: must impose threat even to farm."
     live_roles: [jungle, mid]
@@ -154,7 +215,7 @@ candidates:
     micro: mid
     meso: mid
     macro: high
-    tier: TODO
+    tier: tight
     class: Utility
     demands: "Wincon thinking; at least one spell that does no damage."
     live_roles: [mid]
@@ -165,7 +226,7 @@ candidates:
     micro: mid
     meso: mid
     macro: mid-high
-    tier: TODO
+    tier: tight
     class: Utility
     demands: "Wincon thinking; at least one spell that does no damage."
     live_roles: [mid]
@@ -176,7 +237,7 @@ candidates:
     micro: mid
     meso: mid-high
     macro: mid
-    tier: TODO
+    tier: wide
     class: Roamers  (purist)
     demands: "Wave states, tempo, wincon assessment. Wave clear is the prerequisite."
     live_roles: [jungle]
@@ -187,7 +248,7 @@ candidates:
     micro: high
     meso: mid
     macro: high
-    tier: TODO
+    tier: tight
     class: Roamers
     demands: "Wave states, tempo, wincon assessment. Wave clear is the prerequisite."
     live_roles: [mid]
@@ -198,7 +259,7 @@ candidates:
     micro: mid
     meso: low
     macro: low
-    tier: TODO
+    tier: wide
     class: Hyperscalers  (purist)
     demands: "Expert at saying no; disciplined to the point of delusion."
     live_roles: [top]
@@ -209,7 +270,7 @@ candidates:
     micro: mid-high
     meso: mid-high
     macro: low-mid
-    tier: TODO
+    tier: tight
     class: Hyperscalers
     demands: "Expert at saying no; disciplined to the point of delusion."
     live_roles: [mid]
@@ -220,7 +281,7 @@ candidates:
     micro: mid
     meso: mid-high
     macro: mid
-    tier: TODO
+    tier: wide
     class: Fighters  (purist)
     demands: "Mechanics max; knowing when strong and weak; poor at translating leads."
     live_roles: [top, mid]
@@ -231,7 +292,7 @@ candidates:
     micro: high
     meso: mid-high
     macro: low-mid
-    tier: TODO
+    tier: wide
     class: Fighters
     demands: "Mechanics max; knowing when strong and weak; poor at translating leads."
     live_roles: [mid]
@@ -239,10 +300,10 @@ candidates:
 
   - id: Viego
     role: jungle
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid-high
+    meso: mid-high
+    macro: mid-high
+    tier: wide
     class: Carry fighters  (purist)
     demands: "Opportunistic, can't force; must reach three items."
     live_roles: [jungle]
@@ -250,10 +311,10 @@ candidates:
 
   - id: MonkeyKing
     role: jungle
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: low-mid
+    meso: mid
+    macro: mid-high
+    tier: wide
     class: Carry fighters
     demands: "Opportunistic, can't force; must reach three items."
     live_roles: [jungle]
@@ -261,10 +322,10 @@ candidates:
 
   - id: Shyvana
     role: jungle
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: low-mid
+    meso: low-mid
+    macro: mid-high
+    tier: wide
     class: Carry fighters
     demands: "Opportunistic, can't force; must reach three items."
     live_roles: [jungle]
@@ -272,10 +333,10 @@ candidates:
 
   - id: Vi
     role: jungle
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid
+    meso: mid-high
+    macro: mid-high
+    tier: wide
     class: Team-oriented fighters  (purist)
     demands: "Early presence; can only kill one target; sets up carries."
     live_roles: [jungle]
@@ -283,10 +344,10 @@ candidates:
 
   - id: Nocturne
     role: jungle
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid
+    meso: mid-high
+    macro: mid-high
+    tier: tight
     class: Team-oriented fighters
     demands: "Early presence; can only kill one target; sets up carries."
     live_roles: [jungle]
@@ -294,10 +355,10 @@ candidates:
 
   - id: Karthus
     role: jungle
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: low-mid
+    meso: mid
+    macro: mid
+    tier: tight
     class: Hyperscalers  (purist)
     demands: "Selfish; camp tempo; stem the bleeding; execute fights at three items."
     live_roles: [jungle]
@@ -305,10 +366,10 @@ candidates:
 
   - id: Kindred
     role: jungle
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid-high
+    meso: high
+    macro: mid
+    tier: tight
     class: ADC junglers  (purist)
     demands: "All-rounder; Graves must close the game out."
     live_roles: [jungle]
@@ -316,10 +377,10 @@ candidates:
 
   - id: Graves
     role: jungle
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid-high
+    meso: mid
+    macro: mid
+    tier: wide
     class: ADC junglers
     demands: "All-rounder; Graves must close the game out."
     live_roles: [jungle]
@@ -327,10 +388,10 @@ candidates:
 
   - id: Khazix
     role: jungle
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid-high
+    meso: low-mid
+    macro: mid
+    tier: wide
     class: Assassins  (purist)
     demands: "Picks not teamfights; high- vs low-value kills; **create your own fog**."
     live_roles: [jungle]
@@ -338,10 +399,10 @@ candidates:
 
   - id: Talon
     role: jungle
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid-high
+    meso: mid
+    macro: high
+    tier: wide
     class: Assassins
     demands: "Picks not teamfights; high- vs low-value kills; **create your own fog**."
     live_roles: [jungle]
@@ -349,10 +410,10 @@ candidates:
 
   - id: Lillia
     role: jungle
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid-high
+    meso: mid-high
+    macro: mid-high
+    tier: wide
     class: AP outcasts  (purist)
     demands: "No shared skill set \u2014 this is \"I need an AP pick\"."
     live_roles: [jungle]
@@ -360,10 +421,10 @@ candidates:
 
   - id: Fiddlesticks
     role: jungle
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: low-mid
+    meso: low-mid
+    macro: mid-high
+    tier: wide
     class: AP outcasts
     demands: "No shared skill set \u2014 this is \"I need an AP pick\"."
     live_roles: [jungle]
@@ -371,10 +432,10 @@ candidates:
 
   - id: Amumu
     role: jungle
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid
+    meso: mid
+    macro: mid
+    tier: tight
     class: Carry tanks  (purist)
     demands: "Needs items; provides CC but can kill; easy clears free up mental stack."
     live_roles: [jungle]
@@ -382,10 +443,10 @@ candidates:
 
   - id: Zac
     role: jungle
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid-high
+    meso: mid-high
+    macro: mid
+    tier: wide
     class: Carry tanks
     demands: "Needs items; provides CC but can kill; easy clears free up mental stack."
     live_roles: [jungle]
@@ -393,10 +454,10 @@ candidates:
 
   - id: Ivern
     role: jungle
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid-high
+    meso: mid-high
+    macro: high
+    tier: tight
     class: Utility tanks  (purist)
     demands: "Purely playing the map; single target; cannot kill alone."
     live_roles: [jungle]
@@ -404,10 +465,10 @@ candidates:
 
   - id: Skarner
     role: jungle
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid
+    meso: mid-high
+    macro: mid
+    tier: wide
     class: Utility tanks
     demands: "Purely playing the map; single target; cannot kill alone."
     live_roles: [jungle]
@@ -415,10 +476,10 @@ candidates:
 
   - id: Taliyah
     role: jungle
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: high
+    meso: mid
+    macro: mid-high
+    tier: wide
     class: Mages  (purist)
     demands: "Camp tempo; front-to-back positioning, which is rare for junglers."
     live_roles: [mid]
@@ -426,10 +487,10 @@ candidates:
 
   - id: Zyra
     role: jungle
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid
+    meso: low-mid
+    macro: mid
+    tier: tight
     class: Mages
     demands: "Camp tempo; front-to-back positioning, which is rare for junglers."
     live_roles: [support, jungle]
@@ -437,10 +498,10 @@ candidates:
 
   - id: Renekton
     role: top
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid-high
+    meso: mid-high
+    macro: low
+    tier: wide
     class: Bruisers  (purist)
     demands: "A ticking clock: win lane, then **translate the lead** before you fall off."
     live_roles: [top]
@@ -448,10 +509,10 @@ candidates:
 
   - id: Olaf
     role: top
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid
+    meso: mid-high
+    macro: mid
+    tier: tight
     class: Bruisers
     demands: "A ticking clock: win lane, then **translate the lead** before you fall off."
     live_roles: [top]
@@ -459,10 +520,10 @@ candidates:
 
   - id: Sett
     role: top
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid
+    meso: high
+    macro: mid
+    tier: wide
     class: Juggernauts  (purist)
     demands: "Closing the gap with no mobility; extended trades; still show up for neutrals."
     live_roles: [top]
@@ -470,10 +531,10 @@ candidates:
 
   - id: Jax
     role: top
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid-high
+    meso: high
+    macro: mid-high
+    tier: wide
     class: Fighter / skirmishers  (purist)
     demands: "Mechanically demanding; options in the mid game; brutal once behind."
     live_roles: [top]
@@ -481,10 +542,10 @@ candidates:
 
   - id: Trundle
     role: top
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: low-mid
+    meso: mid-high
+    macro: mid-high
+    tier: wide
     class: Splitpushers  (purist)
     demands: "Sinking pressure; timing it to the team; high-value deaths."
     live_roles: [top, jungle]
@@ -492,10 +553,10 @@ candidates:
 
   - id: Fiora
     role: top
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: high
+    meso: high
+    macro: mid-high
+    tier: wide
     class: Splitpushers
     demands: "Sinking pressure; timing it to the team; high-value deaths."
     live_roles: [top]
@@ -503,10 +564,10 @@ candidates:
 
   - id: Sion
     role: top
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid
+    meso: mid
+    macro: high
+    tier: wide
     class: Tanks  (purist)
     demands: "Strong *short* trades; outscaled in side lane, so group and force fights."
     live_roles: [top]
@@ -514,10 +575,10 @@ candidates:
 
   - id: Malphite
     role: top
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: low
+    meso: low-mid
+    macro: mid
+    tier: wide
     class: Tanks
     demands: "Strong *short* trades; outscaled in side lane, so group and force fights."
     live_roles: [top]
@@ -525,10 +586,10 @@ candidates:
 
   - id: Kayle
     role: top
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid-high
+    meso: low
+    macro: low
+    tier: wide
     class: Ranged tops  (purist)
     demands: "Spacing and tethering; conserve HP; small wins; unforgiving when behind."
     live_roles: [top]
@@ -536,10 +597,10 @@ candidates:
 
   - id: MissFortune
     role: bot
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid
+    meso: mid
+    macro: low
+    tier: wide
     class: Lane bullies
     demands: "Early strength exists to get *all the farm*, not only to fight."
     live_roles: [bot]
@@ -547,10 +608,10 @@ candidates:
 
   - id: Sivir
     role: bot
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: low-mid
+    meso: low-mid
+    macro: low-mid
+    tier: tight
     class: Hyperscalers
     demands: "Survive lane, say no, pump economy; influence comes from teamfights."
     live_roles: [bot]
@@ -558,10 +619,10 @@ candidates:
 
   - id: Jhin
     role: bot
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid-high
+    meso: mid-high
+    macro: mid-high
+    tier: wide
     class: Utility  (purist)
     demands: "Mid-game picks via non-committal engage."
     live_roles: [bot]
@@ -569,10 +630,10 @@ candidates:
 
   - id: Ziggs
     role: bot
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid
+    meso: mid
+    macro: mid-high
+    tier: tight
     class: Mage bot laners  (purist)
     demands: "Anti-ADC: pin them under tower. Ability usage ADCs lack."
     live_roles: [bot]
@@ -580,10 +641,10 @@ candidates:
 
   - id: Hwei
     role: bot
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: high
+    meso: mid
+    macro: mid-high
+    tier: tight
     class: Mage bot laners
     demands: "Anti-ADC: pin them under tower. Ability usage ADCs lack."
     live_roles: [mid]
@@ -591,10 +652,10 @@ candidates:
 
   - id: Seraphine
     role: bot
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid
+    meso: mid
+    macro: mid
+    tier: wide
     class: Mage bot laners
     demands: "Anti-ADC: pin them under tower. Ability usage ADCs lack."
     live_roles: [support]
@@ -613,10 +674,10 @@ candidates:
 
   - id: Nami
     role: support
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid-high
+    meso: mid-high
+    macro: high
+    tier: wide
     class: Battle enchanters
     demands: "Proactive trading; pressure the enemy ADC without dying to ganks."
     live_roles: [support]
@@ -624,10 +685,10 @@ candidates:
 
   - id: Sona
     role: support
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid-high
+    meso: mid
+    macro: mid-high
+    tier: wide
     class: Scaling enchanters
     demands: "*Should* play like battle enchanters; above Emerald you must."
     live_roles: [support]
@@ -635,10 +696,10 @@ candidates:
 
   - id: Xerath
     role: support
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: low-mid
+    meso: mid
+    macro: mid
+    tier: wide
     class: Mages  (purist)
     demands: "Must win lane; gold-reliant; miss and you are nothing."
     live_roles: [mid]
@@ -646,10 +707,10 @@ candidates:
 
   - id: Zyra
     role: support
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid
+    meso: mid
+    macro: mid
+    tier: tight
     class: Mages
     demands: "Must win lane; gold-reliant; miss and you are nothing."
     live_roles: [support, jungle]
@@ -657,10 +718,10 @@ candidates:
 
   - id: Neeko
     role: support
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid
+    meso: high
+    macro: mid-high
+    tier: wide
     class: Mages
     demands: "Must win lane; gold-reliant; miss and you are nothing."
     live_roles: [support]
@@ -668,10 +729,10 @@ candidates:
 
   - id: Rell
     role: support
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid-high
+    meso: mid-high
+    macro: high
+    tier: tight
     class: Engagers  (purist)
     demands: "Roaming; linking with the jungler; limit testing; engage quality and timing."
     live_roles: [support]
@@ -679,10 +740,10 @@ candidates:
 
   - id: Leona
     role: support
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid
+    meso: mid-high
+    macro: high
+    tier: tight
     class: Engagers
     demands: "Roaming; linking with the jungler; limit testing; engage quality and timing."
     live_roles: [support]
@@ -690,10 +751,10 @@ candidates:
 
   - id: Thresh
     role: support
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: high
+    meso: high
+    macro: high
+    tier: tight
     class: Playmakers
     demands: "The most cerebral, highest ceiling: wincon, tempo, fog,"
     live_roles: [support]
@@ -701,10 +762,10 @@ candidates:
 
   - id: Blitzcrank
     role: support
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid-high
+    meso: high
+    macro: high
+    tier: wide
     class: Playmakers
     demands: "The most cerebral, highest ceiling: wincon, tempo, fog,"
     live_roles: [support]
@@ -712,10 +773,10 @@ candidates:
 
   - id: Pantheon
     role: support
-    micro: TODO
-    meso: TODO
-    macro: TODO
-    tier: TODO
+    micro: mid
+    meso: mid
+    macro: mid-high
+    tier: tight
     class: Fighter supports
     demands: "Must snowball; knowing limits; making the game chaotic."
     live_roles: [support, top]
