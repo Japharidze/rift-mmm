@@ -1,17 +1,18 @@
 /* Deliberately plain. Design comes later; this is only enough to read. */
-:root { --fg: #1a1a1a; --dim: #6b6b6b; --line: #e0e0e0; --bg: #fff; }
+:root { --fg: #1a1a1a; --dim: #6b6b6b; --line: #e0e0e0; --bg: #fff;
+  --plate: #f6f6f4; --pick: #1a7f37; }
 @media (prefers-color-scheme: dark) {
-  :root { --fg: #ededed; --dim: #9a9a9a; --line: #333; --bg: #161616; }
+  :root { --fg: #ededed; --dim: #9a9a9a; --line: #333; --bg: #161616; --plate: #1f1f1e; --pick: #2ea043; }
 }
 body { margin: 0; background: var(--bg); color: var(--fg);
   font: 16px/1.5 system-ui, sans-serif; }
 main { max-width: 34rem; margin: 0 auto; padding: 2rem 1rem; }
+main.wide { max-width: 52rem; }
 h1 { font-size: 1.1rem; font-weight: 600; margin: 0 0 1.5rem; }
 button { font: inherit; padding: .5rem 1.25rem; margin-right: .5rem;
   border: 1px solid var(--line); background: none; color: inherit;
   border-radius: 6px; cursor: pointer; }
 button:hover { border-color: var(--fg); }
-.q { font-size: 1.35rem; margin: 2rem 0 1.5rem; }
 .progress { color: var(--dim); font-size: .85rem; }
 table { border-collapse: collapse; width: 100%; margin: .5rem 0 1.5rem; }
 td { padding: .35rem 0; border-bottom: 1px solid var(--line); }
@@ -22,7 +23,103 @@ td.r { text-align: right; color: var(--dim); }
 .gloss { color: var(--dim); font-size: .85rem; }
 .champ { padding: .6rem 0; border-bottom: 1px solid var(--line); }
 .tag { font-size: .75rem; margin-left: .5rem; }
-.q.pending { opacity: .25; }
 .key { opacity: .4; font-size: .75rem; }
 button.link { border: none; padding: 0; text-decoration: underline;
   color: var(--dim); }
+
+/* Both card kinds occupy the same box, so the buttons never move between
+   rounds. Steam headers are 460x215; the plate matches that shape so a bank
+   with mixed coverage still reads as one deck. */
+.card { width: 100%; max-width: 24rem; aspect-ratio: 460 / 215;
+  margin: 2rem 0 1.5rem; display: flex; flex-direction: column;
+  justify-content: flex-end; border-radius: 8px; overflow: hidden; }
+.card.pending { opacity: .25; }
+.art { width: 100%; flex: 1; object-fit: cover; display: block; }
+.card .title { font-size: 1.35rem; }
+.card .year { color: var(--dim); }
+
+/* Art card: the image carries recognition, so the caption stays out of its
+   way. */
+.caption { display: flex; align-items: baseline; gap: .6rem;
+  padding: .6rem .1rem 0; }
+.caption .year { font-size: .85rem; }
+
+/* Text card: typographic on purpose. Filling the same box with a border and a
+   tint makes it a card rather than a caption stranded under a missing image. */
+.plate { flex: 1; display: flex; flex-direction: column; justify-content: center;
+  gap: .4rem; padding: 1.5rem; border: 1px solid var(--line);
+  border-radius: 8px; background: var(--plate); }
+.plate .title { font-size: 1.9rem; font-weight: 600; line-height: 1.15;
+  letter-spacing: -.02em; }
+.plate .year, .plate .genre { font-size: .9rem; }
+.plate .genre { color: var(--dim); }
+
+/* Stage 1 — the grid. Cards are scanned, not answered, so they can be small
+   and many; the tap target is the whole card. auto-fill rather than a fixed
+   column count so it reflows to a phone without a breakpoint. */
+.grid { display: grid; gap: .6rem; margin: 1.25rem 0;
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); }
+.gcard { padding: 0; margin: 0; border: 1px solid var(--line); overflow: hidden;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  aspect-ratio: 460 / 215; position: relative; text-align: left; }
+.gcard:hover { border-color: var(--fg); }
+.gcard .art { flex: 1; }
+/* At grid scale the caption and plate share one compact treatment — a 1.9rem
+   plate title would not fit, and two type scales across one grid reads as two
+   unrelated components rather than one deck. */
+.gcard .caption, .gcard .plate { padding: .4rem .5rem; gap: .15rem; border: 0;
+  background: none; flex: none; }
+.gcard .plate { flex: 1; justify-content: center; background: var(--plate); }
+.gcard .title { font-size: .8rem; font-weight: 600; line-height: 1.2;
+  letter-spacing: 0; }
+.gcard .plate .title { font-size: .95rem; }
+.gcard .year { font-size: .7rem; }
+.gcard .caption { background: var(--bg); }
+/* Picked is a state that must survive being read at a glance across 28 cards,
+   so it is a fill and a border rather than a tint alone. */
+.gcard.picked { border-color: var(--pick); box-shadow: inset 0 0 0 2px var(--pick); }
+.gcard.picked::after { content: "✓"; position: absolute; top: .3rem; right: .4rem;
+  width: 1.2rem; height: 1.2rem; border-radius: 50%; background: var(--pick);
+  color: #fff; font-size: .75rem; line-height: 1.2rem; text-align: center; }
+.actions { display: flex; align-items: center; gap: .75rem; }
+.next { padding: .6rem 1.75rem; }
+
+/* Progress as movement, not a fraction. A hollow track is an unread
+   dimension: no width at all rather than a confident-looking provisional bar,
+   which would be the imputation the model refuses to make. */
+.readout { display: flex; flex-direction: column; gap: .3rem; margin: 1rem 0; }
+.bar { display: flex; align-items: center; gap: .6rem; }
+.bar-label { font-size: .75rem; color: var(--dim); width: 7rem; flex: none; }
+.track { flex: 1; height: 4px; border-radius: 2px; background: var(--line); }
+
+/* Stage 3 — the comparison. Two cards, deliberately equal weight: any visual
+   asymmetry is a thumb on the scale of the answer. */
+.sharpen { border-top: 1px solid var(--line); margin-top: 2rem; padding-top: .5rem; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem;
+  margin: 1rem 0; max-width: 26rem; }
+.pair .gcard { aspect-ratio: 460 / 215; }
+.pair .key { position: absolute; bottom: .3rem; right: .45rem; }
+
+/* The readout is a position on an axis, not a quantity in a bar: a marker
+   that slides, with a centre tick for reference. A growing bar would imply
+   more-is-better, and these three are coordinates -- low macro is a taste, not
+   a low score. */
+.track { position: relative; }
+.tick { position: absolute; left: 50%; top: -3px; width: 1px; height: 10px;
+  background: var(--line); }
+.span { position: absolute; top: 0; height: 100%; border-radius: 2px;
+  background: var(--fg); transition: left .35s ease, width .35s ease; }
+.marker { position: absolute; top: 50%; width: 10px; height: 10px;
+  margin: -5px 0 0 -5px; border-radius: 50%; background: var(--fg);
+  transition: left .35s ease; }
+/* Faint, not absent, before a dimension is read: something has to move from
+   the first pick or the readout looks broken, but a full-strength marker for a
+   position we do not yet stand behind is the imputation the model refuses. */
+.track.unread .span, .track.unread .marker { opacity: .3; }
+.axis-note { color: var(--dim); font-size: .75rem; margin: .35rem 0 0; }
+
+/* What the last comparison changed. The cap keeps stage 3 from relocating the
+   point on purpose, so its real effect lands at ranks three to five -- visible
+   only if pointed at, and an invisible effect reads as a broken button. */
+.fresh { font-size: .7rem; margin-left: .5rem; padding: .05rem .4rem;
+  border: 1px solid var(--pick); border-radius: 999px; color: var(--pick); }
