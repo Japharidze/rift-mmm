@@ -202,10 +202,28 @@ untouched, now with two data points (v7's Teemo, this section's reasoning)
 suggesting its own rewrite should target the "presence constrains the enemy"
 clause specifically rather than routing wholesale.
 
-Not yet re-measured against the full anchor set as its own combined version —
-the pieces are each validated individually (win_condition against its
-motivating cases + Kassadin; micro's revert is a return to the already-known
-v3 numbers), but a full v8 pass has not been run.
+Measured 2026-09-24, label_run 20, 27 rows over the 25 anchor champions:
+**30 blocking failures of 75**, against v3's 29, v7's 30 and v9's 32.
+
+The run also settled a larger question, because micro and meso act as controls:
+v8 reverted micro to v3's wording and never touched meso, so those two are the
+same prompt re-run months later. They came back at mean |v8-v3| of 0.020 and
+0.024, max 0.08 and 0.07 — the test-retest noise floor exactly. Macro, the only
+part that genuinely differs, moved 0.049 mean with a -0.026 bias, roughly twice
+noise.
+
+So meso's apparent regression here (10 failures at v3, 14 at v8) is noise, not
+wording: a 0.024 mean shift flips four champions because the check is pass/fail
+against narrow intervals and a champion sitting 0.01 inside a boundary crosses
+it for nothing. **Counting blocking failures is a much noisier statistic than
+it appears, and the spread between v3, v7, v8 and v9 (29-32) is smaller than
+the same-wording noise (+/-4).** The anchor set as it stands cannot resolve
+these versions from each other.
+
+That is the case against a full relabel at v8, and against a tenth wording. The
+binding constraint is the regression test — 25 champions, narrow intervals,
+some of them model-influenced — not the prompt. More anchors would buy
+resolution; another rewrite would not.
 
 ### v9 — 2026-09-24
 
