@@ -469,3 +469,97 @@ than the attribution is worth at pilot scale.
 
 First wording. Text recoverable from git history at
 `src/r3m/labeling/prompt.py`.
+
+## Why macro resists measurement — 2026-09-24
+
+Four independent attempts to measure macro per champion, and the correlations
+between every pair of them:
+
+    source                        vs macro   vs routing   vs win_condition
+    Sergi's 25 anchors              +0.53       +0.67          +0.19
+    podcast-derived 62 anchors      +0.01       +0.29          -0.33
+    behaviour (match data)          -0.11       -0.08          -0.09
+
+Two findings, and the second explains the first.
+
+**The macro sub-traits do not measure one thing.** `macro_routing` and
+`macro_win_condition` correlate **+0.22** with each other across 210 v3 labels.
+The dimension's alpha of 0.78 is propped up by `macro_cheat`, which is a
+summary question and correlates with everything (+0.80 with routing, +0.62 with
+win_condition). Compare `micro_precision`/`micro_execution` at +0.49 and note
+meso has the same problem in miniature: `meso_deception`/`meso_prediction` sit
+at **+0.12**.
+
+**So the aggregate cancels its own signal.** Both independent anchor sets track
+routing and not win_condition -- the podcast set *anti*-tracks it at -0.33 --
+so averaging the two annihilates a real correlation. The podcast anchors look
+worthless on macro (+0.01) and are in fact a usable routing signal (+0.29)
+hidden inside a mean.
+
+Re-weighting toward routing recovers it monotonically (equal 0.52 -> routing
+only 0.67 on the 25; 0.00 -> 0.29 on the 62). **That is not the fix.**
+`docs/3m-model.md` has Surnex defining macro as "routing, resource management,
+win conditions", so weighting win_condition out would be editing the model to
+fit our numbers, which the Attribution rule in CLAUDE.md bars.
+
+The fix that follows from this is a sub-trait redesign, and it is not another
+`macro_routing` rewrite -- that has now failed four times (v4, v5, v6, v9)
+because routing was never the broken part. Two specific defects:
+
+1. **`macro_win_condition` is the broken sub-trait.** It anti-correlates with
+   independent judgment while routing tracks it. Four rewrites went to the
+   wrong item.
+2. **Resource management has no sub-trait at all.** Surnex names three things
+   in macro; the decomposition covers two. Whatever holds routing and
+   win-condition together in his model may be the term we never wrote down.
+
+Both are testable cheaply now: the sub-traits are stored, so any re-weighting
+is a new `label_run` computed from existing rows with no API calls, and the
+podcast anchors give a second independent routing signal the 25 did not.
+
+Caveat on all of it: both anchor sets are Sergi's judgment, so "routing
+correlates best" may say his conception of macro is routing rather than that
+macro is routing. The one genuinely independent source -- behaviour -- tracks
+none of the three, which is itself evidence that match statistics measure what
+players *did* rather than what a kit *demands*.
+
+### Third source, same verdict — 2026-09-24
+
+A two-axis champion-difficulty article (steffnstuff.com, "Comparing League
+champion difficulty") splits difficulty into "mechanical execution -- the
+difficulty of pressing buttons in the optimal way" and "decision-making
+diversity -- the amount of variables a player needs to consider". Nine
+champions carry quadrant placements: Garen low/easy; Gangplank high/hard;
+Singed, Rengar, Warwick low/hard; Vayne, Kog'Maw, Zeri, Xerath high/easy.
+Anonymous and explicitly personal opinion, so weak on its own -- but
+independent of both the labeller and the anchor author, and per-champion and
+kit-based, which is what the podcast and the match-data index were not.
+
+v3 separates its axes cleanly:
+
+    micro       article-high 0.78   article-low 0.40    gap +0.38
+    meso+macro  article-hard 0.65   article-easy 0.48   gap +0.16
+
+The first independent corroboration of the labels obtained. And splitting the
+"hard decisions" signal reproduces the routing/win_condition result exactly:
+
+    meso                +0.14
+    macro               +0.19
+    macro_routing       +0.42
+    macro_win_condition -0.03
+
+So three sources, three methods, three vocabularies:
+
+    source                  routing   win_condition
+    Sergi's 25 anchors       +0.67        +0.19
+    podcast-derived 62       +0.29        -0.33
+    this article (n=9)       +0.42        -0.03
+
+Every one tracks routing; none tracks win_condition. `macro_win_condition`
+measures something no external observer recognises as macro, and folding it
+into the aggregate at equal weight is what buries routing's signal.
+
+Also worth noting what this source got right that we already believed: Garen
+low on everything (matching the anchor kept as the scale's floor case) and
+Singed as low-execution/hard-decisions, which is where Gate 2's Hearthstone/TFT
+persona landed first.
