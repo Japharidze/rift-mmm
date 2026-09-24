@@ -9,7 +9,11 @@ the frozen source. If the two ever disagree, docs/sub-traits.md is correct and
 this file is stale and needs a version bump.
 """
 
-PROMPT_VERSION = "v8"
+PROMPT_VERSION = "v10"
+
+# Which sub-trait fills the middle macro slot. v10 swaps win_condition for
+# resources; see docs/sub-traits.md.
+MACRO_MIDDLE = "macro_resources"
 
 SYSTEM_PROMPT = """\
 You score one League of Legends champion, in one role, on the micro / meso /
@@ -66,15 +70,16 @@ Macro
    made for them. A champion who chooses between objectives, decides when to
    abandon a lane, or whose presence elsewhere constrains what the enemy can
    do, scores high.
-2. win_condition: how much does good play mean actively deciding when and
-   how to pursue a late-game plan, rather than converging on one because it
-   exists? A stacking or scaling mechanic is not enough by itself: if the
-   target and timing are the same regardless of what the enemy does -- farm
-   safely, hit the number, you are strong -- that is a fixed progression, not
-   a decision. Score high only where the plan's timing or shape branches on
-   the game state: contesting objectives around it, choosing when to force a
-   fight versus scale further, or reacting to what the enemy is doing to
-   reach it.
+2. resources: how much of this champion's strength comes from managing the
+   map's renewable resources rather than from fighting? Three things count.
+   Waves: can the kit clear and push faster than the enemy can answer, and
+   does that create somewhere the enemy must respond? Time: does dealing with
+   this champion cost the enemy more time than creating the threat cost you --
+   a threat that must be respected while it is doing nothing scores high.
+   Denial: can it take or contest camps, plates, or vision without committing
+   to a fight? A champion that converts an advantage only by killing people
+   scores low here however strong it is, and a champion that is dangerous
+   merely by existing somewhere scores high even if it kills nobody.
 3. cheat: would a perfect coach -- telling you exactly where to be and what
    to prioritize, no mechanical or read improvement -- make this champion
    dramatically stronger *than the same coaching would make an average

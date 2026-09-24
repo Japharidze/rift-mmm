@@ -110,6 +110,53 @@ meso, Yuumi's micro) — the harder bar than matching the easy cases.
 
 ## Version history
 
+### v10 — registered 2026-09-24, not yet run
+
+**The change.** `macro_win_condition` is removed and `macro_resources` takes
+its slot. Nothing else moves: micro and meso are untouched, `macro_routing`
+and `macro_cheat` keep their v8 wording, so any v8 -> v10 difference is
+attributable to this one item.
+
+**Why replace rather than reword.** It measures scaling, not decision-making.
+The v8 text spends six lines excluding exactly that -- "a stacking or scaling
+mechanic is not enough by itself ... farm safely, hit the number, you are
+strong" -- and the top of the resulting distribution is Nasus 0.95, Kayle
+0.95, Kassadin 0.92, Smolder 0.88, Aurelion Sol 0.85, Veigar 0.82: the
+excluded archetype, sorted. Negating a pull inside a prompt does not work, a
+lesson this file already recorded at v2 -> v3 ("reword the specific sub-trait,
+do not tell the model to use more of the scale"). A seventh line of exclusion
+would fail the same way, so the question changes instead. A weak behavioural
+check agrees: correlation with a champion's win-rate gradient across game
+length is +0.22 for win_condition against -0.06 for routing, over 78
+champions -- consistent, not conclusive.
+
+**Why resources.** `docs/3m-model.md` has Surnex defining macro as "routing,
+resource management, win conditions". Resource management was never
+decomposed, so adding it completes the definition rather than extending it
+(CLAUDE.md, Attribution). Its vocabulary comes from sources already gathered:
+waves, time as a resource to be spent by the enemy, and denial.
+
+**Predictions, registered before the run.**
+
+1. **Blitzcrank rises.** Currently the lowest macro_win_condition of all 196
+   rows (0.25). The WTL podcast calls playmaker supports "the most cerebral,
+   highest ceiling" in the game and names Blitzcrank among them. A hook threat
+   denies approach and costs time, so resources should place it well above its
+   current floor.
+2. **Nasus falls.** It converts an advantage by killing; it should not top a
+   resource axis.
+3. **It must not merely rename routing.** Inter-item correlation with
+   `macro_routing` should land in roughly 0.3-0.6. At 0.8 or above this is
+   routing wearing a new label and the change is rejected.
+4. **The macro aggregate's agreement with all three external sources rises**
+   from its current 0.52 (Sergi's 25), 0.00 (podcast 62) and +0.19 (the
+   two-axis article).
+
+Prediction 3 is the one that can fail cleanly, which is what makes the run
+worth paying for. Grading is the 25 anchors, against v3's 29 blocking failures
+and v8's 30.
+
+
 ### v7 — 2026-09-24
 
 Anchor check on the canonical v3 set (runs 9+10, 196 rows, matched by role)

@@ -259,10 +259,13 @@ def insert_label_run(
 # r3m.labeling.schema.ChampionLabel's fields, but this module does not
 # import that class — labelling code goes through db.py, not the other way
 # round, so this takes a plain mapping instead.
+# macro_win_condition and macro_resources occupy one slot: a run asks for
+# exactly one and stores null for the other (migration 010). Both are listed
+# so the insert is version-agnostic.
 CHAMPION_LABEL_COLUMNS = (
     "micro_precision", "micro_execution", "micro_cheat",
     "meso_deception", "meso_prediction", "meso_exploitation", "meso_cheat",
-    "macro_routing", "macro_win_condition", "macro_cheat",
+    "macro_routing", "macro_win_condition", "macro_resources", "macro_cheat",
     "micro", "meso", "macro",
     "rationale",
 )

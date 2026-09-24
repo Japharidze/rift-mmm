@@ -13,8 +13,13 @@ import anthropic
 
 from r3m import db
 from r3m.config import settings
-from r3m.labeling.prompt import PROMPT_VERSION, SYSTEM_PROMPT, build_user_message
-from r3m.labeling.schema import TOOL_SCHEMA, ChampionLabel
+from r3m.labeling.prompt import (
+    MACRO_MIDDLE,
+    PROMPT_VERSION,
+    SYSTEM_PROMPT,
+    build_user_message,
+)
+from r3m.labeling.schema import TOOL_NAME, ChampionLabel, tool_schema
 
 # The instructions say to default to the latest, most capable Claude model
 # when building an AI application. Overridable per run (a bulk pass over
@@ -85,8 +90,8 @@ def _call(
                     "cache_control": {"type": "ephemeral"},
                 }
             ],
-            tools=[TOOL_SCHEMA],
-            tool_choice={"type": "tool", "name": TOOL_SCHEMA["name"]},
+            tools=[tool_schema(MACRO_MIDDLE)],
+            tool_choice={"type": "tool", "name": TOOL_NAME},
             messages=[
                 {
                     "role": "user",
