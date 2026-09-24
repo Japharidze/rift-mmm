@@ -2,7 +2,12 @@
 
 Distilled from We Teach League / Broken by Concept, *"best champions to learn
 each class for every role"* — the Mid, Jungle and Bot academy coaches, with top
-lane relayed from Chippies. Transcript supplied 2026-09-22.
+lane relayed from Chippies. Transcript supplied 2026-09-22 and stored at
+`docs/transcripts/02-champion-classes.md` (40 chapters, 3h45m).
+
+Chapter 8, *Mid: Enchanters*, has no entry below because the coaches conclude
+the class is not viable mid any more and recommend nobody. Everything else in
+the transcript appears here.
 
 Each class names a **purist** (embodies the class at its extreme) and a
 **recommended** (teaches the same skills but actually gets results).
