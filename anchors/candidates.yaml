@@ -28,292 +28,331 @@
 # that class chapter starts, so any placement can be checked against what was
 # actually said.
 
+
+
+
+
+
+
+
+
+
+
 candidates:
   - id: Zoe
     role: mid
-    micro: TODO   # high | mid-high | mid | low-mid | low
-    meso: TODO
-    macro: TODO
+    micro: high
+    meso: high
+    macro: mid
+    tier: TODO
     class: Lane bully mages  (purist)
-    demands: Lane fundamentals, tempo, resets; patience over aggression.
+    demands: "Lane fundamentals, tempo, resets; patience over aggression."
     live_roles: [mid]
     chapter_line: 25
 
   - id: Viktor
     role: mid
-    micro: TODO   # high | mid-high | mid | low-mid | low
-    meso: TODO
-    macro: TODO
+    micro: mid
+    meso: mid
+    macro: mid-high
+    tier: TODO
     class: Lane bully mages
-    demands: Lane fundamentals, tempo, resets; patience over aggression.
+    demands: "Lane fundamentals, tempo, resets; patience over aggression."
     live_roles: [mid, bot]
     chapter_line: 25
 
   - id: AurelionSol
     role: mid
-    micro: TODO   # high | mid-high | mid | low-mid | low
-    meso: TODO
-    macro: TODO
+    micro: low-mid
+    meso: low
+    macro: mid
+    tier: TODO
     class: Scaling mages  (purist)
-    demands: Saying no; knowing your spikes; summoner intentionality.
+    demands: "Saying no; knowing your spikes; summoner intentionality."
     live_roles: [mid]
     chapter_line: 90
 
   - id: Vladimir
     role: mid
-    micro: TODO   # high | mid-high | mid | low-mid | low
-    meso: TODO
-    macro: TODO
+    micro: low
+    meso: mid
+    macro: mid
+    tier: TODO
     class: Scaling mages
-    demands: Saying no; knowing your spikes; summoner intentionality.
+    demands: "Saying no; knowing your spikes; summoner intentionality."
     live_roles: [mid]
     chapter_line: 90
 
   - id: Syndra
     role: mid
-    micro: TODO   # high | mid-high | mid | low-mid | low
-    meso: TODO
-    macro: TODO
+    micro: low-mid
+    meso: mid-high
+    macro: mid
+    tier: TODO
     class: Scaling mages
-    demands: Saying no; knowing your spikes; summoner intentionality.
+    demands: "Saying no; knowing your spikes; summoner intentionality."
     live_roles: [mid]
     chapter_line: 90
 
   - id: Ahri
     role: mid
-    micro: TODO   # high | mid-high | mid | low-mid | low
-    meso: TODO
-    macro: TODO
+    micro: mid-high
+    meso: mid-high
+    macro: mid
+    tier: TODO
     class: Mobile mages  (purist)
-    demands: Mobility as a tool to create advantage, not as an escape.
+    demands: "Mobility as a tool to create advantage, not as an escape."
     live_roles: [mid]
     chapter_line: 171
 
   - id: Akali
     role: mid
-    micro: TODO   # high | mid-high | mid | low-mid | low
-    meso: TODO
-    macro: TODO
+    micro: high
+    meso: mid-high
+    macro: low-mid
+    tier: TODO
     class: AP assassins  (purist)
-    demands: Fog; deciding *when to show yourself*; precise target selection.
+    demands: "Fog; deciding *when to show yourself*; precise target selection."
     live_roles: [mid]
     chapter_line: 212
 
   - id: Ekko
     role: mid
-    micro: TODO   # high | mid-high | mid | low-mid | low
-    meso: TODO
-    macro: TODO
+    micro: mid-high
+    meso: mid
+    macro: mid-high
+    tier: TODO
     class: AP assassins
-    demands: Fog; deciding *when to show yourself*; precise target selection.
+    demands: "Fog; deciding *when to show yourself*; precise target selection."
     live_roles: [jungle, mid]
     chapter_line: 212
 
   - id: Qiyana
     role: mid
-    micro: TODO   # high | mid-high | mid | low-mid | low
-    meso: TODO
-    macro: TODO
+    micro: high
+    meso: mid-high
+    macro: low-mid
+    tier: TODO
     class: AD assassins  (purist)
-    demands: 'As above, plus: must impose threat even to farm.'
+    demands: "As above, plus: must impose threat even to farm."
     live_roles: [jungle, mid]
     chapter_line: 273
 
   - id: Naafiri
     role: mid
-    micro: TODO   # high | mid-high | mid | low-mid | low
-    meso: TODO
-    macro: TODO
+    micro: mid-high
+    meso: mid
+    macro: low-mid
+    tier: TODO
     class: AD assassins
-    demands: 'As above, plus: must impose threat even to farm.'
+    demands: "As above, plus: must impose threat even to farm."
     live_roles: [jungle, mid]
     chapter_line: 273
 
   - id: Galio
     role: mid
-    micro: TODO   # high | mid-high | mid | low-mid | low
-    meso: TODO
-    macro: TODO
+    micro: mid
+    meso: mid
+    macro: high
+    tier: TODO
     class: Utility
-    demands: Wincon thinking; at least one spell that does no damage.
+    demands: "Wincon thinking; at least one spell that does no damage."
     live_roles: [mid]
     chapter_line: 376
 
   - id: Anivia
     role: mid
-    micro: TODO   # high | mid-high | mid | low-mid | low
-    meso: TODO
-    macro: TODO
+    micro: mid
+    meso: mid
+    macro: mid-high
+    tier: TODO
     class: Utility
-    demands: Wincon thinking; at least one spell that does no damage.
+    demands: "Wincon thinking; at least one spell that does no damage."
     live_roles: [mid]
     chapter_line: 376
 
   - id: Talon
     role: mid
-    micro: TODO   # high | mid-high | mid | low-mid | low
-    meso: TODO
-    macro: TODO
+    micro: mid
+    meso: mid-high
+    macro: mid
+    tier: TODO
     class: Roamers  (purist)
-    demands: Wave states, tempo, wincon assessment. Wave clear is the prerequisite.
+    demands: "Wave states, tempo, wincon assessment. Wave clear is the prerequisite."
     live_roles: [jungle]
     chapter_line: 471
 
   - id: Taliyah
     role: mid
-    micro: TODO   # high | mid-high | mid | low-mid | low
-    meso: TODO
-    macro: TODO
+    micro: high
+    meso: mid
+    macro: high
+    tier: TODO
     class: Roamers
-    demands: Wave states, tempo, wincon assessment. Wave clear is the prerequisite.
+    demands: "Wave states, tempo, wincon assessment. Wave clear is the prerequisite."
     live_roles: [mid]
     chapter_line: 471
 
   - id: Kayle
     role: mid
-    micro: TODO   # high | mid-high | mid | low-mid | low
-    meso: TODO
-    macro: TODO
+    micro: mid
+    meso: low
+    macro: low
+    tier: TODO
     class: Hyperscalers  (purist)
-    demands: Expert at saying no; disciplined to the point of delusion.
+    demands: "Expert at saying no; disciplined to the point of delusion."
     live_roles: [top]
     chapter_line: 539
 
   - id: Kassadin
     role: mid
-    micro: TODO   # high | mid-high | mid | low-mid | low
-    meso: TODO
-    macro: TODO
+    micro: mid-high
+    meso: mid-high
+    macro: low-mid
+    tier: TODO
     class: Hyperscalers
-    demands: Expert at saying no; disciplined to the point of delusion.
+    demands: "Expert at saying no; disciplined to the point of delusion."
     live_roles: [mid]
     chapter_line: 539
 
   - id: Yone
     role: mid
-    micro: TODO   # high | mid-high | mid | low-mid | low
-    meso: TODO
-    macro: TODO
+    micro: mid
+    meso: mid-high
+    macro: mid
+    tier: TODO
     class: Fighters  (purist)
-    demands: Mechanics max; knowing when strong and weak; poor at translating leads.
+    demands: "Mechanics max; knowing when strong and weak; poor at translating leads."
     live_roles: [top, mid]
     chapter_line: 613
 
   - id: Yasuo
     role: mid
-    micro: TODO   # high | mid-high | mid | low-mid | low
-    meso: TODO
-    macro: TODO
+    micro: high
+    meso: mid-high
+    macro: low-mid
+    tier: TODO
     class: Fighters
-    demands: Mechanics max; knowing when strong and weak; poor at translating leads.
+    demands: "Mechanics max; knowing when strong and weak; poor at translating leads."
     live_roles: [mid]
     chapter_line: 613
 
   - id: Viego
     role: jungle
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Carry fighters  (purist)
-    demands: Opportunistic, can't force; must reach three items.
+    demands: "Opportunistic, can't force; must reach three items."
     live_roles: [jungle]
     chapter_line: 725
 
   - id: MonkeyKing
     role: jungle
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Carry fighters
-    demands: Opportunistic, can't force; must reach three items.
+    demands: "Opportunistic, can't force; must reach three items."
     live_roles: [jungle]
     chapter_line: 725
 
   - id: Shyvana
     role: jungle
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Carry fighters
-    demands: Opportunistic, can't force; must reach three items.
+    demands: "Opportunistic, can't force; must reach three items."
     live_roles: [jungle]
     chapter_line: 725
 
   - id: Vi
     role: jungle
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Team-oriented fighters  (purist)
-    demands: Early presence; can only kill one target; sets up carries.
+    demands: "Early presence; can only kill one target; sets up carries."
     live_roles: [jungle]
     chapter_line: 793
 
   - id: Nocturne
     role: jungle
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Team-oriented fighters
-    demands: Early presence; can only kill one target; sets up carries.
+    demands: "Early presence; can only kill one target; sets up carries."
     live_roles: [jungle]
     chapter_line: 793
 
   - id: Karthus
     role: jungle
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Hyperscalers  (purist)
-    demands: Selfish; camp tempo; stem the bleeding; execute fights at three items.
+    demands: "Selfish; camp tempo; stem the bleeding; execute fights at three items."
     live_roles: [jungle]
     chapter_line: 863
 
   - id: Kindred
     role: jungle
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: ADC junglers  (purist)
-    demands: All-rounder; Graves must close the game out.
+    demands: "All-rounder; Graves must close the game out."
     live_roles: [jungle]
     chapter_line: 933
 
   - id: Graves
     role: jungle
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: ADC junglers
-    demands: All-rounder; Graves must close the game out.
+    demands: "All-rounder; Graves must close the game out."
     live_roles: [jungle]
     chapter_line: 933
 
   - id: Khazix
     role: jungle
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Assassins  (purist)
-    demands: Picks not teamfights; high- vs low-value kills; **create your own fog**.
+    demands: "Picks not teamfights; high- vs low-value kills; **create your own fog**."
     live_roles: [jungle]
     chapter_line: 970
 
   - id: Talon
     role: jungle
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Assassins
-    demands: Picks not teamfights; high- vs low-value kills; **create your own fog**.
+    demands: "Picks not teamfights; high- vs low-value kills; **create your own fog**."
     live_roles: [jungle]
     chapter_line: 970
 
   - id: Lillia
     role: jungle
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: AP outcasts  (purist)
     demands: "No shared skill set \u2014 this is \"I need an AP pick\"."
     live_roles: [jungle]
@@ -321,9 +360,10 @@ candidates:
 
   - id: Fiddlesticks
     role: jungle
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: AP outcasts
     demands: "No shared skill set \u2014 this is \"I need an AP pick\"."
     live_roles: [jungle]
@@ -331,320 +371,352 @@ candidates:
 
   - id: Amumu
     role: jungle
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Carry tanks  (purist)
-    demands: Needs items; provides CC but can kill; easy clears free up mental stack.
+    demands: "Needs items; provides CC but can kill; easy clears free up mental stack."
     live_roles: [jungle]
     chapter_line: 1058
 
   - id: Zac
     role: jungle
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Carry tanks
-    demands: Needs items; provides CC but can kill; easy clears free up mental stack.
+    demands: "Needs items; provides CC but can kill; easy clears free up mental stack."
     live_roles: [jungle]
     chapter_line: 1058
 
   - id: Ivern
     role: jungle
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Utility tanks  (purist)
-    demands: Purely playing the map; single target; cannot kill alone.
+    demands: "Purely playing the map; single target; cannot kill alone."
     live_roles: [jungle]
     chapter_line: 1100
 
   - id: Skarner
     role: jungle
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Utility tanks
-    demands: Purely playing the map; single target; cannot kill alone.
+    demands: "Purely playing the map; single target; cannot kill alone."
     live_roles: [jungle]
     chapter_line: 1100
 
   - id: Taliyah
     role: jungle
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Mages  (purist)
-    demands: Camp tempo; front-to-back positioning, which is rare for junglers.
+    demands: "Camp tempo; front-to-back positioning, which is rare for junglers."
     live_roles: [mid]
     chapter_line: 1137
 
   - id: Zyra
     role: jungle
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Mages
-    demands: Camp tempo; front-to-back positioning, which is rare for junglers.
+    demands: "Camp tempo; front-to-back positioning, which is rare for junglers."
     live_roles: [support, jungle]
     chapter_line: 1137
 
   - id: Renekton
     role: top
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Bruisers  (purist)
-    demands: 'A ticking clock: win lane, then **translate the lead** before you fall off.'
+    demands: "A ticking clock: win lane, then **translate the lead** before you fall off."
     live_roles: [top]
     chapter_line: 1179
 
   - id: Olaf
     role: top
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Bruisers
-    demands: 'A ticking clock: win lane, then **translate the lead** before you fall off.'
+    demands: "A ticking clock: win lane, then **translate the lead** before you fall off."
     live_roles: [top]
     chapter_line: 1179
 
   - id: Sett
     role: top
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Juggernauts  (purist)
-    demands: Closing the gap with no mobility; extended trades; still show up for neutrals.
+    demands: "Closing the gap with no mobility; extended trades; still show up for neutrals."
     live_roles: [top]
     chapter_line: 1232
 
   - id: Jax
     role: top
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Fighter / skirmishers  (purist)
-    demands: Mechanically demanding; options in the mid game; brutal once behind.
+    demands: "Mechanically demanding; options in the mid game; brutal once behind."
     live_roles: [top]
     chapter_line: 1253
 
   - id: Trundle
     role: top
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Splitpushers  (purist)
-    demands: Sinking pressure; timing it to the team; high-value deaths.
+    demands: "Sinking pressure; timing it to the team; high-value deaths."
     live_roles: [top, jungle]
     chapter_line: 1314
 
   - id: Fiora
     role: top
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Splitpushers
-    demands: Sinking pressure; timing it to the team; high-value deaths.
+    demands: "Sinking pressure; timing it to the team; high-value deaths."
     live_roles: [top]
     chapter_line: 1314
 
   - id: Sion
     role: top
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Tanks  (purist)
-    demands: Strong *short* trades; outscaled in side lane, so group and force fights.
+    demands: "Strong *short* trades; outscaled in side lane, so group and force fights."
     live_roles: [top]
     chapter_line: 1350
 
   - id: Malphite
     role: top
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Tanks
-    demands: Strong *short* trades; outscaled in side lane, so group and force fights.
+    demands: "Strong *short* trades; outscaled in side lane, so group and force fights."
     live_roles: [top]
     chapter_line: 1350
 
   - id: Kayle
     role: top
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Ranged tops  (purist)
-    demands: Spacing and tethering; conserve HP; small wins; unforgiving when behind.
+    demands: "Spacing and tethering; conserve HP; small wins; unforgiving when behind."
     live_roles: [top]
     chapter_line: 1414
 
   - id: MissFortune
     role: bot
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Lane bullies
-    demands: Early strength exists to get *all the farm*, not only to fight.
+    demands: "Early strength exists to get *all the farm*, not only to fight."
     live_roles: [bot]
     chapter_line: 1481
 
   - id: Sivir
     role: bot
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Hyperscalers
-    demands: Survive lane, say no, pump economy; influence comes from teamfights.
+    demands: "Survive lane, say no, pump economy; influence comes from teamfights."
     live_roles: [bot]
     chapter_line: 539
 
   - id: Jhin
     role: bot
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Utility  (purist)
-    demands: Mid-game picks via non-committal engage.
+    demands: "Mid-game picks via non-committal engage."
     live_roles: [bot]
     chapter_line: 376
 
   - id: Ziggs
     role: bot
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Mage bot laners  (purist)
-    demands: 'Anti-ADC: pin them under tower. Ability usage ADCs lack.'
+    demands: "Anti-ADC: pin them under tower. Ability usage ADCs lack."
     live_roles: [bot]
     chapter_line: 1657
 
   - id: Hwei
     role: bot
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Mage bot laners
-    demands: 'Anti-ADC: pin them under tower. Ability usage ADCs lack.'
+    demands: "Anti-ADC: pin them under tower. Ability usage ADCs lack."
     live_roles: [mid]
     chapter_line: 1657
 
   - id: Seraphine
     role: bot
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Mage bot laners
-    demands: 'Anti-ADC: pin them under tower. Ability usage ADCs lack.'
+    demands: "Anti-ADC: pin them under tower. Ability usage ADCs lack."
     live_roles: [support]
     chapter_line: 1657
 
   - id: Karma
     role: support
-    micro: TODO   # high | mid-high | mid | low-mid | low
-    meso: TODO
-    macro: TODO
+    micro: high
+    meso: none
+    macro: none
+    tier: wide
     class: Battle enchanters  (purist)
-    demands: Proactive trading; pressure the enemy ADC without dying to ganks.
+    demands: "Proactive trading; pressure the enemy ADC without dying to ganks."
     live_roles: [support]
     chapter_line: 1733
 
   - id: Nami
     role: support
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Battle enchanters
-    demands: Proactive trading; pressure the enemy ADC without dying to ganks.
+    demands: "Proactive trading; pressure the enemy ADC without dying to ganks."
     live_roles: [support]
     chapter_line: 1733
 
   - id: Sona
     role: support
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Scaling enchanters
-    demands: '*Should* play like battle enchanters; above Emerald you must.'
+    demands: "*Should* play like battle enchanters; above Emerald you must."
     live_roles: [support]
     chapter_line: 1762
 
   - id: Xerath
     role: support
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Mages  (purist)
-    demands: Must win lane; gold-reliant; miss and you are nothing.
+    demands: "Must win lane; gold-reliant; miss and you are nothing."
     live_roles: [mid]
     chapter_line: 1841
 
   - id: Zyra
     role: support
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Mages
-    demands: Must win lane; gold-reliant; miss and you are nothing.
+    demands: "Must win lane; gold-reliant; miss and you are nothing."
     live_roles: [support, jungle]
     chapter_line: 1841
 
   - id: Neeko
     role: support
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Mages
-    demands: Must win lane; gold-reliant; miss and you are nothing.
+    demands: "Must win lane; gold-reliant; miss and you are nothing."
     live_roles: [support]
     chapter_line: 1841
 
   - id: Rell
     role: support
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Engagers  (purist)
-    demands: Roaming; linking with the jungler; limit testing; engage quality and timing.
+    demands: "Roaming; linking with the jungler; limit testing; engage quality and timing."
     live_roles: [support]
     chapter_line: 1931
 
   - id: Leona
     role: support
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Engagers
-    demands: Roaming; linking with the jungler; limit testing; engage quality and timing.
+    demands: "Roaming; linking with the jungler; limit testing; engage quality and timing."
     live_roles: [support]
     chapter_line: 1931
 
   - id: Thresh
     role: support
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Playmakers
-    demands: 'The most cerebral, highest ceiling: wincon, tempo, fog,'
+    demands: "The most cerebral, highest ceiling: wincon, tempo, fog,"
     live_roles: [support]
     chapter_line: None
 
   - id: Blitzcrank
     role: support
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Playmakers
-    demands: 'The most cerebral, highest ceiling: wincon, tempo, fog,'
+    demands: "The most cerebral, highest ceiling: wincon, tempo, fog,"
     live_roles: [support]
     chapter_line: None
 
   - id: Pantheon
     role: support
-    micro: TODO   # high | mid-high | mid | low-mid | low
+    micro: TODO
     meso: TODO
     macro: TODO
+    tier: TODO
     class: Fighter supports
-    demands: Must snowball; knowing limits; making the game chaotic.
+    demands: "Must snowball; knowing limits; making the game chaotic."
     live_roles: [support, top]
     chapter_line: None

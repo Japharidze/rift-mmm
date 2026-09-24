@@ -115,6 +115,14 @@ def _label(args: argparse.Namespace) -> int:
     return 1 if result.failed else 0
 
 
+def _place(args: argparse.Namespace) -> int:
+    from r3m import place
+
+    if args.restore:
+        return place.restore()
+    return place.run(purists_only=args.purists, role=args.role, review=args.review)
+
+
 def _check_anchors(args: argparse.Namespace) -> int:
     result = anchors.check(prompt_version=args.prompt_version)
     print(f"prompt {result.prompt_version}  ({result.rows} champion x role rows)\n")
@@ -458,6 +466,25 @@ def main() -> int:
     match_cmd.add_argument("macro", type=float)
     match_cmd.add_argument("-n", type=int, default=5, help="how many (default: 5)")
     match_cmd.set_defaults(func=_match)
+
+    place_cmd = sub.add_parser(
+        "place", help="walk the podcast anchor candidates and place them by hand"
+    )
+    place_cmd.add_argument(
+        "--purists", action="store_true",
+        help="only the class purists — extremes by construction, and what the "
+             "anchor set is shortest of",
+    )
+    place_cmd.add_argument("--role", help="only one role (mid, jungle, top, bot, support)")
+    place_cmd.add_argument(
+        "--restore", action="store_true",
+        help="replay anchors/placements.log back into the worksheet",
+    )
+    place_cmd.add_argument(
+        "--review", action="store_true",
+        help="also revisit entries that are placed but have no tier yet",
+    )
+    place_cmd.set_defaults(func=_place)
 
     args = parser.parse_args()
     try:
