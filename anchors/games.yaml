@@ -43,6 +43,18 @@
 # also useless as quiz items regardless — nobody lists tic-tac-toe as a game
 # they play, which is why `bank: false` costs nothing.
 #
+# ## Cover art and year
+#
+# `steam_appid` is filled from Steam's store search, accepting only an exact
+# title or a genuine subtitle (": Definitive Edition", " with Bennett Foddy").
+# Sequels and DLC are refused: the search happily offers "Hades II" for Hades,
+# "Cat Chess" for Chess and a Year Pass for Rainbow Six, and wrong art is worse
+# than none.
+#
+# `year` is hand-entered only for titles that have one. Series entries are left
+# without: there is no single year for Street Fighter or Mario Kart, and
+# inventing one is the misrecognition this field exists to prevent.
+#
 # ## Tiers
 #
 #   source       Surnex's own placement, converted by the mapping. Blocking.
@@ -66,6 +78,7 @@ categories:
 games:
   # ---- pure micro ---------------------------------------------------------
   - id: osu
+    year: 2007
     name: "osu!"
     category: pure_micro
     micro: {point: 0.92, band: [0.82, 1.00], tier: source}
@@ -81,6 +94,7 @@ games:
     macro: {point: 0.12, band: [0.02, 0.22], tier: source}
 
   - id: tetris
+    year: 1984
     name: Tetris
     category: pure_micro
     micro: {point: 0.92, band: [0.82, 1.00], tier: source}
@@ -175,6 +189,7 @@ games:
     macro: {point: 0.80, band: [0.68, 0.92], tier: source}
 
   - id: mario-64
+    year: 1996
     name: Super Mario 64
     category: micro_macro
     micro: {point: 0.80, band: [0.68, 0.92], tier: source}
@@ -237,6 +252,7 @@ games:
     macro: {point: 0.18, band: [0.06, 0.30], tier: source}
 
   - id: fall-guys
+    year: 2020
     name: Fall Guys
     category: micro_meso
     micro: {point: 0.80, band: [0.68, 0.92], tier: source}
@@ -251,6 +267,7 @@ games:
     macro: {point: 0.18, band: [0.06, 0.30], tier: source}
 
   - id: tetris-99
+    year: 2019
     name: Tetris 99
     category: micro_meso
     micro: {point: 0.80, band: [0.68, 0.92], tier: source}
@@ -261,6 +278,7 @@ games:
 
   # ---- meso + macro -------------------------------------------------------
   - id: hearthstone
+    year: 2014
     name: Hearthstone
     category: meso_macro
     micro: {point: 0.18, band: [0.06, 0.30], tier: source}
@@ -268,6 +286,7 @@ games:
     macro: {point: 0.80, band: [0.68, 0.92], tier: source}
 
   - id: tft
+    year: 2019
     name: Teamfight Tactics
     category: meso_macro
     micro: {point: 0.18, band: [0.06, 0.30], tier: source}
@@ -316,6 +335,7 @@ games:
 
   # ---- all three ----------------------------------------------------------
   - id: cs2
+    year: 2023
     name: Counter-Strike 2
     category: all_three
     micro: {point: 0.92, band: [0.82, 1.00], tier: source}
@@ -325,6 +345,7 @@ games:
       nearly wins), meso high (the wallhack experiments), macro relatively lowest"
 
   - id: rocket-league
+    year: 2015
     name: Rocket League
     category: all_three
     micro: {point: 0.90, band: [0.78, 1.00], tier: source}
@@ -360,6 +381,7 @@ games:
     macro: {point: 0.78, band: [0.66, 0.90], tier: source}
 
   - id: valorant
+    year: 2020
     name: Valorant
     category: all_three
     micro: {point: 0.78, band: [0.66, 0.90], tier: source}
@@ -374,6 +396,7 @@ games:
     macro: {point: 0.78, band: [0.66, 0.90], tier: source}
 
   - id: rainbow-six
+    year: 2015
     name: Rainbow Six Siege
     category: all_three
     micro: {point: 0.78, band: [0.66, 0.90], tier: source}
@@ -381,6 +404,7 @@ games:
     macro: {point: 0.78, band: [0.66, 0.90], tier: source}
 
   - id: wow
+    year: 2004
     name: World of Warcraft
     category: all_three
     micro: {point: 0.78, band: [0.66, 0.90], tier: source}
@@ -388,6 +412,7 @@ games:
     macro: {point: 0.78, band: [0.66, 0.90], tier: source}
 
   - id: league-of-legends
+    year: 2009
     name: League of Legends
     category: all_three
     micro: {point: 0.78, band: [0.66, 0.90], tier: source}
@@ -430,6 +455,7 @@ games:
       rather than against a person
 
   - id: valheim
+    year: 2021
     name: Valheim
     category: placed
     micro: {point: 0.30, band: [0.15, 0.45], tier: wide}
@@ -452,6 +478,7 @@ games:
       expressible by something other than CS2
 
   - id: animal-crossing
+    year: 2001
     name: Animal Crossing
     category: placed
     micro: {point: 0.10, band: [0.00, 0.25], tier: wide}
@@ -459,6 +486,7 @@ games:
     macro: {point: 0.20, band: [0.05, 0.35], tier: wide}
 
   - id: candy-crush
+    year: 2012
     name: Candy Crush
     category: placed
     micro: {point: 0.15, band: [0.00, 0.30], tier: wide}
@@ -473,6 +501,7 @@ games:
     macro: {point: 0.20, band: [0.05, 0.35], tier: wide}
 
   - id: minecraft-creative
+    year: 2011
     name: Minecraft (creative)
     category: placed
     micro: {point: 0.10, band: [0.00, 0.25], tier: wide}
