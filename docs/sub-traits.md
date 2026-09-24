@@ -110,7 +110,7 @@ meso, Yuumi's micro) — the harder bar than matching the easy cases.
 
 ## Version history
 
-### v10 — registered 2026-09-24, not yet run
+### v10 — registered and run 2026-09-24 (label_run 21)
 
 **The change.** `macro_win_condition` is removed and `macro_resources` takes
 its slot. Nothing else moves: micro and meso are untouched, `macro_routing`
@@ -155,6 +155,84 @@ waves, time as a resource to be spent by the enemy, and denial.
 Prediction 3 is the one that can fail cleanly, which is what makes the run
 worth paying for. Grading is the 25 anchors, against v3's 29 blocking failures
 and v8's 30.
+
+**Result.** 28 blocking failures of 75, against v3's 29 and v8's 30 -- inside
+the +/-4 same-wording noise established earlier, so the headline number
+decides nothing either way.
+
+The controls behaved. Micro and meso, whose wording did not change, came back
+at mean |v10-v3| of 0.021 and 0.027, max 0.08 -- the noise floor exactly. Macro
+moved 0.073 mean, 0.15 max, bias -0.029: roughly 2.5x noise, isolated to the
+one item that changed. Mechanically the swap did what it was supposed to.
+
+Against the predictions:
+
+- **(3) PASS, and it is the one that could have failed.** Routing vs resources
+  is +0.53, inside the registered 0.3-0.6 band and far from the 0.8 rejection
+  line. A genuinely new item, not routing renamed. (v3's routing vs
+  win_condition was +0.40.)
+- **(2) Weak pass.** Nasus 0.95 -> 0.85. Right direction, still high.
+- **(4) FAIL, and it was the point.** Agreement with the 25 anchors is flat at
+  +0.51. The change exists to raise external agreement and did not.
+- **(1) Untestable.** Blitzcrank is not in the 25-anchor set.
+
+**The registration itself was faulty, which is the more useful finding.** Two
+of the four predictions could not be evaluated on the data this run produces:
+Blitzcrank is not an anchor, and `anchors/candidates.yaml` excludes existing
+anchors by construction, so a 25-anchor pilot can never overlap the podcast 62
+either. Registering predictions is worthless unless the run can evaluate them;
+check that before paying for the run, not after.
+
+**Extended to the 62 candidates, label_run 22** (66 rows, 0 failed), making
+predictions 1 and 4 evaluable. Every prediction was checked against the rows
+the run would produce *before* it started, after two of four were found
+unevaluable the first time.
+
+    PRED 1  Blitzcrank  0.25 -> 0.40, rank 30 of 93 (was last of 196)   PASS
+    PRED 2  Nasus       0.95 -> 0.85                                    weak pass
+    PRED 3  routing vs resources +0.39  (band 0.3-0.6)                  PASS
+    PRED 4  Sergi's 25  +0.53 -> +0.51  FLAT
+            podcast 62  +0.05 -> +0.09  up 0.04, inside noise
+
+v10 behaves sensibly champion by champion -- Blitzcrank rises off the floor,
+Nasus comes down, the item is distinct from routing. What it does not do is
+register with anyone outside the pipeline:
+
+    source        routing   middle item
+    Sergi's 25     +0.68       +0.23   (win_condition was +0.19)
+    podcast 62     +0.22       -0.04   (win_condition was -0.33)
+
+**`macro_resources` fixed the anti-correlation and created no signal.** Going
+from actively wrong to precisely nothing is progress and is not measurement.
+
+## What this settles
+
+Two different questions have now occupied the middle macro slot -- "are you
+building toward a late-game plan" and "do you manage the map's renewable
+resources" -- and neither registers with any external observer, while
+`macro_routing` registers with all three at +0.68, +0.29 and +0.42. That is no
+longer a wording problem. Five rewrites of routing (v4, v5, v6, v9) plus two
+distinct middle items is seven attempts, and the pattern is consistent:
+
+**Of the three things Surnex's macro comprises -- routing, resource
+management, win conditions -- only routing is recoverable from kit text.**
+
+This is a measurement claim, not a claim about the model. The other two may be
+perfectly real in how a person experiences a game and simply not be visible in
+a list of abilities, which is all the labeller ever sees. Nothing here licenses
+editing Surnex's definition; it licenses saying which part of it this pipeline
+can actually see.
+
+Consequences, none of them another prompt version:
+
+- **Stop rewriting the middle slot.** Seven attempts is enough evidence.
+- **The aggregate's equal weighting is the live question**, and CLAUDE.md
+  already has weights open ("equal for the pilot, then fit"). Weighting toward
+  the only component that measures is a fit against evidence, not a redefinition
+  -- but it needs recording as a measurement limitation in plain words, so a
+  later reader does not mistake it for a claim that macro *is* routing.
+- **A full relabel is not justified by v10.** Blocking failures 28 vs v3's 29,
+  inside noise; external agreement flat. v3 stays in production.
 
 
 ### v7 — 2026-09-24
