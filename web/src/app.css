@@ -123,3 +123,13 @@ button.link { border: none; padding: 0; text-decoration: underline;
    only if pointed at, and an invisible effect reads as a broken button. */
 .fresh { font-size: .7rem; margin-left: .5rem; padding: .05rem .4rem;
   border: 1px solid var(--pick); border-radius: 999px; color: var(--pick); }
+
+/* The panel request. Visually after the result and clearly separate from it:
+   the answer is theirs whether or not they fill this in. */
+.panel { border-top: 1px solid var(--line); margin-top: 2rem; padding-top: .5rem; }
+.panel .row { display: flex; gap: .5rem; margin: .75rem 0; }
+.field { font: inherit; padding: .45rem .6rem; border: 1px solid var(--line);
+  border-radius: 6px; background: var(--bg); color: inherit; }
+.row .field { flex: 1; min-width: 0; }
+.field.wide { display: block; width: 100%; box-sizing: border-box; resize: vertical; }
+.gloss.small { font-size: .75rem; margin: .6rem 0; }

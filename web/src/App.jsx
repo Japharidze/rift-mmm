@@ -29,6 +29,16 @@ const VERDICTS = [
   ["never", "Never played"],
 ];
 
+// Where the panel actually pays off. Everything else it collects is context;
+// the Riot ID is what lets a result be checked against the champions someone
+// really plays, which is the one test this project has never been able to run
+// at more than n=1.
+const REGIONS = [
+  ["euw1", "EU West"], ["eun1", "EU Nordic & East"], ["na1", "North America"],
+  ["kr", "Korea"], ["tr1", "Türkiye"], ["ru", "Russia"], ["br1", "Brazil"],
+  ["la1", "LAN"], ["la2", "LAS"], ["oc1", "Oceania"], ["jp1", "Japan"],
+];
+
 const CONFIDENCE = {
   close: "a real match",
   fair: "in the neighbourhood",
@@ -95,6 +105,64 @@ function Cover({ item }) {
    marker at the actual running mean, visibly provisional and captioned as
    still reading, is neither. The result screen is where the hard line sits:
    there an unread dimension prints "not enough to tell" and no number. */
+function Panel({ sessionId }) {
+  const [riot, setRiot] = useState("");
+  const [region, setRegion] = useState("euw1");
+  const [note, setNote] = useState("");
+  const [sent, setSent] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  if (!sessionId) return null;
+  if (sent) return <p className="note">Thank you — that's genuinely useful.</p>;
+
+  const send = () => {
+    post("/panel/details", {
+      session_id: sessionId,
+      riot_id: riot.trim() || null,
+      riot_region: riot.trim() ? region : null,
+      feedback: note.trim() || null,
+    })
+      .then(() => setSent(true))
+      .catch(() => setFailed(true));
+  };
+
+  return (
+    <div className="panel">
+      <h1>Did it get you right?</h1>
+      <p className="gloss">
+        If you play League, your Riot ID lets us compare this result against the
+        champions you actually play. That comparison is the entire point of
+        asking — it is how we find out whether any of this works.
+      </p>
+      <div className="row">
+        <input
+          className="field"
+          placeholder="Name#TAG"
+          value={riot}
+          onChange={e => setRiot(e.target.value)}
+        />
+        <select className="field" value={region} onChange={e => setRegion(e.target.value)}>
+          {REGIONS.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+        </select>
+      </div>
+      <textarea
+        className="field wide"
+        rows={3}
+        placeholder="What did it get wrong? What was confusing?"
+        value={note}
+        onChange={e => setNote(e.target.value)}
+      />
+      <p className="gloss small">
+        We store your answers, this result, and — if you give it — your Riot ID
+        and public match history. Nothing else, no account access, and you can
+        leave either field blank.
+      </p>
+      <button onClick={send} disabled={!riot.trim() && !note.trim()}>Send</button>
+      {failed && <p className="note">Couldn't send that — the result above is unaffected.</p>}
+    </div>
+  );
+}
+
 function Readout({ dims }) {
   if (!dims) return <div className="readout" />;
   const any = Object.values(dims).some(d => d.informative > 0);
@@ -383,6 +451,7 @@ export default function App() {
             {games.map(g => g.name).join(", ")}
           </p>
         ))}
+        <Panel sessionId={result.session_id} />
         <button onClick={restart}>Start again</button>
       </main>
     );

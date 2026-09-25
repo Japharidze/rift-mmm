@@ -9,6 +9,7 @@ project (the bank flag, "which labels are current", the exclusion list), so it
 is worth being blunt about.
 """
 
+import logging
 from typing import Any
 
 from fastapi import APIRouter, FastAPI, HTTPException
@@ -35,6 +36,12 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+
+def _champion_version() -> str:
+    with db.connect() as conn:
+        rows = db.champion_points(conn)
+    return rows[0]["prompt_version"] if rows else "unknown"
 
 
 def _games() -> list[dict[str, Any]]:
@@ -159,7 +166,20 @@ class SharpenResponse(BaseModel):
     question: str | None = None
 
 
+class PanelDetails(BaseModel):
+    session_id: int
+    # Both optional: somebody who wants to say something but not name an
+    # account, or the reverse, should be able to.
+    riot_id: str | None = None
+    riot_region: str | None = None
+    feedback: str | None = None
+
+
 class Result(BaseModel):
+    # Present only when the session was stored; the frontend passes it back
+    # when the tester offers an account or a comment.
+    session_id: int | None = None
+
     point: list[float]
     dimensions: dict[str, Dimension]
     champions: list[Match]
@@ -262,7 +282,7 @@ def result(req: ResultRequest) -> Result:
         est = quiz.apply_comparisons(
             est, [c.model_dump() for c in req.comparisons], rows)
 
-    return Result(
+    result = Result(
         point=list(est.point),
         dimensions=_dimensions(est),
         champions=[
@@ -282,6 +302,42 @@ def result(req: ResultRequest) -> Result:
             for d in est.unread
         },
     )
+
+    # Recorded once the result exists, so an abandoned session stores nothing.
+    # A failure here must not cost the tester their result: the panel is a
+    # measurement we are taking, not something they asked for.
+    try:
+        with db.connect() as conn:
+            result.session_id = db.insert_quiz_session(
+                conn,
+                served=req.loved + req.disliked,
+                loved=req.loved,
+                disliked=req.disliked,
+                comparisons=[c.model_dump() for c in req.comparisons],
+                point=list(est.point),
+                dimensions={d: e.model_dump() for d, e in result.dimensions.items()},
+                champions=[c.model_dump() for c in result.champions],
+                champion_prompt_version=_champion_version(),
+                game_prompt_version=rows[0]["prompt_version"] if rows else "unknown",
+            )
+    except Exception:  # noqa: BLE001 - see comment above
+        logging.exception("could not record panel session")
+
+    return result
+
+
+@api.post("/panel/details")
+def panel_details(req: PanelDetails) -> dict[str, bool]:
+    """Attach a Riot id and/or a comment to a session already finished."""
+    with db.connect() as conn:
+        ok = db.attach_panel_details(
+            conn,
+            session_id=req.session_id,
+            riot_id=req.riot_id,
+            riot_region=req.riot_region,
+            feedback=req.feedback,
+        )
+    return {"stored": ok}
 
 
 app.include_router(api)

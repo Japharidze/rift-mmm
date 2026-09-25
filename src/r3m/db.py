@@ -556,3 +556,115 @@ def game_points(
              "prompt_version": prompt_version}
             for r in cur.fetchall()
         ]
+
+
+# ---------------------------------------------------------------------------
+# Panel sessions (migrations/011_panel.sql)
+# ---------------------------------------------------------------------------
+
+
+def insert_quiz_session(
+    conn: psycopg.Connection,
+    *,
+    served: list[str],
+    loved: list[str],
+    disliked: list[str],
+    comparisons: list[dict[str, Any]],
+    point: list[float],
+    dimensions: dict[str, Any],
+    champions: list[dict[str, Any]],
+    champion_prompt_version: str,
+    game_prompt_version: str,
+) -> int:
+    """Store one completed quiz and return its id.
+
+    Called when the result is shown, not when the page loads: an abandoned
+    session has nothing to compare against a real account.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            insert into quiz_session (
+                served, loved, disliked, comparisons, point, dimensions,
+                champions, champion_prompt_version, game_prompt_version
+            )
+            values (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            returning id
+            """,
+            (served, loved, disliked, Jsonb(comparisons), point,
+             Jsonb(dimensions), Jsonb(champions),
+             champion_prompt_version, game_prompt_version),
+        )
+        session_id = cur.fetchone()[0]  # type: ignore[index]
+    conn.commit()
+    return int(session_id)
+
+
+def attach_panel_details(
+    conn: psycopg.Connection,
+    *,
+    session_id: int,
+    riot_id: str | None,
+    riot_region: str | None,
+    feedback: str | None,
+) -> bool:
+    """Add a Riot id and/or free text to a session already stored.
+
+    Separate from the insert because it is asked for separately: the result
+    comes first, then the request to check it against a real account, so
+    somebody can see what they are being asked about before answering.
+    Returns False when the id does not exist rather than raising -- a stale tab
+    posting to a wiped database is not an error worth showing a tester.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            update quiz_session
+               set riot_id = coalesce(%s, riot_id),
+                   riot_region = coalesce(%s, riot_region),
+                   feedback = coalesce(%s, feedback)
+             where id = %s
+            """,
+            (riot_id or None, riot_region or None, feedback or None, session_id),
+        )
+        updated = cur.rowcount
+    conn.commit()
+    return updated > 0
+
+
+def panel_sessions_to_check(conn: psycopg.Connection) -> list[dict[str, Any]]:
+    """Sessions that named an account and have not been compared yet."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            select id, riot_id, riot_region, point, dimensions
+            from quiz_session
+            where riot_id is not null and checked_at is null
+            order by created_at
+            """
+        )
+        return [
+            {"id": r[0], "riot_id": r[1], "riot_region": r[2],
+             "point": [float(x) for x in r[3]], "dimensions": r[4]}
+            for r in cur.fetchall()
+        ]
+
+
+def record_panel_check(
+    conn: psycopg.Connection,
+    *,
+    session_id: int,
+    actual_point: list[float] | None,
+    actual_games: int,
+) -> None:
+    """Store the centroid of what this person actually plays."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            update quiz_session
+               set checked_at = now(), actual_point = %s, actual_games = %s
+             where id = %s
+            """,
+            (actual_point, actual_games, session_id),
+        )
+    conn.commit()
