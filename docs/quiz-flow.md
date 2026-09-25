@@ -248,6 +248,23 @@ The missing asymmetry: **a high coordinate in a loved game is strong evidence;
 a low one is weak or none.** How to express that is a modelling decision and
 is not decided here.
 
+**It is not a patch -- it follows from how the scale is defined.**
+`anchors/games.yaml` already records the same thing from the other side, in
+the note on converting Surnex's categories:
+
+> Surnex's categories are about **proportion**; this file's scale is about
+> **magnitude**. He groups Factorio and tic-tac-toe as "pure macro" because
+> macro is all there is to either -- not because both demand a lot of it.
+
+A low coordinate is an *absence*, not a statement. Factorio's meso of 0.12
+records that Factorio contains no mind-games, which is a fact about Factorio.
+Reading it as "this player prefers not to outguess people" converts an absence
+into a preference, and the conversion is unsound for exactly the reason that
+note gives: the scale never claimed a low score meant anything was being
+chosen. Whatever replaces the plain weighted mean has to respect that, and any
+fix that merely down-weights low coordinates without saying why will drift
+back.
+
 Sergi's call, 2026-09-24: **expand the bank first.** The three games he loved
 were all builders because the grid's low-macro and PvP-light regions are what
 they are; a wider bank is a precondition for testing any change to how loved

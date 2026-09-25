@@ -88,9 +88,13 @@ function Cover({ item }) {
    so picking a game you loved could visibly lower all three and look like a
    penalty for answering honestly. A dot that slides has no such implication.
 
-   An unread dimension shows no marker at all rather than one at its
-   provisional value, because a confident-looking position for something we
-   cannot yet see is exactly the imputation the model refuses to make. */
+   A dimension still being read is drawn faint, not hidden. Hiding it means
+   nothing moves for the first few picks, which reads as broken -- that was
+   the first complaint about this component. What CLAUDE.md bars is presenting
+   an unread dimension as settled, or substituting the midpoint for it; a
+   marker at the actual running mean, visibly provisional and captioned as
+   still reading, is neither. The result screen is where the hard line sits:
+   there an unread dimension prints "not enough to tell" and no number. */
 function Readout({ dims }) {
   if (!dims) return <div className="readout" />;
   const any = Object.values(dims).some(d => d.informative > 0);

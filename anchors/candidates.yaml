@@ -758,7 +758,7 @@ candidates:
     class: Playmakers
     demands: "The most cerebral, highest ceiling: wincon, tempo, fog,"
     live_roles: [support]
-    chapter_line: None
+    chapter_line: 2000
 
   - id: Blitzcrank
     role: support
@@ -769,7 +769,7 @@ candidates:
     class: Playmakers
     demands: "The most cerebral, highest ceiling: wincon, tempo, fog,"
     live_roles: [support]
-    chapter_line: None
+    chapter_line: 2000
 
   - id: Pantheon
     role: support
@@ -780,4 +780,4 @@ candidates:
     class: Fighter supports
     demands: "Must snowball; knowing limits; making the game chaotic."
     live_roles: [support, top]
-    chapter_line: None
+    chapter_line: 2060

@@ -59,10 +59,15 @@
 #
 #   source       Surnex's own placement, converted by the mapping. Blocking.
 #   tight        Sergi's judgment, independently placed. Blocking.
-#   wide         Sergi's judgment too, but deliberately given wider bands than
+#   placed       Sergi's judgment too, but deliberately given wider bands than
 #                the category-derived ones: one person's placement of one game
 #                carries less than a placement the model's author made himself.
 #                Blocking, but forgiving.
+#
+#                Named `placed`, not `wide`. anchors/champions.yaml uses `wide`
+#                for the opposite behaviour -- reported and never blocking --
+#                and one tier name meaning two things is how a future
+#                check-games inherits the wrong semantics silently.
 #   provisional  Placed or moved by a model. Reports, never blocks.
 
 version: 1
@@ -436,9 +441,9 @@ games:
   - id: stardew-valley
     name: Stardew Valley
     category: placed
-    micro: {point: 0.15, band: [0.00, 0.30], tier: wide}
-    meso: {point: 0.05, band: [0.00, 0.20], tier: wide}
-    macro: {point: 0.55, band: [0.40, 0.70], tier: wide}
+    micro: {point: 0.15, band: [0.00, 0.30], tier: placed}
+    meso: {point: 0.05, band: [0.00, 0.20], tier: placed}
+    macro: {point: 0.55, band: [0.40, 0.70], tier: placed}
     note: >-
       the clean macro-without-meso anchor Surnex's list lacks: crop and season
       planning, building allocation, and no opponent at all, so meso floors out
@@ -446,9 +451,9 @@ games:
   - id: hades
     name: Hades
     category: placed
-    micro: {point: 0.65, band: [0.50, 0.80], tier: wide}
-    meso: {point: 0.20, band: [0.05, 0.35], tier: wide}
-    macro: {point: 0.50, band: [0.35, 0.65], tier: wide}
+    micro: {point: 0.65, band: [0.50, 0.80], tier: placed}
+    meso: {point: 0.20, band: [0.05, 0.35], tier: placed}
+    macro: {point: 0.50, band: [0.35, 0.65], tier: placed}
     note: >-
       dodge-and-execute moment to moment, with real build and mirror planning
       across runs. Meso is not zero but is prediction against a patterned system
@@ -458,9 +463,9 @@ games:
     year: 2021
     name: Valheim
     category: placed
-    micro: {point: 0.30, band: [0.15, 0.45], tier: wide}
-    meso: {point: 0.10, band: [0.00, 0.25], tier: wide}
-    macro: {point: 0.50, band: [0.35, 0.65], tier: wide}
+    micro: {point: 0.30, band: [0.15, 0.45], tier: placed}
+    meso: {point: 0.10, band: [0.00, 0.25], tier: placed}
+    macro: {point: 0.50, band: [0.35, 0.65], tier: placed}
     note: >-
       combat has real timing in the parry, but the bulk is logistics, base
       planning and progression gating
@@ -468,9 +473,9 @@ games:
   - id: age-of-empires-2
     name: Age of Empires II
     category: placed
-    micro: {point: 0.55, band: [0.40, 0.70], tier: wide}
-    meso: {point: 0.55, band: [0.40, 0.70], tier: wide}
-    macro: {point: 0.80, band: [0.65, 0.95], tier: wide}
+    micro: {point: 0.55, band: [0.40, 0.70], tier: placed}
+    meso: {point: 0.55, band: [0.40, 0.70], tier: placed}
+    macro: {point: 0.80, band: [0.65, 0.95], tier: placed}
     note: >-
       high on all three without being a modern shooter: build orders and economy
       are macro, unit micro is genuine, and against a human the scouting and
@@ -481,32 +486,32 @@ games:
     year: 2001
     name: Animal Crossing
     category: placed
-    micro: {point: 0.10, band: [0.00, 0.25], tier: wide}
-    meso: {point: 0.05, band: [0.00, 0.20], tier: wide}
-    macro: {point: 0.20, band: [0.05, 0.35], tier: wide}
+    micro: {point: 0.10, band: [0.00, 0.25], tier: placed}
+    meso: {point: 0.05, band: [0.00, 0.20], tier: placed}
+    macro: {point: 0.20, band: [0.05, 0.35], tier: placed}
 
   - id: candy-crush
     year: 2012
     name: Candy Crush
     category: placed
-    micro: {point: 0.15, band: [0.00, 0.30], tier: wide}
-    meso: {point: 0.05, band: [0.00, 0.20], tier: wide}
-    macro: {point: 0.25, band: [0.10, 0.40], tier: wide}
+    micro: {point: 0.15, band: [0.00, 0.30], tier: placed}
+    meso: {point: 0.05, band: [0.00, 0.20], tier: placed}
+    macro: {point: 0.25, band: [0.10, 0.40], tier: placed}
 
   - id: cookie-clicker
     name: Cookie Clicker
     category: placed
-    micro: {point: 0.05, band: [0.00, 0.20], tier: wide}
-    meso: {point: 0.00, band: [0.00, 0.15], tier: wide}
-    macro: {point: 0.20, band: [0.05, 0.35], tier: wide}
+    micro: {point: 0.05, band: [0.00, 0.20], tier: placed}
+    meso: {point: 0.00, band: [0.00, 0.15], tier: placed}
+    macro: {point: 0.20, band: [0.05, 0.35], tier: placed}
 
   - id: minecraft-creative
     year: 2011
     name: Minecraft (creative)
     category: placed
-    micro: {point: 0.10, band: [0.00, 0.25], tier: wide}
-    meso: {point: 0.05, band: [0.00, 0.20], tier: wide}
-    macro: {point: 0.25, band: [0.10, 0.40], tier: wide}
+    micro: {point: 0.10, band: [0.00, 0.25], tier: placed}
+    meso: {point: 0.05, band: [0.00, 0.20], tier: placed}
+    macro: {point: 0.25, band: [0.10, 0.40], tier: placed}
     note: >-
       creative mode specifically. Survival sits elsewhere, and plain "Minecraft"
       is ambiguous between them - which matters for the quiz bank, where it is

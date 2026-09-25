@@ -105,7 +105,9 @@ def _write(doc: dict[str, Any], placed: dict[tuple[str, str], dict[str, str]]) -
         # a valid YAML double-quoted scalar and has no such tail.
         lines.append(f"    demands: {json.dumps(c['demands'])}")
         lines.append(f"    live_roles: [{', '.join(c['live_roles'])}]")
-        lines.append(f"    chapter_line: {c['chapter_line']}")
+        # `or "null"`: a bare None interpolates as the string "None", which
+        # YAML then reads back as a string, not a missing value.
+        lines.append(f"    chapter_line: {c['chapter_line'] if c['chapter_line'] is not None else 'null'}")
         if c.get("note"):
             lines.append(f"    note: {json.dumps(c['note'])}")
         lines.append("")
@@ -139,9 +141,21 @@ def restore() -> int:
     return 0
 
 
-def _chapter(line_no: int, n: int = 40) -> str:
+def _chapter(line_no: object, n: int = 40) -> str:
+    """The transcript around a class chapter, or a plain note if we have none.
+
+    line_no arrives from YAML and has been a string before now: the writer
+    below used to interpolate Python's None into "chapter_line: None", which
+    round-tripped as the *string* "None" and crashed here on `"None" - 1`.
+    Three playmaker supports carried it -- the rows most worth checking
+    against the transcript.
+    """
+    try:
+        start = int(line_no)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return "  (no transcript reference recorded for this class)"
     lines = TRANSCRIPT.read_text().splitlines()
-    return "\n".join(lines[line_no - 1: line_no - 1 + n])
+    return "\n".join(lines[max(0, start - 1): start - 1 + n])
 
 
 def run(*, purists_only: bool = False, role: str | None = None,
