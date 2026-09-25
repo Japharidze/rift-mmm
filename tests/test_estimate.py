@@ -16,8 +16,6 @@ the estimator, not the labels, and should not start failing because a future
 game relabel moved a number.
 """
 
-import pytest
-
 from r3m import quiz
 
 GAMES = [
@@ -83,5 +81,22 @@ def test_dislike_only_rejects_the_demand_that_game_presented():
     assert after.dimensions["micro"].value < before.dimensions["micro"].value - 0.02, \
         "disliking osu! should lower micro"
     for d in ("meso", "macro"):
-        assert abs(after.dimensions[d].value - before.dimensions[d].value) <= 0.02, \
-            f"{d} moved on a dislike of a game that presented no {d} demand"
+        # Values are rounded to two places, so the comparison is too: plain
+        # float subtraction makes an exact 0.02 come out as 0.020000000000000018.
+        moved = round(abs(after.dimensions[d].value - before.dimensions[d].value), 2)
+        assert moved <= 0.02, \
+            f"{d} moved {moved} on a dislike of a game that presented no {d} demand"
+
+
+def test_a_dimension_is_settled_by_games_that_present_it():
+    """The retry hook and the fill stage pick what to *serve*. Ranking by
+    distance from the midpoint treats a game far below it as just as useful as
+    one far above, and the one below presents none of the dimension -- so the
+    question it asks cannot settle anything.
+    """
+    for d in ("micro", "meso", "macro"):
+        offered = quiz.suggest_for(d, exclude=[], rows=ROWS, n=3)
+        for g in offered:
+            assert g[d] >= 0.5, (
+                f"offered {g['game_id']} ({d}={g[d]}) to settle {d}; it presents none"
+            )

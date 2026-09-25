@@ -35,10 +35,20 @@ from r3m import db, scoring
 DIMENSIONS = ("micro", "meso", "macro")
 
 # How far from the middle a game sits before an answer about it says anything.
+#
+# Retained for `suggest_for` and the retry hook, which pick games to *serve*.
+# It is no longer how evidence is weighed: see `opportunity`.
 INFORMATIVE = 0.25
-# Informative answers per dimension before it counts as read. A diversity
-# floor, not a count: three micro-ish answers leave meso and macro unmeasured
-# however many were served.
+
+# A game whose largest demand is below this presents no demand at all, and the
+# absence is then the thing on offer. See `opportunity`.
+LOW_CORNER = 0.35
+# Opportunity a dimension must accumulate before it counts as read, in the
+# units `opportunity` returns: one game presenting the dimension in full, or
+# two presenting half of it each.
+#
+# Was a count of answers. A count cannot express the thing that broke: three
+# games can be answered about and still offer nothing to answer *with*.
 #
 # Raised from 2 once the grid replaced the three-item opener. A 28-card grid
 # hands over many more picks than a handful of single cards did, and at 2 a
@@ -47,9 +57,44 @@ INFORMATIVE = 0.25
 # random picks from the grid, the fill stage now runs for 84% of five-pick
 # sessions and 32% of eight-pick ones, and someone who tapped twelve games has
 # genuinely been read and skips it.
-NEEDED = 3
+NEEDED = 1.0
 # Dislike is real evidence, but noisier than delight.
 DISLIKE_WEIGHT = 0.5
+
+
+def opportunity(row: dict[str, Any], dimension: str) -> float:
+    """How much chance this game gave the player to express a taste here.
+
+    A game's coordinate on a dimension is how much *demand* it presents there
+    (anchors/games.yaml, on converting Surnex's categories: his groupings are
+    about proportion, this scale is about magnitude). Demand presented is
+    therefore also opportunity offered -- Factorio has no opponent, so loving
+    it expresses nothing about meso, not because low coordinates were decided
+    to be weak evidence but because there was nothing there to love or reject.
+
+    One clause, stated as a claim rather than bolted on: a game low on every
+    dimension presents a different thing -- the absence of demand itself --
+    and loving *that* is evidence for a low-demand taste. It is why Animal
+    Crossing is informative about a relaxed player and Factorio is not
+    informative about meso, though both score about 0.13 on it.
+    """
+    presence = max(row[d] for d in DIMENSIONS)
+    if presence < LOW_CORNER:
+        return 1.0 - presence
+    return float(row[dimension])
+
+
+def demand(row: dict[str, Any], dimension: str) -> float:
+    """How much of this one dimension the game presents.
+
+    Distinct from `opportunity`, and the difference is the low-corner clause.
+    Loving Minecraft creative is real evidence -- for a low-demand taste
+    across the board -- so its *opportunity* is high on every dimension. But
+    it cannot settle meso specifically, because it contains none. Weighing
+    evidence asks what a game can tell us; choosing what to serve asks what
+    this dimension needs, and only the second wants the raw coordinate.
+    """
+    return float(row[dimension])
 
 
 @dataclass(frozen=True)
@@ -106,22 +151,31 @@ def estimate(
 
     dims = {}
     for d in DIMENSIONS:
-        total = sum(r[d] for r in liked_rows)
-        weight = float(len(liked_rows))
+        total = weight = 0.0
+        for r in liked_rows:
+            w = opportunity(r, d)
+            total += w * r[d]
+            weight += w
         for r in disliked_rows:
-            total += DISLIKE_WEIGHT * (1.0 - r[d])
-            weight += DISLIKE_WEIGHT
-        # Weighted the same way the value is. A dislike contributing half an
-        # observation to the number but a whole one to "we have read this"
-        # was inconsistent, and it mattered: the grid's second pass makes
-        # bouncing off cheap to tap, so a handful of dislikes could declare a
-        # dimension read on evidence the estimate itself only half trusts.
-        informative = sum(
-            1.0 if r in liked_rows else DISLIKE_WEIGHT
-            for r in (*liked_rows, *disliked_rows)
-            if abs(r[d] - 0.5) >= INFORMATIVE
+            # A dislike rejects the demand that game presented and nothing
+            # else: bouncing off osu! says you wanted less execution, and says
+            # nothing about mind-games, because osu! never asked for any.
+            #
+            # The reflection is capped at the level presented. Plain 1 - x is
+            # only a reflection when x is above the midpoint; below it, it
+            # argues the player wanted *more* of a thing the game never
+            # offered, so disliking osu! used to raise meso. Rejecting a demand
+            # cannot be evidence for wanting more of it, so the target is at
+            # most what was on offer.
+            w = DISLIKE_WEIGHT * opportunity(r, d)
+            total += w * min(1.0 - r[d], r[d])
+            weight += w
+        # Accumulated opportunity *is* how much was read, so it is the same
+        # number that weighs the evidence. Nothing to keep in step.
+        dims[d] = DimensionEstimate(
+            value=round(total / weight, 2) if weight else 0.5,
+            informative=round(weight, 2),
         )
-        dims[d] = DimensionEstimate(value=round(total / weight, 2), informative=informative)
 
     return Estimate(loved=liked_rows, disliked=disliked_rows, unknown=unknown, dimensions=dims)
 
@@ -138,7 +192,17 @@ def suggest_for(dimension: str, exclude: list[str],
             rows = db.game_points(conn)
     candidates = [r for r in rows
                   if r["game_id"] not in exclude and r.get("in_bank", True)]
-    return sorted(candidates, key=lambda r: -abs(r[dimension] - 0.5))[:n]
+    # By demand, not by distance from the middle. A game far *below* the
+    # midpoint is as far from it as one far above and presents none of the
+    # dimension, so offering it to settle that dimension asks a question it
+    # cannot answer.
+    #
+    # Filtered, not just sorted: returning fewer is better than padding the
+    # list with games that cannot settle anything. A bank thin on a dimension
+    # should say so by offering less, which is also the signal that the bank
+    # needs that pole filled.
+    useful = [r for r in candidates if demand(r, dimension) >= 0.5 + INFORMATIVE]
+    return sorted(useful, key=lambda r: -demand(r, dimension))[:n]
 
 
 def champions_for(est: Estimate, n: int = 5) -> list[scoring.Match]:
@@ -179,7 +243,7 @@ def next_item(
     candidates = [r for gid, r in by_id.items() if gid not in served]
     if not candidates:
         return None
-    return max(candidates, key=lambda r: abs(r[target] - 0.5))
+    return max(candidates, key=lambda r: demand(r, target))
 
 
 # What each dimension is called where a person can see it. The internal names
@@ -318,9 +382,10 @@ def fill_item(
                   if r.get("in_bank", True) and r["game_id"] not in served]
     if not candidates:
         return None
-    best = max(candidates, key=lambda r: abs(r[target] - 0.5))
-    # A card that says nothing about the open dimension is not worth a screen.
-    return best if abs(best[target] - 0.5) >= INFORMATIVE else None
+    best = max(candidates, key=lambda r: demand(r, target))
+    # A card that presents none of the open dimension is not worth a screen:
+    # answering about it, either way, leaves the dimension exactly as unread.
+    return best if demand(best, target) >= 0.5 + INFORMATIVE else None
 
 
 # A pair isolates a dimension when the two games are far apart on it and close

@@ -245,8 +245,52 @@ grounds that dislikes removed the ambiguity. They do not: his dislikes were
 not the problem, his loves were over-read.
 
 The missing asymmetry: **a high coordinate in a loved game is strong evidence;
-a low one is weak or none.** How to express that is a modelling decision and
-is not decided here.
+a low one is weak or none.**
+
+### The fix — opportunity weighting, 2026-09-25
+
+Not a tuned constant. The weight *is* the scale's meaning: a game's coordinate
+on a dimension is how much demand it presents there, so it is also how much
+opportunity the player had to express a taste about it. Each vote is weighted
+by that opportunity (`quiz.opportunity`).
+
+Three things fall out rather than being handled:
+
+- **Unread falls out.** Accumulated opportunity is what "how much we read" now
+  means, so it is the same number that weighs the evidence -- nothing to keep
+  in step, and `NEEDED` becomes a threshold on it (1.0: one game presenting a
+  dimension in full, or two presenting half each). Sergi's three builders give
+  meso 0.60 of opportunity, so meso reports **unread** rather than 0.32.
+- **Dislikes fall out.** A dislike is weighted by the same opportunity, so
+  bouncing off osu! rejects the demand osu! presented -- micro -- and leaves
+  meso and macro where they were.
+- **What to serve falls out.** `suggest_for` and `fill_item` rank by `demand`,
+  and filter rather than pad: returning fewer is better than offering a game
+  that cannot settle the dimension. Sergi's retry hook now offers Street
+  Fighter, Liar's Bar and Tekken for meso instead of Minecraft creative.
+
+One clause is stated as a claim rather than bolted on: **a game low on every
+dimension presents a different thing -- the absence of demand itself -- and
+loving that is evidence for a low-demand taste.** That is Animal Crossing's
+actual information content, and it is why `opportunity` and `demand` are two
+functions. Weighing evidence asks what a game can tell us; choosing what to
+serve asks what this dimension needs.
+
+One sign error surfaced while testing. The reflected value `1 - x` is only a
+reflection above the midpoint; below it, it argues the player wanted *more* of
+something the game never offered, so disliking osu! used to raise meso from
+0.75 to 0.79. Rejecting a demand cannot be evidence for wanting more of it, so
+the target is capped at the level presented.
+
+Measured on Sergi's own session:
+
+    micro  0.34 -> 0.55   (his champions say 0.68)
+    meso   0.32 -> unread (his champions say 0.60; he mains Thresh and Bard)
+    macro  0.69 -> 0.75   (his champions say 0.57)
+
+`tests/test_estimate.py` pins all of it against fixed fixtures, written before
+the fix and failing then. A future version that merely down-weights low
+coordinates without encoding why will fail them.
 
 **It is not a patch -- it follows from how the scale is defined.**
 `anchors/games.yaml` already records the same thing from the other side, in
