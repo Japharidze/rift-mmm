@@ -11,13 +11,22 @@ is worth being blunt about.
 
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from r3m import db, quiz
+from r3m.config import ROOT
 
 app = FastAPI(title="r3m", version="0.1.0")
+
+# Routes live under /api in both environments. Vite used to strip the prefix
+# when proxying, which worked only because the frontend and the API were on
+# different origins; serving the build from this process makes them one, and
+# then the path the browser asks for has to be the path that exists.
+api = APIRouter(prefix="/api")
 
 # The dev frontend runs on a different port, so the browser needs permission.
 app.add_middleware(
@@ -161,7 +170,7 @@ class Result(BaseModel):
     unread: dict[str, list[Game]]
 
 
-@app.get("/games", response_model=list[Game])
+@api.get("/games", response_model=list[Game])
 def games() -> list[Game]:
     return [_to_game(g) for g in _games() if g["in_bank"]]
 
@@ -174,13 +183,13 @@ def _dimensions(est: quiz.Estimate) -> dict[str, Dimension]:
     }
 
 
-@app.get("/quiz/grid", response_model=list[Game])
+@api.get("/quiz/grid", response_model=list[Game])
 def quiz_grid() -> list[Game]:
     """Stage 1: the whole opening screen in one call."""
     return [_to_game(g) for g in quiz.grid(_games())]
 
 
-@app.post("/quiz/estimate", response_model=EstimateResponse)
+@api.post("/quiz/estimate", response_model=EstimateResponse)
 def quiz_estimate(req: EstimateRequest) -> EstimateResponse:
     """The running point, for the live readout.
 
@@ -199,14 +208,14 @@ def quiz_estimate(req: EstimateRequest) -> EstimateResponse:
     return EstimateResponse(dimensions=_dimensions(est))
 
 
-@app.post("/quiz/fill", response_model=NextResponse)
+@api.post("/quiz/fill", response_model=NextResponse)
 def quiz_fill(req: FillRequest) -> NextResponse:
     """Stage 2: one card for a dimension the grid left unread, or None."""
     item = quiz.fill_item(req.served, req.loved, req.disliked, _games(), asked=req.asked)
     return NextResponse(item=None if item is None else _to_game(item), asked=req.asked)
 
 
-@app.post("/quiz/sharpen", response_model=SharpenResponse)
+@api.post("/quiz/sharpen", response_model=SharpenResponse)
 def quiz_sharpen(req: SharpenRequest) -> SharpenResponse:
     """Stage 3: a contrastive pair on the axis that would change the answer."""
     rows = _games()
@@ -232,7 +241,7 @@ def quiz_sharpen(req: SharpenRequest) -> SharpenResponse:
     )
 
 
-@app.post("/quiz/next", response_model=NextResponse)
+@api.post("/quiz/next", response_model=NextResponse)
 def next_item(req: NextRequest) -> NextResponse:
     item = quiz.next_item(req.served, req.loved, req.disliked, _games())
     return NextResponse(
@@ -242,7 +251,7 @@ def next_item(req: NextRequest) -> NextResponse:
     )
 
 
-@app.post("/quiz/result", response_model=Result)
+@api.post("/quiz/result", response_model=Result)
 def result(req: ResultRequest) -> Result:
     rows = _games()
     try:
@@ -273,3 +282,37 @@ def result(req: ResultRequest) -> Result:
             for d in est.unread
         },
     )
+
+
+app.include_router(api)
+
+
+# ---------------------------------------------------------------------------
+# The built frontend, served from the same origin.
+# ---------------------------------------------------------------------------
+#
+# One service rather than two. Same origin means no CORS to configure, no API
+# base URL that differs between laptop and deployment, and nothing to get
+# wrong when the host name changes. In development Vite proxies /api to this
+# process and none of this is mounted, because web/dist does not exist.
+#
+# Mounted after every route above: a catch-all added earlier would shadow
+# them. The catch-all returns index.html so a refresh on any path still loads
+# the app rather than a 404.
+_DIST = ROOT / "web" / "dist"
+
+if _DIST.is_dir():
+    app.mount("/assets", StaticFiles(directory=_DIST / "assets"), name="assets")
+
+    @app.get("/{path:path}", include_in_schema=False)
+    def spa(path: str) -> FileResponse:
+        # An unmatched /api path is a 404, not the app. Letting the catch-all
+        # answer it returns HTML with a 200, the frontend parses it as JSON and
+        # dies -- the blank page this project already fixed once, arriving back
+        # through the deployment shape.
+        if path == "api" or path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="no such endpoint")
+        candidate = _DIST / path
+        if path and candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(_DIST / "index.html")

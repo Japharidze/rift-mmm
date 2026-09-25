@@ -15,11 +15,15 @@ class Settings(BaseSettings):
         env_file=os.getenv("ENV_FILE", ROOT / ".env"), extra="ignore"
     )
 
-    postgres_user: str
-    postgres_password: str
-    postgres_db: str
+    # Local development supplies these five. A managed host (Railway, Fly,
+    # Heroku) supplies one DATABASE_URL instead and does not let you pick, so
+    # both are accepted and the URL wins when present.
+    postgres_user: str = ""
+    postgres_password: str = ""
+    postgres_db: str = ""
     postgres_host: str = "localhost"
     postgres_port: int = 5432
+    database_url: str = ""
 
     # Empty by default: migrate and ingest must keep working without a Riot
     # key. riot_api.py raises when it is actually needed and missing.
@@ -31,6 +35,9 @@ class Settings(BaseSettings):
 
     @property
     def db_url(self) -> str:
+        if self.database_url:
+            # psycopg wants postgresql://; some hosts still emit postgres://
+            return self.database_url.replace("postgres://", "postgresql://", 1)
         return make_conninfo(
             host=self.postgres_host,
             dbname=self.postgres_db,

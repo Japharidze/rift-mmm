@@ -1,0 +1,16 @@
+# Railway supplies DATABASE_URL and PORT; r3m.config reads both (config.py,
+# db_url). Nothing else is required at runtime -- labels live in the database,
+# so no Anthropic key is needed to serve the quiz, and no Riot key either
+# unless match data is being fetched.
+#
+# The data itself is not in the image. Restore it once after the first deploy:
+#   railway run --service <name> -- r3m restore dumps/<latest>.sql.gz
+# which is the same path a second laptop uses (see r3m.dump).
+
+[build]
+builder = "dockerfile"
+
+[deploy]
+healthcheckPath = "/api/games"
+healthcheckTimeout = 60
+restartPolicyType = "on_failure"
