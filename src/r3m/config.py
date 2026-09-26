@@ -35,6 +35,18 @@ class Settings(BaseSettings):
 
     @property
     def db_url(self) -> str:
+        if not self.database_url and not self.postgres_db:
+            # Said plainly, because the alternative is a connection timeout
+            # against localhost inside a container, which reads as a network
+            # problem and is a configuration one. A managed host that offers to
+            # import POSTGRES_* from .env.example makes this easy to hit: those
+            # are development values, and accepting them gives a host of
+            # "localhost" that means nothing in a container.
+            raise RuntimeError(
+                "no database configured: set DATABASE_URL (a managed host "
+                "supplies one), or POSTGRES_DB and friends for a local "
+                "database. See docs/deploy.md."
+            )
         if self.database_url:
             # psycopg wants postgresql://; some hosts still emit postgres://
             return self.database_url.replace("postgres://", "postgresql://", 1)

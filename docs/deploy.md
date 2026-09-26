@@ -24,6 +24,14 @@ being fetched, which happens on a laptop.
    (`postgres.railway.internal`), which stays inside Railway's network.
 4. **Generate a public domain** for the app service.
 
+**Decline the POSTGRES_* variables Railway offers.** It scans the repo, finds
+`.env.example`, and suggests importing all five. They are development values --
+`POSTGRES_HOST=localhost` means nothing inside a container, and
+`POSTGRES_PASSWORD=change-me` is a placeholder. `DATABASE_URL` takes precedence
+over them anyway, so importing them changes nothing while the reference
+resolves, and makes the failure confusing when it does not. Set `DATABASE_URL`
+and nothing else.
+
 `r3m migrate` runs on every boot, so the schema is in place before the first
 request. Migrations are idempotent; re-running costs nothing.
 
