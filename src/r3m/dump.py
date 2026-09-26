@@ -34,6 +34,16 @@ def _env() -> dict[str, str]:
 
 
 def _args() -> list[str]:
+    """Connection arguments for pg_dump and psql.
+
+    A managed host supplies one DATABASE_URL and nothing else, and both tools
+    accept a connection URI in place of the separate flags. Without this,
+    restoring into a deployment silently aimed at localhost with an empty
+    username -- which is exactly the command run once, by hand, right after a
+    first deploy.
+    """
+    if settings.database_url:
+        return [settings.db_url]
     return [
         "--host", settings.postgres_host,
         "--port", str(settings.postgres_port),
