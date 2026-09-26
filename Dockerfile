@@ -25,6 +25,10 @@ COPY docs/ docs/
 COPY --from=web /web/dist web/dist
 RUN uv sync --frozen --no-dev
 
-# The host picks the port and expects the app on 0.0.0.0.
-ENV PORT=8000
-CMD ["sh", "-c", "uv run r3m migrate && uv run uvicorn api.main:app --host 0.0.0.0 --port ${PORT}"]
+# The host picks the port and expects the app on 0.0.0.0. PORT is not set as
+# an ENV here on purpose: a hard-coded value in the image is a second number
+# for the platform's port detection to read, and it will not be the one the
+# process actually binds once the platform injects its own. The shell default
+# covers running the image by hand.
+EXPOSE 8080
+CMD ["sh", "-c", "uv run r3m migrate && uv run uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
