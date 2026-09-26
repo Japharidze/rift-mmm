@@ -47,7 +47,12 @@ laptop instead, which is the same path a second machine already uses.
    error rather than anything informative.
 2. Then, locally:
 
-       DATABASE_URL="<the public url>" uv run r3m restore dumps/<latest>.sql.gz
+       DATABASE_URL="<the public url>" uv run r3m restore
+
+   `restore` takes the newest file in `dumps/` by default; `--file <path>`
+   picks a specific one. Note there are no spaces around the `=`: a shell
+   reads `DATABASE_URL = "..."` as a command named DATABASE_URL. The spaced
+   form is only for Railway's variable box.
 
 An environment variable takes precedence over `.env`, so this cannot
 accidentally aim at localhost — and `r3m.dump._args` hands the URL straight to
