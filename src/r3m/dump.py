@@ -102,7 +102,14 @@ def dump(path: Path | None = None, force: bool = False) -> Path:
 
 # The tables whose loss would actually cost something. Counted rather than
 # weighed, so ordinary gzip variation cannot trip the guard.
-_GUARDED = ("champion_label", "game_label", "label_run", "match_participant")
+#
+# quiz_session is here because panel answers are irreplaceable in a way labels
+# are not: a label can be re-run for money, and somebody's twenty minutes and
+# their Riot ID cannot be asked for twice.
+_GUARDED = (
+    "champion_label", "game_label", "label_run", "match_participant",
+    "quiz_session",
+)
 
 
 def _counts_in(blob: bytes) -> dict[str, int]:
@@ -128,8 +135,13 @@ def latest() -> Path | None:
 def row_counts() -> dict[str, int]:
     from r3m import db
 
+    # quiz_session included so `restore` sees panel answers when it asks
+    # whether the target is empty. Without it a restore would proceed over
+    # them, and the rows it cannot replace are exactly the ones nobody can be
+    # asked for a second time.
     tables = ("champion", "champion_patch", "match", "match_participant",
-              "champion_role", "label_run", "champion_label", "game", "game_label")
+              "champion_role", "label_run", "champion_label", "game",
+              "game_label", "quiz_session")
     with db.connect() as conn, conn.cursor() as cur:
         out = {}
         for t in tables:
