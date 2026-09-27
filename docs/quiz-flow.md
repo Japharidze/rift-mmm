@@ -7,6 +7,10 @@ frontend in `web/src/App.jsx`. The estimator's core (`quiz.estimate`) and the
 matcher (`scoring.py`) are unchanged by it -- this is an interaction model over
 the same measurement.
 
+Describes what is built. `docs/quiz-chain.md` (design, 2026-09-28) plans to
+reverse two decisions here -- silence meaning never-played, and "didn't stick"
+counting as a dislike -- and to replace the stage-1 grid with adaptive rounds.
+
 ## Why three stages
 
 The first quiz was one game name, three buttons, repeat. It works and it reads

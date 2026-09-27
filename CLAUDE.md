@@ -37,6 +37,12 @@ matching or UI.
   The **last** sub-trait in each group is the cheat test rephrased. Wording is
   frozen in `docs/sub-traits.md` — that file is the source of truth, not this
   bullet.
+- **Matching may use the ten sub-traits as a finer resolution of the three
+  dimensions; nothing outside them surfaces in matching or UI.** They are the
+  three, decomposed — not a fourth anything. Resolution is capped by label
+  quality, so which sub-traits qualify is measured, not assumed: an unreliable
+  or unread sub-trait falls back to its dimension's aggregate and the result
+  says so. Evidence and limits in `docs/quiz-chain.md` §2.
 - **Scores are absolute, decimal 0–1 per dimension.** Each dimension is scored
   independently on its own 0–1 scale — they do not and must not sum to 1. A
   champion can be low on all three (0.2 / 0.3 / 0.1) or high on all three
@@ -69,6 +75,10 @@ matching or UI.
   an apology. The champion side has the same requirement arriving from the other
   direction: a match 0.45 away must not be presented like one 0.04 away
   (Gate 2, limitations).
+- **Genre is a fallback, never the router.** Genre questions serve only an
+  unread dimension or a player who recognises nothing. Surnex's model starts
+  from genre labels failing (`docs/3m-model.md`); routing the quiz by genre
+  would build it on what the model exists to replace.
 - **No agent framework for labelling.** Plain loop, versioned system prompt,
   structured output, retries.
 - **Never use the abbreviation "KYS"** anywhere — toxic meaning in gaming. Check
@@ -124,10 +134,11 @@ Champions stay on v3. `docs/sub-traits.md` ran v10 and concluded a relabel is
 not justified (blocking failures 28 vs 29, inside noise; external agreement
 flat), so the 196-row set below is production, not a placeholder.
 
-Next: grow the game bank past the transcript's 50 (anchors stay held out;
-new games are labelled by games-v2), then new question types — why a game was
-disliked, in-game choices, genre — each mapping onto the three dimensions or
-onto nothing.
+The game bank is built from files (`bank/`, `r3m bank-import`): 300 deck
+games and 26 deep-tier modes and platforms; 276 of them are not labelled yet.
+Next is the quiz chain in `docs/quiz-chain.md` — explicit recognition, a
+neutral verdict, why-questions, deep dives, and a hypothesis-testing loop —
+built in stages, smallest first.
 
 Phase 1 done: schema, Data Dragon ingestion, the match sample, `champion_role`,
 and the first full labelling pass — 196 champion×role rows at prompt v3
