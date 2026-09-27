@@ -471,6 +471,51 @@ def upsert_game(
         )
 
 
+def game_ids(conn: psycopg.Connection) -> set[str]:
+    with conn.cursor() as cur:
+        cur.execute("select id from game")
+        return {r[0] for r in cur.fetchall()}
+
+
+def upsert_bank_game(
+    conn: psycopg.Connection,
+    *,
+    game_id: str,
+    name: str,
+    mode: str | None,
+    tier: str,
+    parent_id: str | None,
+    steam_appid: int | None,
+    release_year: int | None,
+) -> None:
+    """Put one game from the bank files (r3m.bank) into the table.
+
+    The files decide name, mode, tier and parent, and everything they list is
+    in the bank: exclusion is a serving decision now, not a bank one. For a row
+    that already exists, its Steam id and year win over the file's -- those were
+    checked by hand, and a series keeps a null year on purpose
+    (009_game_art.sql). is_anchor is never touched: it records where a game's
+    validation came from, which an import cannot know.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            insert into game (id, name, mode, tier, parent_id, steam_appid,
+                              release_year, is_anchor, in_bank)
+            values (%s, %s, %s, %s, %s, %s, %s, false, true)
+            on conflict (id) do update set
+                name = excluded.name,
+                mode = excluded.mode,
+                tier = excluded.tier,
+                parent_id = excluded.parent_id,
+                steam_appid = coalesce(game.steam_appid, excluded.steam_appid),
+                release_year = coalesce(game.release_year, excluded.release_year),
+                in_bank = true
+            """,
+            (game_id, name, mode, tier, parent_id, steam_appid, release_year),
+        )
+
+
 def game_labelling_targets(
     conn: psycopg.Connection, game_ids: Sequence[str] | None = None
 ) -> list[dict[str, Any]]:

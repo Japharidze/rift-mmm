@@ -221,3 +221,7 @@ __marimo__/
 node_modules/
 web/dist/
 anchors/placements.log
+
+# Large third-party inputs (e.g. the Steam games CSV behind bank/steam.yaml).
+# Downloaded, never committed: see src/r3m/bank.py for where each comes from.
+/data/

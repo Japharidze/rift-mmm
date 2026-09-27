@@ -7,7 +7,7 @@ from pathlib import Path
 
 import httpx
 
-from r3m import anchors, db, dump as dump_mod, fetch, ingest, quiz as quiz_mod, sample, scoring
+from r3m import anchors, bank, db, dump as dump_mod, fetch, ingest, quiz as quiz_mod, sample, scoring
 from r3m.labeling import games as labeling_games
 from r3m.labeling import run as labeling_run
 from r3m.migrate import apply_migrations
@@ -232,6 +232,27 @@ def _label_games(args: argparse.Namespace) -> int:
     if result.labelled:
         _autodump()
     return 1 if result.failed else 0
+
+
+def _bank_candidates(args: argparse.Namespace) -> int:
+    p = bank.candidates(Path(args.csv))
+    print(f"wrote {bank.STEAM_FILE.relative_to(bank.ROOT)}: {len(p.selected)} selected, "
+          f"{len(p.reserve)} in reserve")
+    print("dropped: " + ", ".join(f"{why} {n}" for why, n in p.dropped.most_common()))
+    print("per genre: " + ", ".join(f"{g} {n}" for g, n in p.genre_counts.most_common()))
+    if p.capped:
+        print(f"held back by the cap of {bank.GENRE_CAP}: "
+              + ", ".join(f"{g} {n}" for g, n in p.capped.most_common()))
+    return 0
+
+
+def _bank_import(args: argparse.Namespace) -> int:
+    with db.connect() as conn:
+        r = bank.import_bank(conn)
+    print(f"bank: {r.deck} deck, {r.deep} deep ({r.inserted} new, {r.updated} updated)")
+    if r.untracked:
+        print(f"in the game table but in no bank file: {', '.join(r.untracked)}")
+    return 0
 
 
 def _dump(args: argparse.Namespace) -> int:
@@ -482,6 +503,21 @@ def main() -> int:
     match_cmd.add_argument("macro", type=float)
     match_cmd.add_argument("-n", type=int, default=5, help="how many (default: 5)")
     match_cmd.set_defaults(func=_match)
+
+    candidates_cmd = sub.add_parser(
+        "bank-candidates",
+        help="propose the Steam portion of the game bank into bank/steam.yaml",
+    )
+    candidates_cmd.add_argument(
+        "--csv", default=str(bank.STEAM_CSV),
+        help="FronkonGames Steam dataset CSV (download: see r3m.bank)",
+    )
+    candidates_cmd.set_defaults(func=_bank_candidates)
+
+    import_cmd = sub.add_parser(
+        "bank-import", help="load bank/hand.yaml and bank/steam.yaml into the game table"
+    )
+    import_cmd.set_defaults(func=_bank_import)
 
     place_cmd = sub.add_parser(
         "place", help="walk the podcast anchor candidates and place them by hand"
