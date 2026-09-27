@@ -543,6 +543,41 @@ _GAME_LABEL_COLUMNS = (
 )
 
 
+def subtrait_values(
+    conn: psycopg.Connection, *, kind: str, column: str, prompt_version: str
+) -> dict[Any, float]:
+    """One sub-trait for every champion x role or game, at one prompt version.
+
+    Same row choice as champion_points / game_points (latest label per item
+    within the version), so a matcher variant that swaps one column in reads
+    exactly the rows the production matcher reads. Keys: (champion_id, role)
+    for champions, game_id for games.
+    """
+    allowed = CHAMPION_LABEL_COLUMNS if kind == "champion" else _GAME_LABEL_COLUMNS
+    if column not in allowed or column == "rationale":
+        raise ValueError(f"not a {kind} sub-trait: {column}")
+    if kind == "champion":
+        query = f"""
+            select distinct on (l.champion_id, l.role) l.champion_id, l.role::text, l.{column}
+            from champion_label l join label_run r on r.id = l.label_run_id
+            where r.prompt_version = %s
+            order by l.champion_id, l.role, l.label_run_id desc
+        """
+    else:
+        query = f"""
+            select distinct on (l.game_id) l.game_id, l.{column}
+            from game_label l join label_run r on r.id = l.label_run_id
+            where r.prompt_version = %s
+            order by l.game_id, l.label_run_id desc
+        """
+    with conn.cursor() as cur:
+        cur.execute(query, (prompt_version,))
+        rows = cur.fetchall()
+    if kind == "champion":
+        return {(r[0], r[1]): float(r[2]) for r in rows if r[2] is not None}
+    return {r[0]: float(r[1]) for r in rows if r[1] is not None}
+
+
 def insert_game_label(
     conn: psycopg.Connection, *, label_run_id: int, game_id: str,
     fields: Mapping[str, Any], raw_response: Mapping[str, Any],
@@ -717,20 +752,28 @@ def attach_panel_details(
     return updated > 0
 
 
-def panel_sessions_to_check(conn: psycopg.Connection) -> list[dict[str, Any]]:
-    """Sessions that named an account and have not been compared yet."""
+def panel_sessions_to_check(
+    conn: psycopg.Connection, *, include_checked: bool = False
+) -> list[dict[str, Any]]:
+    """Sessions that named an account, not yet compared unless asked for all.
+
+    Carries the picks as well as the stored point, so the comparison pass can
+    recompute the point under a different matcher and compare like with like.
+    """
     with conn.cursor() as cur:
         cur.execute(
-            """
-            select id, riot_id, point, dimensions
+            f"""
+            select id, riot_id, point, dimensions, loved, disliked, comparisons, champions
             from quiz_session
-            where riot_id is not null and checked_at is null
+            where riot_id is not null {"" if include_checked else "and checked_at is null"}
             order by created_at
             """
         )
         return [
             {"id": r[0], "riot_id": r[1],
-             "point": [float(x) for x in r[2]], "dimensions": r[3]}
+             "point": [float(x) for x in r[2]], "dimensions": r[3],
+             "loved": list(r[4]), "disliked": list(r[5]),
+             "comparisons": r[6] or [], "champions": r[7] or []}
             for r in cur.fetchall()
         ]
 

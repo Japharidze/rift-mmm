@@ -7,7 +7,7 @@ from pathlib import Path
 
 import httpx
 
-from r3m import anchors, bank, db, dump as dump_mod, fetch, ingest, quiz as quiz_mod, sample, scoring
+from r3m import anchors, bank, db, dump as dump_mod, fetch, ingest, panel, quiz as quiz_mod, sample, scoring
 from r3m.labeling import games as labeling_games
 from r3m.labeling import run as labeling_run
 from r3m.migrate import apply_migrations
@@ -252,6 +252,40 @@ def _bank_import(args: argparse.Namespace) -> int:
     print(f"bank: {r.deck} deck, {r.deep} deep ({r.inserted} new, {r.updated} updated)")
     if r.untracked:
         print(f"in the game table but in no bank file: {', '.join(r.untracked)}")
+    return 0
+
+
+def _panel_check(args: argparse.Namespace) -> int:
+    api = RiotApi(platform=panel.PLATFORM)
+    with db.connect() as conn:
+        sessions = db.panel_sessions_to_check(conn, include_checked=args.all)
+        if not sessions:
+            print("no sessions with a Riot id to check")
+            return 0
+        variant_list = panel.variants(conn)
+        checks = []
+        for s in sessions:
+            print(f"checking #{s['id']} ...", flush=True)
+            try:
+                checks.append(panel.check_session(api, s, variant_list))
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code in (401, 403):
+                    print("Riot rejected the key: development keys expire every 24 hours. "
+                          "Fetch a new one at developer.riotgames.com into RIOT_API_KEY.")
+                    return 1
+                raise
+        roster = len({r["champion_id"] for r in variant_list[0].champion_rows})
+        print()
+        print(panel.report(checks, roster))
+        if args.write:
+            for c in checks:
+                current = c.by_variant.get("current")
+                if c.error or current is None or current.actual_point is None:
+                    continue
+                db.record_panel_check(conn, session_id=c.session_id,
+                                      actual_point=[round(x, 2) for x in current.actual_point],
+                                      actual_games=c.labelled_games)
+            print("\nwrote actual_point for the current matcher")
     return 0
 
 
@@ -518,6 +552,19 @@ def main() -> int:
         "bank-import", help="load bank/hand.yaml and bank/steam.yaml into the game table"
     )
     import_cmd.set_defaults(func=_bank_import)
+
+    panel_cmd = sub.add_parser(
+        "panel-check",
+        help="compare panel quiz results with the champions each player really plays",
+    )
+    panel_cmd.add_argument(
+        "--write", action="store_true",
+        help="store actual_point on each session (default: report only)",
+    )
+    panel_cmd.add_argument(
+        "--all", action="store_true", help="include sessions already checked"
+    )
+    panel_cmd.set_defaults(func=_panel_check)
 
     place_cmd = sub.add_parser(
         "place", help="walk the podcast anchor candidates and place them by hand"

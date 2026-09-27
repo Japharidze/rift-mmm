@@ -9,6 +9,7 @@ is shared across every endpoint on a client rather than one per method.
 """
 
 from typing import Any
+from urllib.parse import quote
 
 from r3m import fetch
 from r3m.config import settings
@@ -55,6 +56,18 @@ class RiotApi:
         return self._get(
             f"https://{self.platform}.api.riotgames.com/lol/league/v4/entries/"
             f"{RANKED_SOLO}/{tier}/{division}?page={page}"
+        )
+
+    def account_by_riot_id(self, game_name: str, tag_line: str) -> dict[str, Any]:
+        """account-v1: a Riot id (name#tag) to its puuid.
+
+        Regional host, like match-v5. Raises httpx.HTTPStatusError with 404 when
+        no account has that id -- the expected failure for a mistyped name.
+        """
+        name, tag = quote(game_name, safe=""), quote(tag_line, safe="")
+        return self._get(
+            f"https://{self.region}.api.riotgames.com/riot/account/v1/accounts/"
+            f"by-riot-id/{name}/{tag}"
         )
 
     def match_ids(
