@@ -68,15 +68,53 @@ whose middle item is win_condition, the one found anti-correlated with the
 podcast source (-0.33). No macro test-retest is possible (the wording changed
 v3 -> v10).
 
-**The game side cannot place a player on the meso split.** Game labels are
-stable (games-v1 vs v2, run 15 vs 17, micro/meso wording unchanged: noise 0.03-0.07
-of spread) but in games deception and prediction correlate **+0.89**: a game
-that asks for mind-games asks for both. A player's point is built from the games
-they pick, so picks alone cannot tell an anticipator from a concealer, however
-fine the champion labels are. That resolution has to come from evidence that
-*does* separate them: deep dives (§3 step 4) and why-answers (§5). The 276
-unlabelled bank games may add contrast (stealth games, skillshot-heavy games);
-measure once they are labelled, do not assume.
+**Game side: the contrasts are reachable, meso only half as well.** Game
+labels are stable (games-v1 vs v2, run 15 vs 17, micro/meso wording unchanged:
+noise 0.03-0.07 of spread). Across *all* games, sibling sub-traits correlate
++0.89 to +0.92, which first read as "picks cannot place anyone on a split". That
+was an artefact: games either have a dimension or lack it (osu! meso 0.02/0.20,
+CS2 0.90/0.90). The fair measure is the contrast among games that *have* the
+dimension (>= 0.5):
+
+    contrast                 champions (n)     games (n)
+    precision - execution    sd 0.21 (140)     sd 0.19 (28)    games carry it fully
+    prediction - deception   sd 0.27 (138)     sd 0.15 (21)    games carry about half
+
+Directions are right at the extremes: aim trainers precision 1.00 / execution
+0.80, Tekken 0.80 / 0.92; Liar's Bar and Among Us deception over prediction;
+rock-paper-scissors, chess and Hearthstone the reverse. So game picks place a
+player on the micro split directly and on the meso split weakly -- deep dives
+(§3 step 4) and why-answers (§5) are what strengthen the meso one. The 276
+unlabelled bank games raise both n's; re-measure once they are labelled.
+
+### Which sub-traits enter matching (decided on this analysis, 2026-09-28)
+
+A sub-trait adds precision only if it is reliable (test-retest), distinct (not
+repeating its siblings: 1 - R² on them, champion side), and reachable (something
+in the quiz can place a player on it).
+
+    sub-trait          noise   distinct   verdict
+    micro_precision    0.12    0.33       in, as one end of the micro split
+    micro_execution    0.15    0.35       in, the other end
+    micro_cheat        0.18    0.17       out: the cheat test restated, least distinct
+    meso_deception     0.16    0.47       in, one end of the meso split
+    meso_prediction    0.20    0.83       in, the other end
+    meso_exploitation  0.29    0.23       out: noisy, overlaps deception (+0.72)
+    meso_cheat         0.32    0.32       out: noisiest, the cheat test restated
+    macro_*            n/a     -          out: only routing registers externally
+
+Matching therefore uses the three dimensions plus **two contrasts**: micro
+precision vs execution, and meso prediction vs concealment. Each contrast
+counts in proportion to how well the player's position on it was read; unread,
+it contributes nothing and the match falls back to the dimensions -- the rule
+above, applied per contrast.
+
+**Macro weighting -- a recommendation, not a decision.** Against the 19 tight
+champion anchors, routing alone correlates +0.61 with Surnex's macro, the
+production aggregate +0.49, win_condition alone +0.25. Weighting macro toward
+routing would improve the axis Gate 2 called load-bearing and least verified,
+with no relabel. CLAUDE.md keeps weights an open question, so this waits for a
+decision (§9).
 
 **Surnex's before/after axis** (`docs/3m-model.md`, attention in time:
 anticipate/react, suspect/recognise, strategise/calculate) is a within-model
@@ -84,17 +122,20 @@ axis from the source itself, but no sub-trait is defined along it. Using it
 means new labels, so it is out of scope until a prompt version adds it.
 
 **Honest-output rule.** Precision is capped by label quality. The result says
-where resolution is real (micro, meso-prediction vs concealment when deep-dive
-evidence exists) and where it is not (macro, beyond its aggregate). An
+where resolution is real (the micro split; the meso split, more so once deep
+dives feed it) and where it is not (macro, beyond its aggregate). An
 unread sub-trait falls back to its dimension's aggregate and is reported as
 such — the sub-trait version of "reported, never imputed".
 
 ## 3. The chain
 
-1. **Recognition sweep.** Adaptive rounds of ~12 cards; each card is
-   "played / never played" as a positive answer, never silence. Search box as a
-   fallback. (See open decision 1 for how a positive answer stays fast.)
-2. **Verdicts on recognised games only:** loved / fine / didn't like.
+1. **Recognition sweep.** Adaptive rounds of ~12 cards. Tap the ones you have
+   played, then **"the rest I haven't played"** -- one tap that makes never-played
+   a positive answer for the whole round, instead of silence and instead of a
+   tap per card. Search box as a fallback.
+2. **Verdicts on recognised games only:** loved / fine / didn't like. "Fine"
+   carries no taste weight and does not count toward a dimension being read; it
+   does count as recognised, which is the recognition data §7 needs.
 3. **Why** — for dislikes and for loves (§5).
 4. **Deep dives** (Type 2) into loved games that have deep-tier entries.
 5. **Provisional result, then sharpening.**
@@ -218,27 +259,47 @@ be delivered by a champion, but it is outside MMM. It may act only as a
 tie-breaker among champions MMM already places close, and in explanation text.
 Never in matching.
 
-## 6. Output: a path, not a point — PENDING two conflicts
+## 6. Output
 
-The point is the destination. The recommendation is an ordered path: start
-champion -> one or two steps -> destination.
+**Decided 2026-09-28** (CLAUDE.md, replacing *Style first, role second*):
 
-**Not frozen yet.** As written, this conflicts with two frozen decisions in
-CLAUDE.md, and they have to be amended deliberately rather than overridden by
-this doc (open decision 2):
+- **The product picks the lane.** Labels are champion x role, so the answer is
+  a champion x role; a newcomer is not asked to choose a lane. The lane gets a
+  light mention -- a wrong lane costs little, a wrong champion is the failure.
+- **The result reads the player** in plain language (§6.1) and never shows a
+  champion's own sub-trait profile.
+- **Each champion is presented minimally:** "Azir / mid" plus the one or two
+  sub-traits that explain *this* match for *this* player. Two players matched to
+  Azir get different reasons, because they reach him through different parts of
+  his profile. `quiz.explain` already does this at dimension level (the trait
+  the player is most decided about *and* the champion shares, or nothing); it
+  generalises to the two contrasts.
+- **The recommendation may be an ordered path** (start -> destination).
+  Difficulty and Blue Essence price order the steps; neither is shown, and
+  neither places the player -- which keeps *Three dimensions only* intact
+  (difficulty is never a matching dimension or a UI concept).
 
-- *Style first, role second* fixes the output as "MMM point -> style
-  neighbourhood -> 3-5 champions labelled by lane -> user picks the lane". A
-  path is a different output, and a path that crosses lanes (bot -> support)
-  takes the lane choice away from the user.
-- *Three dimensions only* lists difficulty among traits that are "never ...
-  matching dimensions or UI concepts". A difficulty penalty in path cost
-  arguably stays out of *matching* (it orders a path, it does not place
-  anyone), but "start here, it is easier" in the result makes difficulty a UI
-  concept.
+### 6.1 The reading
 
-Design, for when those are resolved. Path cost = distance to the point +
-difficulty penalty + Blue Essence cost.
+"From your answers you seem like..." -- the appeal of a horoscope, which is
+the point: people like being described. Two constraints keep it honest:
+
+- **Only MMM, in player language.** Every phrase maps to a dimension or a
+  contrast that was read. "High mechanics", "you set up plays before they
+  happen", "you like knowing where to be" pass. "You love fast killing" does
+  not -- that is tempo, a labelling input CLAUDE.md bars from the UI -- and
+  neither does anything about teams unless a sub-trait carries it.
+- **Unread is said, not filled.** A part of the reading the answers could not
+  support is stated as open, with the retry offer (*reported, never imputed*).
+  A horoscope invents; this one only describes what it measured.
+
+Phrasing is a bank of approved sentences per dimension and contrast level,
+drafted offline (an LLM may draft, a person approves) and assembled
+deterministically at runtime -- no LLM in the loop.
+
+### 6.2 Paths
+
+Path cost = distance to the point + difficulty penalty + Blue Essence cost.
 
 - Step 1: accessible, lower difficulty, cheap BE tier, a lane the player learns
   from. Later steps: closer to the point, harder, pricier, spaced by BE earn
@@ -283,29 +344,31 @@ a genre for every deck game (§3); and search aliases — the names people type
   exists (`011_panel.sql`: `actual_point`, `actual_games`, `checked_at`) and
   `db.py` has the read and write, but **the comparison pass itself is not
   built**: there is no caller, and `riot_api.py` has no account-v1 by-riot-id
-  lookup.
+  lookup. It runs by hand on a development key fetched for the occasion
+  (they expire every 24 hours); a production key is not pursued yet. This is
+  the only external measure of match quality the project has, so it is what
+  every later slice is judged by.
 - A "does this feel right?" rating: the product goal is satisfaction, and this
   tests whether the bias worries are overblown.
 - The share of loves and dislikes given non-gameplay reasons: how much of
   today's signal is noise.
 - Whether fill and retry games were answerable.
 
-## 9. Open decisions
+## 9. Decisions
 
-Listed with the staged plan in the session that wrote this doc; repeated here
-so the doc stands alone.
+Settled 2026-09-28: never-played via "the rest I haven't played" (§3);
+"fine" at zero weight, recognised but not read (§3); the product picks the lane
+(§6); the result reads the player and shows no champion sub-trait profile
+(§6.1); the sub-traits in matching (§2); the comparison pass runs on a manually
+fetched Riot development key (§8).
 
-1. How "never played" stays a positive answer without a tap per card.
-2. The path conflicts (§6): amend *Style first, role second* and the
-   difficulty-as-UI rule, or change the path design.
-3. Whether sub-traits appear by name in the UI or only as plain-language
-   explanation under their dimension (the Attribution section: this project's
-   decomposition must not read as an extension of Surnex's model).
-4. Which sub-traits enter matching (proposal: micro_precision,
-   meso_deception, meso_prediction; not meso_exploitation, meso_cheat or any
-   macro sub-trait) — and whether sub-trait matching waits until deep dives can
-   supply within-meso evidence (§2, game side).
-5. The weight of "fine", and whether it counts toward a dimension being read.
-6. Where bias-proneness lives (bank files -> a `game` column) and who tags it.
-7. When to spend on labelling the 276 new deck games and 26 deep entries
-   (a gate for adaptive rounds and deep dives, not for the first slice).
+Still open:
+
+1. **Macro weighting** toward routing (§2): a recommendation waiting on the
+   CLAUDE.md open question about weights.
+2. **Discard-only dislike reasons in the first slice** ("never really played
+   it", "not about the gameplay"), or all dislike reasons together later.
+3. **When to spend on labelling** the 276 new deck games and 26 deep entries:
+   a gate for adaptive rounds and deep dives, not for the first slice.
+4. **Where bias-proneness lives** (bank files -> a `game` column) and who tags
+   the first 50.

@@ -64,9 +64,18 @@ matching or UI.
   For drift, weight recent patches more heavily rather than filtering to them: a
   champion that changed lanes months ago still carries the old lane in a flat
   average.
-- **Style first, role second.** Output = MMM point → style neighbourhood → 3–5
-  champions labelled by lane → user picks the lane. Result copy: these are first
-  picks, the settled lane comes later.
+- **The product picks the lane; the champion is the answer.** Output = MMM
+  point → style neighbourhood → champion×role, the lane chosen by the product
+  (labels are champion×role) and mentioned lightly: a wrong lane costs little, a
+  wrong champion is the failure. The recommendation may be an ordered path
+  (start → destination); difficulty and Blue Essence price order its steps but
+  are never shown and never place the player. Replaces *Style first, role
+  second* (user picks the lane), 2026-09-28. Design in `docs/quiz-chain.md` §6.
+- **The result reads the player, not the champion.** A plain-language reading
+  of the player ("from your answers you seem like…"), built only from dimensions
+  and contrasts that were read, in player language; what was not read is said,
+  not filled. No champion's sub-trait profile is shown. Each champion comes with
+  the one or two traits that explain *this* match for *this* player.
 - **A dimension the quiz could not read is reported, never imputed.** If a user
   picks no games that load on a dimension, recommend from the two that were
   measured and say the third is open — then offer a short second round serving
@@ -171,7 +180,8 @@ classifier: if role falls out of a style neighbourhood, role comes free.
   right reason.
 
 Decision: the expected branch. Style neighbourhood across roles, champions
-labelled by lane, user picks. No explicit role question, and no fallback to
+labelled by lane, user picks (the lane choice later moved to the product, see
+frozen decisions). No explicit role question, and no fallback to
 role×subclass priors.
 
 **Gate 2 — passed 2026-09-22.** Do synthetic personas and dry runs land where
