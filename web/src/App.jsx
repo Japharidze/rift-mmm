@@ -29,16 +29,6 @@ const VERDICTS = [
   ["never", "Never played"],
 ];
 
-// Where the panel actually pays off. Everything else it collects is context;
-// the Riot ID is what lets a result be checked against the champions someone
-// really plays, which is the one test this project has never been able to run
-// at more than n=1.
-const REGIONS = [
-  ["euw1", "EU West"], ["eun1", "EU Nordic & East"], ["na1", "North America"],
-  ["kr", "Korea"], ["tr1", "Türkiye"], ["ru", "Russia"], ["br1", "Brazil"],
-  ["la1", "LAN"], ["la2", "LAS"], ["oc1", "Oceania"], ["jp1", "Japan"],
-];
-
 const CONFIDENCE = {
   close: "a real match",
   fair: "in the neighbourhood",
@@ -107,7 +97,6 @@ function Cover({ item }) {
    there an unread dimension prints "not enough to tell" and no number. */
 function Panel({ sessionId }) {
   const [riot, setRiot] = useState("");
-  const [region, setRegion] = useState("euw1");
   const [note, setNote] = useState("");
   const [sent, setSent] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -119,7 +108,6 @@ function Panel({ sessionId }) {
     post("/panel/details", {
       session_id: sessionId,
       riot_id: riot.trim() || null,
-      riot_region: riot.trim() ? region : null,
       feedback: note.trim() || null,
     })
       .then(() => setSent(true))
@@ -141,9 +129,6 @@ function Panel({ sessionId }) {
           value={riot}
           onChange={e => setRiot(e.target.value)}
         />
-        <select className="field" value={region} onChange={e => setRegion(e.target.value)}>
-          {REGIONS.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
-        </select>
       </div>
       <textarea
         className="field wide"
@@ -225,6 +210,10 @@ export default function App() {
   // and an invisible effect reads as a broken button.
   const [fresh, setFresh] = useState([]);
   const lastKeys = useRef(null);
+  // The stored session this quiz belongs to. Sent back with every sharpening
+  // re-post so the API updates that row; without it each comparison answered
+  // recorded one more session.
+  const sessionId = useRef(null);
 
   const fail = useCallback(e => {
     setError(e.message || "Cannot reach the API. Is `r3m serve` running?");
@@ -252,8 +241,10 @@ export default function App() {
       disliked: nextDisliked,
       n: 5,
       comparisons: nextComparisons,
+      session_id: sessionId.current,
     })
       .then(r => {
+        sessionId.current = r.session_id ?? null;
         const keys = r.champions.map(c => c.champion_id + c.role);
         const before = lastKeys.current;
         lastKeys.current = keys;
@@ -332,7 +323,7 @@ export default function App() {
   const restart = () => {
     setError(null); setStage("grid-loved"); setLoved([]); setDisliked([]);
     setFills([]); setItem(null); setResult(null); setComparisons([]); setPair(null);
-    setFresh([]); lastKeys.current = null;
+    setFresh([]); lastKeys.current = null; sessionId.current = null;
   };
 
   // Keys change how a rapid-fire quiz feels to use. 1/2/3 on a single card,

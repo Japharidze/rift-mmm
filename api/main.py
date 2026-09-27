@@ -124,6 +124,9 @@ class ResultRequest(BaseModel):
     # Stage 3. Empty on the provisional result, which is a complete answer on
     # its own -- refinement is offered after it, never required before it.
     comparisons: list[Comparison] = Field(default_factory=list)
+    # Set on every re-post after the first result, so sharpening updates the
+    # session it belongs to instead of recording another one.
+    session_id: int | None = None
 
 
 class FillRequest(BaseModel):
@@ -171,7 +174,6 @@ class PanelDetails(BaseModel):
     # Both optional: somebody who wants to say something but not name an
     # account, or the reverse, should be able to.
     riot_id: str | None = None
-    riot_region: str | None = None
     feedback: str | None = None
 
 
@@ -308,15 +310,28 @@ def result(req: ResultRequest) -> Result:
     # measurement we are taking, not something they asked for.
     try:
         with db.connect() as conn:
-            result.session_id = db.insert_quiz_session(
+            dimensions = {d: e.model_dump() for d, e in result.dimensions.items()}
+            champions = [c.model_dump() for c in result.champions]
+            comparisons = [c.model_dump() for c in req.comparisons]
+            updated = req.session_id is not None and db.update_quiz_session(
+                conn,
+                session_id=req.session_id,
+                loved=req.loved,
+                disliked=req.disliked,
+                comparisons=comparisons,
+                point=list(est.point),
+                dimensions=dimensions,
+                champions=champions,
+            )
+            result.session_id = req.session_id if updated else db.insert_quiz_session(
                 conn,
                 served=req.loved + req.disliked,
                 loved=req.loved,
                 disliked=req.disliked,
-                comparisons=[c.model_dump() for c in req.comparisons],
+                comparisons=comparisons,
                 point=list(est.point),
-                dimensions={d: e.model_dump() for d, e in result.dimensions.items()},
-                champions=[c.model_dump() for c in result.champions],
+                dimensions=dimensions,
+                champions=champions,
                 champion_prompt_version=_champion_version(),
                 game_prompt_version=rows[0]["prompt_version"] if rows else "unknown",
             )
@@ -334,7 +349,6 @@ def panel_details(req: PanelDetails) -> dict[str, bool]:
             conn,
             session_id=req.session_id,
             riot_id=req.riot_id,
-            riot_region=req.riot_region,
             feedback=req.feedback,
         )
     return {"stored": ok}

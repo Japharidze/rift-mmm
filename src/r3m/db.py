@@ -600,12 +600,48 @@ def insert_quiz_session(
     return int(session_id)
 
 
+def update_quiz_session(
+    conn: psycopg.Connection,
+    *,
+    session_id: int,
+    loved: list[str],
+    disliked: list[str],
+    comparisons: list[dict[str, Any]],
+    point: list[float],
+    dimensions: dict[str, Any],
+    champions: list[dict[str, Any]],
+) -> bool:
+    """Fold a sharpening answer into the session it belongs to.
+
+    Every comparison re-posts the result, and each re-post used to insert: one
+    tester answering three pairs became four rows, and the panel counted result
+    views instead of people. The row now ends holding the final state, and
+    `comparisons` still records every step that got it there.
+
+    Matched on the picks as well as the id, so a stale tab or a replayed id
+    cannot overwrite a different session -- it gets False and a fresh row.
+    Riot id and feedback are untouched: they may already have been attached.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            update quiz_session
+               set comparisons = %s, point = %s, dimensions = %s, champions = %s
+             where id = %s and loved = %s and disliked = %s
+            """,
+            (Jsonb(comparisons), point, Jsonb(dimensions), Jsonb(champions),
+             session_id, loved, disliked),
+        )
+        updated = cur.rowcount
+    conn.commit()
+    return updated > 0
+
+
 def attach_panel_details(
     conn: psycopg.Connection,
     *,
     session_id: int,
     riot_id: str | None,
-    riot_region: str | None,
     feedback: str | None,
 ) -> bool:
     """Add a Riot id and/or free text to a session already stored.
@@ -621,11 +657,10 @@ def attach_panel_details(
             """
             update quiz_session
                set riot_id = coalesce(%s, riot_id),
-                   riot_region = coalesce(%s, riot_region),
                    feedback = coalesce(%s, feedback)
              where id = %s
             """,
-            (riot_id or None, riot_region or None, feedback or None, session_id),
+            (riot_id or None, feedback or None, session_id),
         )
         updated = cur.rowcount
     conn.commit()
@@ -637,15 +672,15 @@ def panel_sessions_to_check(conn: psycopg.Connection) -> list[dict[str, Any]]:
     with conn.cursor() as cur:
         cur.execute(
             """
-            select id, riot_id, riot_region, point, dimensions
+            select id, riot_id, point, dimensions
             from quiz_session
             where riot_id is not null and checked_at is null
             order by created_at
             """
         )
         return [
-            {"id": r[0], "riot_id": r[1], "riot_region": r[2],
-             "point": [float(x) for x in r[3]], "dimensions": r[4]}
+            {"id": r[0], "riot_id": r[1],
+             "point": [float(x) for x in r[2]], "dimensions": r[3]}
             for r in cur.fetchall()
         ]
 
