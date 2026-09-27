@@ -115,10 +115,19 @@ Phase 2: both gates passed, building the MVP. The game side is done —
 `game`/`game_label` tables, `anchors/games.yaml`, `labeling/games.py`
 (prompt games-v2), and `quiz.py` turn a player's picks into an MMM point and a
 confidence-banded style neighbourhood (`scoring.py`), all reachable from the
-CLI (`r3m quiz`, `r3m match`). Two things remain: a full champion relabel at
-the current prompt (`docs/sub-traits.md` is v8; the 196-row set below still
-reflects v3, since a relabel is one pass and routing kept changing under it —
-see v4–v9 there), and the `/web` frontend named in Stack, not started.
+CLI (`r3m quiz`, `r3m match`). The `/web` frontend and API are deployed as one
+service (`docs/deploy.md`) and serve as the panel: every completed quiz is a
+`quiz_session` row, optionally with a Riot id (EUNE only, so no region is
+stored) and a comment. First round 2026-09-26: 16 rows, ~9 testers.
+
+Champions stay on v3. `docs/sub-traits.md` ran v10 and concluded a relabel is
+not justified (blocking failures 28 vs 29, inside noise; external agreement
+flat), so the 196-row set below is production, not a placeholder.
+
+Next: grow the game bank past the transcript's 50 (anchors stay held out;
+new games are labelled by games-v2), then new question types — why a game was
+disliked, in-game choices, genre — each mapping onto the three dimensions or
+onto nothing.
 
 Phase 1 done: schema, Data Dragon ingestion, the match sample, `champion_role`,
 and the first full labelling pass — 196 champion×role rows at prompt v3
