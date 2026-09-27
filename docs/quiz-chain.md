@@ -114,7 +114,17 @@ champion anchors, routing alone correlates +0.61 with Surnex's macro, the
 production aggregate +0.49, win_condition alone +0.25. Weighting macro toward
 routing would improve the axis Gate 2 called load-bearing and least verified,
 with no relabel. CLAUDE.md keeps weights an open question, so this waits for a
-decision (§9).
+decision (§9) -- and for the comparison pass to have enough players to test
+it, since 19 anchors plus three players cannot settle it either.
+
+**Condition on shipping it (Attribution).** `docs/sub-traits.md` ("What this
+settles") already set the terms: weighting toward the only component that
+measures is a fit against evidence, *not* a redefinition, and must be recorded
+in plain words as a measurement limitation. Whichever slice ships it writes, in
+CLAUDE.md and sub-traits.md: *this pipeline can only see routing in a
+champion's kit, so macro is measured through routing; that is a limit of the
+measurement, not a claim that Surnex's macro is routing.* Without that
+sentence the weighting quietly edits Surnex's model.
 
 **Surnex's before/after axis** (`docs/3m-model.md`, attention in time:
 anticipate/react, suspect/recognise, strategise/calculate) is a within-model
@@ -266,6 +276,10 @@ Never in matching.
 - **The product picks the lane.** Labels are champion x role, so the answer is
   a champion x role; a newcomer is not asked to choose a lane. The lane gets a
   light mention -- a wrong lane costs little, a wrong champion is the failure.
+  Mechanically this is automatic and already true: `scoring.neighbourhood`
+  keeps one entry per champion, with the role of that champion's nearest
+  champion x role row. Nothing predicts a lane from the point -- which Gate 1
+  measured as weak (top lane below chance) -- so none of that weakness applies.
 - **The result reads the player** in plain language (§6.1) and never shows a
   champion's own sub-trait profile.
 - **Each champion is presented minimally:** "Azir / mid" plus the one or two
@@ -292,6 +306,18 @@ the point: people like being described. Two constraints keep it honest:
 - **Unread is said, not filled.** A part of the reading the answers could not
   support is stated as open, with the retry offer (*reported, never imputed*).
   A horoscope invents; this one only describes what it measured.
+- **Every phrase could be false for another player.** Horoscopes feel accurate
+  to almost everyone (the Barnum effect), so a phrase that fits everyone
+  describes no one. "You set up plays before they happen" is falsifiable -- a
+  player at the other end of the meso split would reject it. "You're
+  competitive but thoughtful" is Barnum and never ships. Each sentence in the
+  bank is written as one side of a contrast, with its opposite beside it, so a
+  reviewer can check that the opposite is a real player too.
+
+**The reading must not contaminate the measurement.** A flattering, personal
+reading gets rated "feels right" whether or not the champions fit. So the
+"feels right?" question (§8) is asked about the *champions*, and asked
+*before* the reading is shown.
 
 Phrasing is a bank of approved sentences per dimension and contrast level,
 drafted offline (an LLM may draft, a person approves) and assembled
@@ -348,15 +374,25 @@ a genre for every deck game (§3); and search aliases — the names people type
   (they expire every 24 hours); a production key is not pursued yet. This is
   the only external measure of match quality the project has, so it is what
   every later slice is judged by.
-- A "does this feel right?" rating: the product goal is satisfaction, and this
-  tests whether the bias worries are overblown.
+- A "do these champions feel right?" rating: the product goal is
+  satisfaction, and this tests whether the bias worries are overblown. Asked
+  about the champions and before the reading appears (§6.1), or the Barnum
+  effect measures the horoscope instead of the match.
+- **Sample size.** Round 1 left three Riot ids, and two lack a tag line. That
+  is a sanity check for the comparison pass, never a ranking of matcher
+  variants -- with n=3 any difference is noise, and choosing on it fits the
+  model to three friends. Round 2 makes the Riot id prominent and requires the
+  #tag, and variant comparisons are reported as verdicts only past a minimum n
+  (`r3m.panel`).
 - The share of loves and dislikes given non-gameplay reasons: how much of
   today's signal is noise.
 - Whether fill and retry games were answerable.
 
 ## 9. Decisions
 
-Settled 2026-09-28: never-played via "the rest I haven't played" (§3);
+Settled 2026-09-28: the two cancelling dislike reasons ("never really played
+it", "not about the gameplay") ship in the first slice, since they only remove
+noise; never-played via "the rest I haven't played" (§3);
 "fine" at zero weight, recognised but not read (§3); the product picks the lane
 (§6); the result reads the player and shows no champion sub-trait profile
 (§6.1); the sub-traits in matching (§2); the comparison pass runs on a manually
@@ -366,9 +402,7 @@ Still open:
 
 1. **Macro weighting** toward routing (§2): a recommendation waiting on the
    CLAUDE.md open question about weights.
-2. **Discard-only dislike reasons in the first slice** ("never really played
-   it", "not about the gameplay"), or all dislike reasons together later.
-3. **When to spend on labelling** the 276 new deck games and 26 deep entries:
+2. **When to spend on labelling** the 276 new deck games and 26 deep entries:
    a gate for adaptive rounds and deep dives, not for the first slice.
-4. **Where bias-proneness lives** (bank files -> a `game` column) and who tags
+3. **Where bias-proneness lives** (bank files -> a `game` column) and who tags
    the first 50.

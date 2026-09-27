@@ -75,7 +75,10 @@ matching or UI.
   of the player ("from your answers you seem like…"), built only from dimensions
   and contrasts that were read, in player language; what was not read is said,
   not filled. No champion's sub-trait profile is shown. Each champion comes with
-  the one or two traits that explain *this* match for *this* player.
+  the one or two traits that explain *this* match for *this* player. Every
+  phrase must be one another player could reject (no Barnum statements), and
+  "do these champions feel right?" is asked about the champions, before the
+  reading appears.
 - **A dimension the quiz could not read is reported, never imputed.** If a user
   picks no games that load on a dimension, recommend from the two that were
   measured and say the third is open — then offer a short second round serving
