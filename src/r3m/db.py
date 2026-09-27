@@ -241,16 +241,21 @@ def labelling_targets(
 
 
 def insert_label_run(
-    conn: psycopg.Connection, *, prompt_version: str, model: str, note: str | None = None
+    conn: psycopg.Connection,
+    *,
+    prompt_version: str,
+    model: str,
+    effort: str | None = None,
+    note: str | None = None,
 ) -> int:
     with conn.cursor() as cur:
         cur.execute(
             """
-            insert into label_run (prompt_version, model, note)
-            values (%s, %s, %s)
+            insert into label_run (prompt_version, model, effort, note)
+            values (%s, %s, %s, %s)
             returning id
             """,
-            (prompt_version, model, note),
+            (prompt_version, model, effort, note),
         )
         return cur.fetchone()[0]  # type: ignore[index]
 

@@ -15,7 +15,15 @@ from r3m.labeling.game_prompt import (
     GAME_SYSTEM_PROMPT,
     build_game_message,
 )
-from r3m.labeling.run import DEFAULT_MODEL, MAX_ATTEMPTS, LabelFailure, _client
+from r3m.labeling.run import (
+    DEFAULT_EFFORT,
+    DEFAULT_MODEL,
+    MAX_ATTEMPTS,
+    MAX_TOKENS,
+    LabelFailure,
+    _client,
+    missing_tool_use,
+)
 from r3m.labeling.schema import TOOL_SCHEMA, ChampionLabel
 
 
@@ -27,12 +35,13 @@ class GameRunResult:
     failed: list[LabelFailure] = field(default_factory=list)
 
 
-def _call(client, *, model: str, name: str, mode: str | None):
+def _call(client, *, model: str, effort: str, name: str, mode: str | None):
     last_error: Exception | None = None
     for _ in range(MAX_ATTEMPTS):
         response = client.messages.create(
             model=model,
-            max_tokens=1024,
+            max_tokens=MAX_TOKENS,
+            output_config={"effort": effort},
             system=[{"type": "text", "text": GAME_SYSTEM_PROMPT,
                      "cache_control": {"type": "ephemeral"}}],
             tools=[TOOL_SCHEMA],
@@ -42,7 +51,7 @@ def _call(client, *, model: str, name: str, mode: str | None):
         )
         tool_use = next((b for b in response.content if b.type == "tool_use"), None)
         if tool_use is None:
-            last_error = RuntimeError("no tool_use block in the response")
+            last_error = missing_tool_use(response)
             continue
         try:
             return ChampionLabel.model_validate(tool_use.input), tool_use.input
@@ -52,7 +61,8 @@ def _call(client, *, model: str, name: str, mode: str | None):
     raise last_error
 
 
-def run(*, model: str = DEFAULT_MODEL, games: Sequence[str] | None = None,
+def run(*, model: str = DEFAULT_MODEL, effort: str = DEFAULT_EFFORT,
+        games: Sequence[str] | None = None,
         note: str | None = None) -> GameRunResult:
     client = _client()
     with db.connect() as conn:
@@ -66,14 +76,16 @@ def run(*, model: str = DEFAULT_MODEL, games: Sequence[str] | None = None,
 
         for t in targets:
             try:
-                label, raw = _call(client, model=model, name=t["name"], mode=t["mode"])
+                label, raw = _call(client, model=model, effort=effort,
+                                   name=t["name"], mode=t["mode"])
             except Exception as exc:
                 failed.append(LabelFailure(t["game_id"], t["mode"] or "-", str(exc)))
                 continue
 
             if label_run_id is None:
                 label_run_id = db.insert_label_run(
-                    conn, prompt_version=GAME_PROMPT_VERSION, model=model, note=note
+                    conn, prompt_version=GAME_PROMPT_VERSION, model=model,
+                    effort=effort, note=note,
                 )
 
             fields = label.model_dump(exclude={"rationale"})

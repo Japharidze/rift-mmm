@@ -27,7 +27,26 @@ from r3m.labeling.schema import TOOL_NAME, ChampionLabel, tool_schema
 # it, not one to bake in here).
 DEFAULT_MODEL = "claude-opus-5"
 
+# On claude-opus-5 omitting `thinking` runs adaptive thinking at effort `high`,
+# which every run before label_run.effort existed did without saying so. Ten
+# bounded scores against a fixed rubric does not need that depth, and output
+# tokens are most of what a label costs: the input is ~3.5k tokens, 91% of it
+# the cached prefix. Low is the starting point, not a measured optimum -- grade
+# the first low-effort run with `r3m check-anchors` before trusting it, the
+# same as a prompt change.
+DEFAULT_EFFORT = "low"
+
+# Room for thinking plus the tool call. The old 1024 was shared with thinking,
+# and a long pass could end the response before the tool_use block arrived --
+# which read as a malformed answer, not a truncated one. Billing is by tokens
+# generated, so the ceiling costs nothing unless it is used.
+MAX_TOKENS = 16000
+
 MAX_ATTEMPTS = 3
+
+# Transport retries (429, 5xx, dropped connections), below MAX_ATTEMPTS. The
+# SDK default is 2; label_run 9 lost 8 rows to network errors at that.
+MAX_RETRIES = 5
 
 
 @dataclass(frozen=True)
@@ -53,13 +72,23 @@ def _client() -> anthropic.Anthropic:
             "ANTHROPIC_API_KEY is not set. Add it to .env before running "
             "r3m label."
         )
-    return anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    return anthropic.Anthropic(api_key=settings.anthropic_api_key, max_retries=MAX_RETRIES)
+
+
+def missing_tool_use(response: anthropic.types.Message) -> RuntimeError:
+    """Say why there was no tool call, so a truncation is not read as noise."""
+    u = response.usage
+    return RuntimeError(
+        f"no tool_use block in the response (stop_reason={response.stop_reason}, "
+        f"output_tokens={u.output_tokens})"
+    )
 
 
 def _call(
     client: anthropic.Anthropic,
     *,
     model: str,
+    effort: str,
     champion_name: str,
     title: str,
     role: str,
@@ -77,7 +106,8 @@ def _call(
     for _ in range(MAX_ATTEMPTS):
         response = client.messages.create(
             model=model,
-            max_tokens=1024,
+            max_tokens=MAX_TOKENS,
+            output_config={"effort": effort},
             # 82% of each call is this fixed prefix, identical for every
             # champion. Cached, it costs a tenth on every call after the first.
             # Render order is tools -> system -> messages, so a breakpoint on
@@ -106,7 +136,7 @@ def _call(
         )
         tool_use = next((b for b in response.content if b.type == "tool_use"), None)
         if tool_use is None:
-            last_error = RuntimeError("no tool_use block in the response")
+            last_error = missing_tool_use(response)
             continue
         try:
             label = ChampionLabel.model_validate(tool_use.input)
@@ -121,6 +151,7 @@ def _call(
 def run(
     *,
     model: str = DEFAULT_MODEL,
+    effort: str = DEFAULT_EFFORT,
     champions: Sequence[str] | None = None,
     note: str | None = None,
 ) -> LabelRunResult:
@@ -157,6 +188,7 @@ def run(
                 label, raw = _call(
                     client,
                     model=model,
+                    effort=effort,
                     champion_name=target["name"],
                     title=target["title"],
                     role=target["role"],
@@ -168,7 +200,8 @@ def run(
 
             if label_run_id is None:
                 label_run_id = db.insert_label_run(
-                    conn, prompt_version=PROMPT_VERSION, model=model, note=note
+                    conn, prompt_version=PROMPT_VERSION, model=model, effort=effort,
+                    note=note,
                 )
 
             fields = label.model_dump(exclude={"rationale"})

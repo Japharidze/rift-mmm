@@ -13,6 +13,9 @@ from r3m.labeling import run as labeling_run
 from r3m.migrate import apply_migrations
 from r3m.riot_api import RiotApi
 
+# output_config.effort values on the current Opus models.
+EFFORTS = ("low", "medium", "high", "xhigh", "max")
+
 
 def _migrate(args: argparse.Namespace) -> int:
     with db.connect() as conn:
@@ -88,10 +91,12 @@ def _label(args: argparse.Namespace) -> int:
     champions = args.champions.split(",") if args.champions else None
     print(
         f"labelling {'all live champion x role rows' if champions is None else champions} "
-        f"with {args.model} ...",
+        f"with {args.model} at effort {args.effort} ...",
         flush=True,
     )
-    result = labeling_run.run(model=args.model, champions=champions, note=args.note)
+    result = labeling_run.run(
+        model=args.model, effort=args.effort, champions=champions, note=args.note
+    )
     if result.targeted == 0:
         print(
             "nothing to label: champion_role_live has no rows in scope. "
@@ -203,10 +208,12 @@ def _match(args: argparse.Namespace) -> int:
 
 def _label_games(args: argparse.Namespace) -> int:
     games = args.games.split(",") if args.games else None
-    print(f"labelling {'all games' if games is None else games} with {args.model} ...",
-          flush=True)
+    print(f"labelling {'all games' if games is None else games} with {args.model} "
+          f"at effort {args.effort} ...", flush=True)
     try:
-        result = labeling_games.run(model=args.model, games=games, note=args.note)
+        result = labeling_games.run(
+            model=args.model, effort=args.effort, games=games, note=args.note
+        )
     except httpx.HTTPStatusError as exc:
         if exc.response.status_code not in (401, 403):
             raise
@@ -400,6 +407,11 @@ def main() -> int:
         help=f"Anthropic model id (default: {labeling_run.DEFAULT_MODEL})",
     )
     label_cmd.add_argument(
+        "--effort", default=labeling_run.DEFAULT_EFFORT, choices=EFFORTS,
+        help=f"output_config.effort, recorded on the label_run "
+             f"(default: {labeling_run.DEFAULT_EFFORT})",
+    )
+    label_cmd.add_argument(
         "--champions", help="comma-separated champion ids to label (default: every live role)"
     )
     label_cmd.add_argument("--note", help="free text stored on the label_run row")
@@ -409,6 +421,10 @@ def main() -> int:
         "label-games", help="label games with the MMM sub-traits"
     )
     label_games_cmd.add_argument("--model", default=labeling_run.DEFAULT_MODEL)
+    label_games_cmd.add_argument(
+        "--effort", default=labeling_run.DEFAULT_EFFORT, choices=EFFORTS,
+        help=f"output_config.effort (default: {labeling_run.DEFAULT_EFFORT})",
+    )
     label_games_cmd.add_argument(
         "--games", help="comma-separated game ids (default: every game in the table)"
     )
