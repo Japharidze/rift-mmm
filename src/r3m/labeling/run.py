@@ -8,6 +8,7 @@ many sub-traits there are or what they mean -- that is docs/sub-traits.md.
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from typing import Any
 
 import anthropic
 
@@ -47,6 +48,38 @@ MAX_ATTEMPTS = 3
 # Transport retries (429, 5xx, dropped connections), below MAX_ATTEMPTS. The
 # SDK default is 2; label_run 9 lost 8 rows to network errors at that.
 MAX_RETRIES = 5
+
+
+# List prices per million tokens (Anthropic, 2026) -- for reporting what a run
+# cost, not for billing. Cache writes are the 5-minute TTL rate (1.25x input),
+# reads 0.1x. Check against the pricing page before quoting a number.
+PRICES = {
+    "claude-opus-5": {"input": 5.00, "output": 25.00, "cache_write": 6.25, "cache_read": 0.50},
+}
+
+
+@dataclass
+class Usage:
+    """Tokens over a run, every attempt included: a retry is paid for too."""
+    calls: int = 0
+    input: int = 0
+    output: int = 0
+    cache_write: int = 0
+    cache_read: int = 0
+
+    def add(self, u: Any) -> None:
+        self.calls += 1
+        self.input += u.input_tokens
+        self.output += u.output_tokens
+        self.cache_write += getattr(u, "cache_creation_input_tokens", 0) or 0
+        self.cache_read += getattr(u, "cache_read_input_tokens", 0) or 0
+
+    def dollars(self, model: str) -> float | None:
+        p = PRICES.get(model)
+        if p is None:
+            return None
+        return (self.input * p["input"] + self.output * p["output"]
+                + self.cache_write * p["cache_write"] + self.cache_read * p["cache_read"]) / 1e6
 
 
 @dataclass(frozen=True)

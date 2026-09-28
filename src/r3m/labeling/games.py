@@ -21,6 +21,7 @@ from r3m.labeling.run import (
     MAX_ATTEMPTS,
     MAX_TOKENS,
     LabelFailure,
+    Usage,
     _client,
     missing_tool_use,
 )
@@ -33,9 +34,11 @@ class GameRunResult:
     targeted: int
     labelled: int
     failed: list[LabelFailure] = field(default_factory=list)
+    usage: Usage = field(default_factory=Usage)
 
 
-def _call(client, *, model: str, effort: str, name: str, mode: str | None):
+def _call(client, *, model: str, effort: str, name: str, mode: str | None,
+          usage: Usage | None = None):
     last_error: Exception | None = None
     for _ in range(MAX_ATTEMPTS):
         response = client.messages.create(
@@ -49,6 +52,8 @@ def _call(client, *, model: str, effort: str, name: str, mode: str | None):
             messages=[{"role": "user",
                        "content": build_game_message(name=name, mode=mode)}],
         )
+        if usage is not None:
+            usage.add(response.usage)
         tool_use = next((b for b in response.content if b.type == "tool_use"), None)
         if tool_use is None:
             last_error = missing_tool_use(response)
@@ -72,12 +77,13 @@ def run(*, model: str = DEFAULT_MODEL, effort: str = DEFAULT_EFFORT,
 
         label_run_id: int | None = None
         failed: list[LabelFailure] = []
+        usage = Usage()
         labelled = 0
 
         for t in targets:
             try:
                 label, raw = _call(client, model=model, effort=effort,
-                                   name=t["name"], mode=t["mode"])
+                                   name=t["name"], mode=t["mode"], usage=usage)
             except Exception as exc:
                 failed.append(LabelFailure(t["game_id"], t["mode"] or "-", str(exc)))
                 continue
@@ -101,4 +107,4 @@ def run(*, model: str = DEFAULT_MODEL, effort: str = DEFAULT_EFFORT,
             labelled += 1
 
     return GameRunResult(label_run_id=label_run_id, targeted=len(targets),
-                         labelled=labelled, failed=failed)
+                         labelled=labelled, failed=failed, usage=usage)

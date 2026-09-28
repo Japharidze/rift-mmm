@@ -229,6 +229,11 @@ def _label_games(args: argparse.Namespace) -> int:
               f"labelled, {len(result.failed)} failed")
     for failure in result.failed:
         print(f"  FAILED {failure.champion_id}: {failure.error}")
+    u = result.usage
+    cost = u.dollars(args.model)
+    print(f"usage: {u.calls} calls, input {u.input:,} + cache write {u.cache_write:,} + "
+          f"cache read {u.cache_read:,}, output {u.output:,} tokens"
+          + (f" ~ ${cost:.2f} at list price" if cost is not None else ""))
     if result.labelled:
         _autodump()
     return 1 if result.failed else 0
