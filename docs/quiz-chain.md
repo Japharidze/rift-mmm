@@ -233,6 +233,26 @@ bank offline; a person approves it.
    Mismatch -> reopen.
 5. Stop when the leader holds and predictions confirm.
 
+### A card is a question (decided 2026-09-28)
+
+Personal rounds must not chase recognition alone. Played CS2 makes Valorant,
+Apex and Rainbow Six likely taps -- and all three sit in the same corner of the
+space, so each "confirms" the point instead of testing it, and the other poles
+are never probed. The first few picks would then decide everything after them.
+And recognition data feeds itself: people can only tap what they were shown.
+
+So a card is chosen like any other question:
+
+    value(card) = P(recognised | answers so far) x expected change in belief if answered
+
+A likely-recognised card that repeats what is known scores low on its own
+account; a likely-recognised card in an unprobed region scores high. Each round
+also keeps a fixed exploration share (about a third) chosen by spread alone,
+because the recognition estimate is learned from biased data and must never be
+the only door. Round 1 stays the dealt, spread-first round for everyone. This
+merges the recognition sweep into the selector: rounds are the selector asking
+several card-questions at once.
+
 ### The unified question interface (the key design rule)
 
 Every question of every type — versus, picker, verdict, genre, deep dive, why —
