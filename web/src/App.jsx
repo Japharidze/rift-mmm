@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const post = async (path, body) => {
   const r = await fetch(`/api${path}`, {
@@ -23,11 +23,17 @@ const get = async path => {
   return r.json();
 };
 
+// The three verdicts on a recognised game, in the order they sit on a card.
+// "fine" is recognition without taste: it counts toward knowing what someone
+// has played and toward nothing else (docs/quiz-chain.md §3). Symbols as well
+// as colour, so the choice does not rest on colour vision.
 const VERDICTS = [
-  ["loved", "Loved it"],
-  ["meh", "Didn't stick"],
-  ["never", "Never played"],
+  ["loved", "Loved it", "♥"],
+  ["fine", "Fine", "~"],
+  ["disliked", "Didn't like it", "✕"],
 ];
+// The single-card fill stage can also be answered "never played".
+const FILL_VERDICTS = [...VERDICTS, ["never", "Never played", "–"]];
 
 const CONFIDENCE = {
   close: "a real match",
@@ -188,11 +194,73 @@ function Readout({ dims }) {
   );
 }
 
+// Mirrors quiz.MAX_ROUNDS: whether "show me more games" has anything to show.
+const MAX_ROUNDS = 3;
+
+const lists = v => ({
+  loved: Object.keys(v).filter(g => v[g] === "loved"),
+  disliked: Object.keys(v).filter(g => v[g] === "disliked"),
+  played: Object.keys(v).filter(g => v[g]),
+});
+// Verdicts as stored: only answered games, never the null of a pending card.
+const answered = v => Object.fromEntries(Object.entries(v).filter(([, x]) => x));
+
+/* One card in a round. Tapping it says "played"; the verdict bar then covers
+   its lower part with loved / fine / didn't like and stays for the rest of the
+   round, so a choice is changed in place rather than on a later screen.
+   Tapping the card above the bar takes it back to not played.
+
+   A card played but not yet given a verdict pulses, and the round cannot move
+   on while one does: a silent default ("played, no opinion") is exactly the
+   ambiguity this stage exists to remove.
+
+   The whole card is the tap target, but a button cannot contain buttons, so
+   the card is a container: a full-size transparent button for played / not
+   played, with the verdict segments layered above it. */
+function RoundCard({ game, verdict, onPlay, onUnplay, onVerdict }) {
+  const played = verdict !== undefined;
+  const pending = verdict === null;
+  return (
+    <div className={`gcard round${played ? " played" : ""}${pending ? " pending" : ""}`}>
+      <Cover item={game} />
+      <button
+        className="hit"
+        aria-pressed={played}
+        aria-label={played ? `${game.name}: played. Tap to undo.` : `${game.name}: tap if you've played it`}
+        onClick={played ? onUnplay : onPlay}
+      />
+      {played && (
+        <div className="vbar" role="group" aria-label={`How did ${game.name} sit with you?`}>
+          {VERDICTS.map(([v, text, sym]) => (
+            <button
+              key={v}
+              className={`seg ${v}${verdict === v ? " on" : ""}${verdict && verdict !== v ? " off" : ""}`}
+              aria-pressed={verdict === v}
+              aria-label={text}
+              title={text}
+              onClick={() => onVerdict(v)}
+            >
+              {sym}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
-  const [stage, setStage] = useState("grid-loved");
-  const [grid, setGrid] = useState([]);
-  const [loved, setLoved] = useState([]);
-  const [disliked, setDisliked] = useState([]);
+  const [stage, setStage] = useState("round");
+  const [roundIndex, setRoundIndex] = useState(0);
+  const [cards, setCards] = useState([]);
+  // Every round card shown so far; stored with the session.
+  const [served, setServed] = useState([]);
+  // game id -> "loved" | "fine" | "disliked", or null while a played card
+  // waits for its verdict. The one source of truth: the lists derive from it.
+  const [verdicts, setVerdicts] = useState({});
+  const [reasons, setReasons] = useState({});
+  const [why, setWhy] = useState(null);
+  const [whyAsked, setWhyAsked] = useState(0);
   const [dims, setDims] = useState(null);
 
   // Stage 2 only. Also the undo stack, which is why it holds names.
@@ -215,30 +283,34 @@ export default function App() {
   // recorded one more session.
   const sessionId = useRef(null);
 
+  const { loved, disliked } = useMemo(() => lists(verdicts), [verdicts]);
+  const pendingCount = Object.values(verdicts).filter(v => v === null).length;
+  const seenAll = [...served, ...fills.map(f => f.id)];
+
   const fail = useCallback(e => {
     setError(e.message || "Cannot reach the API. Is `r3m serve` running?");
   }, []);
 
+  // The running point, for the readout. Re-derived from the answers rather
+  // than accumulated, so changing a verdict or undoing is correct for free.
   useEffect(() => {
-    get("/quiz/grid").then(setGrid).catch(fail);
-  }, [fail]);
-
-  // The running point, for the readout. Cheap, and re-derived from the picks
-  // rather than accumulated, so undo and un-tapping are correct for free.
-  useEffect(() => {
-    post("/quiz/estimate", { loved, disliked })
+    post("/quiz/estimate", { loved, disliked, reasons })
       .then(r => setDims(r.dimensions))
       .catch(fail);
-  }, [loved, disliked, fail]);
+  }, [loved, disliked, reasons, fail]);
 
-  const toggle = (list, setList, id) =>
-    setList(list.includes(id) ? list.filter(x => x !== id) : [...list, id]);
-
-  const showResult = useCallback((nextComparisons, nextLoved, nextDisliked) => {
+  // Each step below takes the answers as arguments rather than reading state:
+  // they run inside one another's promise callbacks, where state is still the
+  // value from before the answer that triggered them.
+  const showResult = useCallback((nextComparisons, v, rs, seen) => {
+    const { loved: l, disliked: d } = lists(v);
     setBusy(true);
     post("/quiz/result", {
-      loved: nextLoved,
-      disliked: nextDisliked,
+      loved: l,
+      disliked: d,
+      reasons: rs,
+      verdicts: answered(v),
+      served: seen,
       n: 5,
       comparisons: nextComparisons,
       session_id: sessionId.current,
@@ -256,58 +328,100 @@ export default function App() {
         // a complete answer.
         if (nextComparisons.length >= SHARPEN_MAX) return setPair(null);
         return post("/quiz/sharpen", {
-          loved: nextLoved,
-          disliked: nextDisliked,
+          loved: l,
+          disliked: d,
+          reasons: rs,
           comparisons: nextComparisons,
           used: nextComparisons.flatMap(c => [c.winner, c.loser]),
         }).then(p => setPair(p.dimension ? p : null));
       })
-      .catch(fail)
+      // Every love was for something other than the gameplay: not an error,
+      // a state with its own way forward.
+      .catch(e => (/gameplay itself/.test(e.message) ? setStage("nosignal") : fail(e)))
       .finally(() => setBusy(false));
   }, [fail]);
 
-  // Stage 2: one card at a time, but only for a dimension the grid left
-  // unread, and only while there is one.
-  const fillNext = useCallback((nextFills, nextLoved, nextDisliked) => {
-    if (!nextLoved.length) { setResult({ empty: true }); setStage("result"); return; }
+  // Stage 2: one card at a time, only for a dimension still unread.
+  const fillNext = useCallback((nextFills, v, rs, seen) => {
+    const { loved: l, disliked: d } = lists(v);
+    if (!l.length) { setResult({ empty: true }); setStage("result"); return; }
     setItem(null);
     setBusy(true);
-    post("/quiz/fill", {
-      served: [...grid.map(g => g.id), ...nextFills.map(f => f.id)],
-      loved: nextLoved,
-      disliked: nextDisliked,
-      asked: nextFills.length,
-    })
+    post("/quiz/fill", { served: seen, loved: l, disliked: d, asked: nextFills.length, reasons: rs })
       .then(r => {
         if (r.item) { setItem(r.item); setStage("fill"); return; }
-        return showResult([], nextLoved, nextDisliked);
+        return showResult([], v, rs, seen);
       })
       .catch(fail)
       .finally(() => setBusy(false));
-  }, [grid, showResult, fail]);
+  }, [showResult, fail]);
+
+  // The follow-ups: one at a time, only where the answer changes the result.
+  const startWhy = useCallback((v, rs, asked, seen) => {
+    const { loved: l, disliked: d } = lists(v);
+    if (!l.length) return fillNext([], v, rs, seen);
+    setBusy(true);
+    post("/quiz/why", { loved: l, disliked: d, reasons: rs, asked })
+      .then(w => {
+        if (w.game) { setWhy(w); setStage("why"); return; }
+        setWhy(null);
+        return fillNext([], v, rs, seen);
+      })
+      .catch(fail)
+      .finally(() => setBusy(false));
+  }, [fillNext, fail]);
+
+  // Stage 1: rounds of cards until the server says enough is known.
+  const loadRound = useCallback((index, v, rs, seen) => {
+    const { loved: l, disliked: d, played: p } = lists(v);
+    setBusy(true);
+    post("/quiz/round", { index, played: p, loved: l, disliked: d, reasons: rs })
+      .then(r => {
+        if (!r.cards) return startWhy(v, rs, 0, seen);
+        setCards(r.cards);
+        setRoundIndex(index);
+        setServed([...seen, ...r.cards.map(g => g.id)]);
+        setStage("round");
+        window.scrollTo(0, 0);
+      })
+      .catch(fail)
+      .finally(() => setBusy(false));
+  }, [startWhy, fail]);
+
+  useEffect(() => { loadRound(0, {}, {}, []); }, [loadRound]);
+
+  const play = id => setVerdicts(v => ({ ...v, [id]: null }));
+  const unplay = id => setVerdicts(v => { const n = { ...v }; delete n[id]; return n; });
+  const judge = (id, verdict) => setVerdicts(v => ({ ...v, [id]: verdict }));
+
+  const answerWhy = useCallback(option => {
+    if (!why) return;
+    const rs = { ...reasons, [why.game.id]: option };
+    const asked = whyAsked + 1;
+    setReasons(rs);
+    setWhyAsked(asked);
+    startWhy(verdicts, rs, asked, seenAll);
+  }, [why, reasons, whyAsked, verdicts, seenAll, startWhy]);
 
   const answerFill = useCallback(verdict => {
     if (!item) return;
     const nextFills = [...fills, { id: item.id, name: item.name, verdict }];
-    const nextLoved = verdict === "loved" ? [...loved, item.id] : loved;
-    const nextDisliked = verdict === "meh" ? [...disliked, item.id] : disliked;
+    const v = verdict === "never" ? verdicts : { ...verdicts, [item.id]: verdict };
     setFills(nextFills);
-    setLoved(nextLoved);
-    setDisliked(nextDisliked);
-    fillNext(nextFills, nextLoved, nextDisliked);
-  }, [item, fills, loved, disliked, fillNext]);
+    setVerdicts(v);
+    fillNext(nextFills, v, reasons, [...served, ...nextFills.map(f => f.id)]);
+  }, [item, fills, verdicts, reasons, served, fillNext]);
 
   const undoFill = useCallback(() => {
     if (!fills.length) return;
     const last = fills[fills.length - 1];
     const nextFills = fills.slice(0, -1);
-    const nextLoved = last.verdict === "loved" ? loved.filter(id => id !== last.id) : loved;
-    const nextDisliked = last.verdict === "meh" ? disliked.filter(id => id !== last.id) : disliked;
+    const v = { ...verdicts };
+    delete v[last.id];
     setFills(nextFills);
-    setLoved(nextLoved);
-    setDisliked(nextDisliked);
-    fillNext(nextFills, nextLoved, nextDisliked);
-  }, [fills, loved, disliked, fillNext]);
+    setVerdicts(v);
+    fillNext(nextFills, v, reasons, [...served, ...nextFills.map(f => f.id)]);
+  }, [fills, verdicts, reasons, served, fillNext]);
 
   const choose = useCallback(winnerIdx => {
     if (!pair) return;
@@ -317,32 +431,34 @@ export default function App() {
       { winner: winner.id, loser: loser.id, dimension: pair.dimension }];
     setComparisons(next);
     setPair(null);
-    showResult(next, loved, disliked);
-  }, [pair, comparisons, loved, disliked, showResult]);
+    showResult(next, verdicts, reasons, seenAll);
+  }, [pair, comparisons, verdicts, reasons, seenAll, showResult]);
 
   const restart = () => {
-    setError(null); setStage("grid-loved"); setLoved([]); setDisliked([]);
-    setFills([]); setItem(null); setResult(null); setComparisons([]); setPair(null);
-    setFresh([]); lastKeys.current = null; sessionId.current = null;
+    setError(null); setVerdicts({}); setReasons({}); setWhy(null); setWhyAsked(0);
+    setServed([]); setCards([]); setFills([]); setItem(null); setResult(null);
+    setComparisons([]); setPair(null); setFresh([]);
+    lastKeys.current = null; sessionId.current = null;
+    loadRound(0, {}, {}, []);
   };
 
-  // Keys change how a rapid-fire quiz feels to use. 1/2/3 on a single card,
-  // 1/2 on a comparison, backspace to take one back. Held in a ref so the
-  // listener is installed once rather than rebound on every answer.
+  // Keys change how a rapid-fire quiz feels to use: numbers on a single card,
+  // a follow-up or a comparison, backspace to take a fill answer back. Held in
+  // a ref so the listener is installed once rather than rebound on every answer.
   const keyRef = useRef({});
-  keyRef.current = { stage, item, pair, answerFill, choose, undoFill, fills };
+  keyRef.current = { stage, item, why, pair, answerFill, answerWhy, choose, undoFill, fills };
   useEffect(() => {
     const onKey = e => {
       const k = keyRef.current;
+      const n = Number(e.key) - 1;
       if (k.stage === "fill" && k.item) {
-        const i = ["1", "2", "3"].indexOf(e.key);
-        if (i !== -1) k.answerFill(VERDICTS[i][0]);
+        if (n >= 0 && n < FILL_VERDICTS.length) k.answerFill(FILL_VERDICTS[n][0]);
         if (e.key === "Backspace" && k.fills.length) k.undoFill();
       }
-      if (k.stage === "result" && k.pair) {
-        const i = ["1", "2"].indexOf(e.key);
-        if (i !== -1) k.choose(i);
+      if (k.stage === "why" && k.why && n >= 0 && n < k.why.options.length) {
+        k.answerWhy(k.why.options[n].id);
       }
+      if (k.stage === "result" && k.pair && (n === 0 || n === 1)) k.choose(n);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -355,6 +471,24 @@ export default function App() {
         <p className="note">{error}</p>
         {/* Resets state rather than reloading, so a hiccup is recoverable. */}
         <button onClick={restart}>Start again</button>
+      </main>
+    );
+  }
+
+  if (stage === "nosignal") {
+    return (
+      <main>
+        <h1>Nothing to match yet</h1>
+        <p>Every game you loved, you loved for something other than how it
+        plays — the people, the world, the memories. Those are real reasons,
+        but no champion can give them to you, so there is nothing to match on.</p>
+        {roundIndex + 1 < MAX_ROUNDS && (
+          <button onClick={() => loadRound(roundIndex + 1, verdicts, reasons, seenAll)}
+                  disabled={busy}>
+            Show me more games
+          </button>
+        )}
+        <button className="link" onClick={restart}>Start again</button>
       </main>
     );
   }
@@ -448,6 +582,27 @@ export default function App() {
     );
   }
 
+  if (stage === "why" && why) {
+    return (
+      <main>
+        <h1>Find a champion that fits how you play</h1>
+        <Readout dims={dims} />
+        <p className="progress">A quick one about {why.game.name}</p>
+        <div className="card">
+          <Cover key={why.game.id} item={why.game} />
+        </div>
+        <h1>{why.question}</h1>
+        <div className="reasons">
+          {why.options.map((o, i) => (
+            <button key={o.id} onClick={() => answerWhy(o.id)} disabled={busy}>
+              {o.label} <span className="key">{i + 1}</span>
+            </button>
+          ))}
+        </div>
+      </main>
+    );
+  }
+
   if (stage === "fill") {
     const open = dims && Object.values(dims).find(d => !d.read);
     return (
@@ -465,7 +620,7 @@ export default function App() {
         <div className={`card ${item ? "" : "pending"}`}>
           {item && <Cover key={item.id} item={item} />}
         </div>
-        {VERDICTS.map(([v, text], i) => (
+        {FILL_VERDICTS.map(([v, text], i) => (
           <button key={v} onClick={() => answerFill(v)} disabled={!item || busy}>
             {text} <span className="key">{i + 1}</span>
           </button>
@@ -474,45 +629,40 @@ export default function App() {
     );
   }
 
-  // Stage 1. Two passes over the same cards: what held you, then what didn't.
-  // Silence in the second pass is never-played, which is what it already
-  // means, so the three-way answer survives the grid intact.
-  const meh = stage === "grid-meh";
-  const picked = meh ? disliked : loved;
-  const cards = meh ? grid.filter(g => !loved.includes(g.id)) : grid;
+  // Stage 1: a round of cards. One question per card, "played it?", with the
+  // verdict given in place on the card itself.
+  const allPlayed = cards.length > 0 && cards.every(g => verdicts[g.id]);
   return (
-    /* Wider than the rest of the app: a 34rem column gives 28 cards three
-       across and ten rows of scrolling, which is a list again rather than a
-       grid. The point of the grid is that it is taken in at a glance. */
+    /* Wider than the rest of the app: a 34rem column turns a round into a list
+       again rather than a grid taken in at a glance. */
     <main className="wide">
-      <h1>{meh ? "Anything here you bounced off?" : "Tap everything you loved"}</h1>
+      <h1>Which of these have you played?</h1>
       <Readout dims={dims} />
       <p className="progress">
-        {meh
-          ? "Games you met and didn't stick with. Skip anything you never played."
-          : "Games that held you. Skip the ones you never played."}
-        {" · "}{picked.length} picked
+        Round {roundIndex + 1} · tap a game you've played, then how it sat with
+        you: ♥ loved it · ~ fine · ✕ didn't like it
       </p>
       <div className="grid">
         {cards.map(g => (
-          <button
-            className={`gcard ${picked.includes(g.id) ? "picked" : ""}`}
+          <RoundCard
             key={g.id}
-            onClick={() => toggle(picked, meh ? setDisliked : setLoved, g.id)}
-          >
-            <Cover item={g} />
-          </button>
+            game={g}
+            verdict={verdicts[g.id]}
+            onPlay={() => play(g.id)}
+            onUnplay={() => unplay(g.id)}
+            onVerdict={v => judge(g.id, v)}
+          />
         ))}
       </div>
       <div className="actions">
-        <button className="next" disabled={!grid.length || busy}
-                onClick={() => (meh ? fillNext(fills, loved, disliked) : setStage("grid-meh"))}>
-          {meh ? "Done" : "Next"}
+        <button className="next" disabled={!cards.length || busy || pendingCount > 0}
+                onClick={() => loadRound(roundIndex + 1, verdicts, reasons, served)}>
+          {allPlayed ? "Next" : "The rest I haven't played"}
         </button>
-        {!meh && !loved.length && (
-          <button className="link" onClick={() => setStage("grid-meh")}>
-            skip — none of these
-          </button>
+        {pendingCount > 0 && (
+          <span className="progress">
+            Say how {pendingCount === 1 ? "that one" : `those ${pendingCount}`} sat with you first
+          </span>
         )}
       </div>
     </main>

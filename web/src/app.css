@@ -81,6 +81,47 @@ button.link { border: none; padding: 0; text-decoration: underline;
 .gcard.picked::after { content: "✓"; position: absolute; top: .3rem; right: .4rem;
   width: 1.2rem; height: 1.2rem; border-radius: 50%; background: var(--pick);
   color: #fff; font-size: .75rem; line-height: 1.2rem; text-align: center; }
+/* Round cards: a container, not a button -- the verdict segments are buttons
+   and a button cannot hold buttons. `.hit` is the full-card tap target for
+   played / not played; the verdict bar sits above it. */
+.gcard.round { background: var(--bg); }
+.gcard.round .hit { position: absolute; inset: 0; margin: 0; padding: 0;
+  border: 0; border-radius: 0; background: none; cursor: pointer; }
+.gcard.round.played { border-color: var(--fg); }
+/* The bar covers the lower part of the card. At least 44px tall, the smallest
+   target a thumb hits reliably: on a phone, where a card is ~80px tall, that is
+   about half of it; on a desktop, less. */
+.vbar { position: absolute; left: 0; right: 0; bottom: 0; height: 45%;
+  min-height: 44px; display: flex; z-index: 1; }
+.vbar .seg { flex: 1; margin: 0; padding: 0; border: 0; border-radius: 0;
+  color: #fff; font-size: 1.1rem; line-height: 1; cursor: pointer; }
+.vbar .seg { --c: #6b6b6b; background: var(--c); }
+.vbar .seg.loved { --c: var(--pick); }
+.vbar .seg.disliked { --c: #b3261e; }
+/* Chosen stays lit, the other two mute but stay tappable, so a verdict is
+   changed in place. Muted by mixing toward the page colour, not by opacity:
+   a see-through segment let the caption underneath show through the bar. The
+   symbol keeps full contrast in its own colour so a changed mind can find it. */
+.vbar .seg.on { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .85); }
+.vbar .seg.off { background: color-mix(in srgb, var(--c) 22%, var(--bg));
+  color: var(--c); }
+/* A text-only card's title sits where the bar goes; move it up once played so
+   the game stays identifiable while its verdict is chosen or changed. */
+.gcard.round.played .plate { justify-content: flex-start; }
+/* Played but no verdict yet: pulses until answered. The round will not move
+   on without it -- a silent default is the ambiguity this stage removes.
+   Neutral, not green: green is "loved", and a pending card must not look
+   already answered. */
+.gcard.round.pending { animation: await 1.2s ease-in-out infinite; }
+@keyframes await { 50% { box-shadow: 0 0 0 3px var(--fg); } }
+@media (prefers-reduced-motion: reduce) {
+  .gcard.round.pending { animation: none; box-shadow: 0 0 0 3px var(--fg); }
+}
+
+/* The follow-up: one tap, reasons stacked so each reads as a full phrase. */
+.reasons { display: flex; flex-direction: column; align-items: flex-start;
+  gap: .5rem; }
+
 .actions { display: flex; align-items: center; gap: .75rem; }
 .next { padding: .6rem 1.75rem; }
 
