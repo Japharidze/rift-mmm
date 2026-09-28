@@ -366,14 +366,38 @@ a genre for every deck game (§3); and search aliases — the names people type
 
 ## 8. Measurement — panel round 2
 
-- Gap between the quiz point and the centroid of the player's mains. Schema
-  exists (`011_panel.sql`: `actual_point`, `actual_games`, `checked_at`) and
-  `db.py` has the read and write, but **the comparison pass itself is not
-  built**: there is no caller, and `riot_api.py` has no account-v1 by-riot-id
-  lookup. It runs by hand on a development key fetched for the occasion
-  (they expire every 24 hours); a production key is not pursued yet. This is
-  the only external measure of match quality the project has, so it is what
-  every later slice is judged by.
+- **The comparison pass** (`r3m panel-check`, `r3m.panel`; built 2026-09-28)
+  places each player's recent mains in the space and reports three measures,
+  in this order:
+  1. **Personal fit** -- does *your* quiz point sit nearer your mains than
+     other players' quiz points do? Other players are the baseline; by chance
+     your own is closest 1 time in n. This is the question the panel exists for.
+  2. **Distance to each main** (games-weighted) and **where your mains rank**
+     from the quiz point (50% = chance).
+  3. **Know-nothing**, the roster centre, as a reference only -- the point
+     nearest on average to any champion, so a high bar, not a null.
+
+  The first version measured against the *centroid* of a player's mains, and
+  that was wrong: averaging five or more champions lands near the middle,
+  where the know-nothing point sits, so it won by construction. Found on the
+  first run, which is what a sanity check is for.
+
+  It runs by hand on a development key fetched for the occasion (they expire
+  every 24 hours). Fetched mains are cached in `data/panel-mains.json` and, with
+  `--write`, stored on the session (`015_panel_mains.sql`), so re-analysis costs
+  no Riot calls. `--write` needs migration 015 on the target database, and on
+  production that cannot run before the merge: `r3m migrate` applies every
+  pending migration, 012 included, which drops the `riot_region` column the
+  code deployed from `main` still writes.
+
+  **First run, 2026-09-28, n=3 -- a sanity check, not a result.** Personal fit
+  1, 1 and 3 of 3; mains ranked 42%, 63% and 46% from the quiz point; the
+  know-nothing reference nearer in all three. #15 (four loved games, point
+  0.85/0.70/0.76) is the love-everything artefact slice 1 targets; #8 was read
+  low on meso (0.40) while playing Hwei, Aurora and Azir -- the same misread
+  quiz-flow.md once recorded by hand. Watch both in round 2. And what someone
+  plays is habit and popularity as well as fit, so this measures fit only in
+  part; the "do these champions feel right?" rating sits beside it.
 - A "do these champions feel right?" rating: the product goal is
   satisfaction, and this tests whether the bias worries are overblown. Asked
   about the champions and before the reading appears (§6.1), or the Barnum

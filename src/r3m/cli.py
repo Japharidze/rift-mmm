@@ -256,36 +256,51 @@ def _bank_import(args: argparse.Namespace) -> int:
 
 
 def _panel_check(args: argparse.Namespace) -> int:
-    api = RiotApi(platform=panel.PLATFORM)
     with db.connect() as conn:
+        if args.write and not db.has_column(conn, "quiz_session", "actual_mains"):
+            # Checked before any Riot call, so a refused write costs nothing.
+            print("--write needs migration 015 (quiz_session.actual_mains) on this database. "
+                  "Nothing fetched, nothing written.")
+            return 1
         sessions = db.panel_sessions_to_check(conn, include_checked=args.all)
         if not sessions:
             print("no sessions with a Riot id to check")
             return 0
         variant_list = panel.variants(conn)
+        cache = panel.load_cache()
+        api = RiotApi(platform=panel.PLATFORM)
         checks = []
-        for s in sessions:
-            print(f"checking #{s['id']} ...", flush=True)
-            try:
-                checks.append(panel.check_session(api, s, variant_list))
-            except httpx.HTTPStatusError as exc:
-                if exc.response.status_code in (401, 403):
-                    print("Riot rejected the key: development keys expire every 24 hours. "
-                          "Fetch a new one at developer.riotgames.com into RIOT_API_KEY.")
-                    return 1
-                raise
-        roster = len({r["champion_id"] for r in variant_list[0].champion_rows})
+        try:
+            for s in sessions:
+                print(f"checking #{s['id']} ...", flush=True)
+                checks.append(panel.check_session(api, s, variant_list,
+                                                  cache=cache, refetch=args.refetch))
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code in (401, 403):
+                print("Riot rejected the key: development keys expire every 24 hours. "
+                      "Fetch a new one at developer.riotgames.com into RIOT_API_KEY.")
+                return 1
+            raise
+        finally:
+            panel.save_cache(cache)  # whatever was fetched survives a failure mid-run
         print()
-        print(panel.report(checks, roster))
+        print(panel.report(checks))
         if args.write:
+            written = 0
             for c in checks:
                 current = c.by_variant.get("current")
-                if c.error or current is None or current.actual_point is None:
+                if c.error or current is None or not c.mains:
                     continue
-                db.record_panel_check(conn, session_id=c.session_id,
-                                      actual_point=[round(x, 2) for x in current.actual_point],
-                                      actual_games=c.labelled_games)
-            print("\nwrote actual_point for the current matcher")
+                point = current.actual_point
+                db.record_panel_check(
+                    conn, session_id=c.session_id,
+                    actual_point=[round(x, 2) for x in point] if point else None,
+                    actual_games=c.placed_games,
+                    actual_mains=[{"champion_id": ch, "role": r, "games": g}
+                                  for ch, r, g in c.mains],
+                )
+                written += 1
+            print(f"\nstored mains for {written} session(s)")
     return 0
 
 
@@ -559,10 +574,14 @@ def main() -> int:
     )
     panel_cmd.add_argument(
         "--write", action="store_true",
-        help="store actual_point on each session (default: report only)",
+        help="store each player's mains on their session (default: report only)",
     )
     panel_cmd.add_argument(
         "--all", action="store_true", help="include sessions already checked"
+    )
+    panel_cmd.add_argument(
+        "--refetch", action="store_true",
+        help="ignore stored and cached mains and fetch from Riot again",
     )
     panel_cmd.set_defaults(func=_panel_check)
 

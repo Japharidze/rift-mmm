@@ -763,7 +763,10 @@ def panel_sessions_to_check(
     with conn.cursor() as cur:
         cur.execute(
             f"""
-            select id, riot_id, point, dimensions, loved, disliked, comparisons, champions
+            select id, riot_id, point, dimensions, loved, disliked, comparisons, champions,
+                   -- read through to_jsonb so this works before migration 015
+                   -- adds the column: absent reads as null, not an error
+                   to_jsonb(quiz_session) -> 'actual_mains'
             from quiz_session
             where riot_id is not null {"" if include_checked else "and checked_at is null"}
             order by created_at
@@ -773,7 +776,8 @@ def panel_sessions_to_check(
             {"id": r[0], "riot_id": r[1],
              "point": [float(x) for x in r[2]], "dimensions": r[3],
              "loved": list(r[4]), "disliked": list(r[5]),
-             "comparisons": r[6] or [], "champions": r[7] or []}
+             "comparisons": r[6] or [], "champions": r[7] or [],
+             "actual_mains": r[8] or None}
             for r in cur.fetchall()
         ]
 
@@ -784,15 +788,29 @@ def record_panel_check(
     session_id: int,
     actual_point: list[float] | None,
     actual_games: int,
+    actual_mains: list[dict[str, Any]],
 ) -> None:
-    """Store the centroid of what this person actually plays."""
+    """Store what this person actually plays, and its centroid."""
     with conn.cursor() as cur:
         cur.execute(
             """
             update quiz_session
-               set checked_at = now(), actual_point = %s, actual_games = %s
+               set checked_at = now(), actual_point = %s, actual_games = %s,
+                   actual_mains = %s
              where id = %s
             """,
-            (actual_point, actual_games, session_id),
+            (actual_point, actual_games, Jsonb(actual_mains), session_id),
         )
     conn.commit()
+
+
+def has_column(conn: psycopg.Connection, table: str, column: str) -> bool:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            select 1 from information_schema.columns
+             where table_schema = 'public' and table_name = %s and column_name = %s
+            """,
+            (table, column),
+        )
+        return cur.fetchone() is not None
