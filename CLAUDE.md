@@ -64,6 +64,15 @@ matching or UI.
   For drift, weight recent patches more heavily rather than filtering to them: a
   champion that changed lanes months ago still carries the old lane in a flat
   average.
+- **A panel player's mains are a check, never a target.** What someone plays is
+  access, friends, popularity and autofill as much as fit — least of all fit
+  for a newcomer, who by definition has not found it yet. So no weight,
+  threshold or label is ever tuned to bring quiz points nearer players' mains;
+  that would train the product to recommend what people already play, and
+  toward popular champions. Mains count as evidence only alongside the "do these
+  champions feel right?" rating and the anchors, and a change must beat a
+  popularity baseline ("recommend what is most played"), not only the
+  know-nothing point. Details in `docs/quiz-chain.md` §8.
 - **The product picks the lane; the champion is the answer.** Output = MMM
   point → style neighbourhood → champion×role, the lane chosen by the product
   (labels are champion×role) and mentioned lightly: a wrong lane costs little, a

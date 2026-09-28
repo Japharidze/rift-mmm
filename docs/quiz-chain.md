@@ -395,9 +395,29 @@ a genre for every deck game (§3); and search aliases — the names people type
   know-nothing reference nearer in all three. #15 (four loved games, point
   0.85/0.70/0.76) is the love-everything artefact slice 1 targets; #8 was read
   low on meso (0.40) while playing Hwei, Aurora and Azir -- the same misread
-  quiz-flow.md once recorded by hand. Watch both in round 2. And what someone
-  plays is habit and popularity as well as fit, so this measures fit only in
-  part; the "do these champions feel right?" rating sits beside it.
+  quiz-flow.md once recorded by hand. Watch both in round 2.
+
+  **Mains are a check, never a target (CLAUDE.md, frozen).** What someone plays
+  measures fit only in part, and least for the players this product is for:
+
+  - *access* -- free and starter champions, a friend's champion, a cheap one;
+  - *popularity* -- Kai'Sa, Jhin and Jinx sit in countless pools; a matcher
+    pulled toward mains drifts toward popular champions and away from personal
+    ones, the opposite of the product;
+  - *autofill* -- a lane the player did not choose, invisible in match data;
+  - *who answers* -- testers who give a Riot id are engaged and experienced,
+    not newcomers;
+  - *shared error* -- mains are placed with our own champion labels, so a
+    labelling mistake sits on both sides of the comparison and can hide itself.
+
+  Safeguards: nothing is tuned to bring quiz points nearer mains; mains count
+  only alongside the "do these champions feel right?" rating and the anchors;
+  and a change must beat a **popularity baseline** -- ranking champions by how
+  often they appear in panel mains overall -- not only the know-nothing point.
+  Personal fit is less exposed than raw distance, since it compares players
+  against each other, but not immune: a quiz point sitting near the popular
+  champions can win it for everyone. The popularity baseline is not built yet;
+  it belongs in the pass before round 2 is analysed.
 - A "do these champions feel right?" rating: the product goal is
   satisfaction, and this tests whether the bias worries are overblown. Asked
   about the champions and before the reading appears (§6.1), or the Barnum
