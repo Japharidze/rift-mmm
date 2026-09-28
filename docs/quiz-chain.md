@@ -1,8 +1,9 @@
 # Quiz chain — adaptive placement inside the MMM space
 
-Status: design, not built. Brainstormed 2026-09-27/28; every claim below about
-the code or the data was checked against the repo on 2026-09-28, and where the
-brainstorm was wrong the correction is stated in place. Supersedes the verdict
+Status: slices 0 and 1 built on `dev` (2026-09-28): the comparison pass (§8) and
+the evidence hygiene below (§3). The rest is design. Brainstormed 2026-09-27/28;
+every claim below about the code or the data was checked against the repo on
+2026-09-28, and where the brainstorm was wrong the correction is stated in place. Supersedes the verdict
 semantics and the stage-1 grid of `docs/quiz-flow.md`; the fill and sharpen
 machinery there is generalised here, not replaced.
 
@@ -168,6 +169,34 @@ two written decisions:
 
 quiz-flow.md's pairing logic (comparisons drawn from everything recognised,
 worded from the verdicts) still holds and carries over.
+
+### Built in slice 1 (2026-09-28)
+
+- **Cards.** Tap a card for "played"; a bar over its lower part offers loved /
+  fine / didn't like and stays, so a verdict changes in place. A played card
+  without a verdict pulses and holds the round. "The rest I haven't played"
+  closes a round with one tap.
+- **Rounds** (`quiz.next_round`) are dealt round-robin from the spread order,
+  not cut in sequence: cut in order, CS2, League and Valorant fell past round 3
+  and were never shown. Three rounds of up to 14; the sweep stops after round 1
+  once 8 games are recognised and every dimension is read. The seven cards
+  nobody tapped in panel round 1 (`quiz.NEVER_TAPPED`) only fill room left in
+  the last round. The order is the same for everyone until the deck is
+  labelled.
+- **Deep entries** never reach a round except as a stand-in for a parent with
+  no label yet (`quiz.servable`): Minecraft and Pokémon are labelled only through
+  their deep entries today.
+- **Evidence** (`quiz.estimate`, `reasons`): "fine" never reaches the
+  estimator; a love counts in full for the gameplay and zero for the people,
+  the world, nostalgia or availability; an unasked love is discounted by its
+  bias level (`quiz.UNCONFIRMED`: low 1.0, medium 0.75, high 0.4 -- starting
+  points for round 2 to correct); "never really played it" and "not the
+  gameplay" cancel a dislike. Loves that all count for nothing are no signal,
+  and the quiz says so instead of placing the player at the midpoint.
+- **Follow-ups** (`quiz.why_next`): at most three, only where the two possible
+  answers lead to different top-five champions; low-bias loves are never asked.
+- **Stored**: `quiz_session.verdicts` and `reasons` (migration 016), so round 2
+  can measure how often loves were about something other than the gameplay.
 
 ### Genre is a fallback, never the router
 

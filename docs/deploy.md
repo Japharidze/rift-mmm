@@ -80,3 +80,26 @@ asked for a second time. Dump the deployment before dropping anything:
 `POST /api/quiz/result` writes a row without authentication, which is fine for
 a private link shared with twenty people and not fine if the URL spreads. The
 fix when it matters is a shared passphrase in the URL, not accounts.
+
+## Merging `dev` into `main`
+
+Work lands on `dev` and production follows `main`, so a merge is when all of
+it reaches the live database at once. In order:
+
+1. **Dump production first.** `quiz_session` holds the panel, which cannot be
+   asked for twice: `DATABASE_URL="<the public url>" uv run r3m dump`.
+2. **Merge and let it deploy.** The container runs `r3m migrate` on start and
+   applies everything `dev` added (012-016 as of 2026-09-28): 012 drops
+   `quiz_session.riot_region`, which the old code still writes -- safe at merge
+   time because the new code arrives in the same deploy. During the rollout
+   overlap the old container can fail a Riot-id submission for a few seconds;
+   harmless with the panel idle.
+3. **Import the bank from the laptop:**
+   `DATABASE_URL="<the public url>" uv run r3m bank-import`. The image does
+   not carry `bank/`, so tiers, parents, bias levels and the new games reach
+   production only this way. New games stay out of the quiz until labelled --
+   `game_points` only returns labelled games.
+4. **Optionally store the panel's mains:**
+   `DATABASE_URL="<the public url>" uv run r3m panel-check --write`, with a
+   fresh Riot development key. Reads `data/panel-mains.json` first, so it
+   costs no Riot calls for players already fetched.
