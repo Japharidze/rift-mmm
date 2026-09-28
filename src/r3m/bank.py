@@ -45,6 +45,10 @@ STEAM_CSV = DATA_DIR / "steam-games.csv"
 BANK_DIR = ROOT / "bank"
 HAND_FILE = BANK_DIR / "hand.yaml"
 STEAM_FILE = BANK_DIR / "steam.yaml"
+# Bias-proneness per game (docs/quiz-chain.md §5). Kept out of steam.yaml so
+# re-running the generator cannot wipe hand judgments.
+BIAS_FILE = BANK_DIR / "bias.yaml"
+BIAS_LEVELS = ("low", "medium", "high")
 GAME_ANCHORS = ROOT / "anchors" / "games.yaml"
 
 # Deck entries from Steam, existing Steam-backed games included. With ~35 video
@@ -511,6 +515,13 @@ def bank_entries() -> list[dict[str, Any]]:
     if dupes:
         raise ValueError(f"ids appear twice across bank files: {dupes}")
     known = set(ids)
+
+    bias = load_bias()
+    stray = sorted(set(bias) - known)
+    if stray:
+        raise ValueError(f"{BIAS_FILE.name} rates games not in the bank: {stray}")
+    for e in entries:
+        e["bias"] = bias.get(e["id"])
     orphans = [e["id"] for e in entries if e["parent_id"] and e["parent_id"] not in known]
     if orphans:
         raise ValueError(f"parent not in the bank for: {orphans}")
@@ -531,3 +542,19 @@ def import_bank(conn) -> ImportResult:
         updated=len(ids & existing),
         untracked=sorted(existing - ids),
     )
+
+
+def load_bias(path: Path = BIAS_FILE) -> dict[str, str]:
+    """game id -> low / medium / high. A game rated twice is an error."""
+    if not path.exists():
+        return {}
+    data = load_yaml(path) or {}
+    out: dict[str, str] = {}
+    for level, games in data.items():
+        if level not in BIAS_LEVELS:
+            raise ValueError(f"{path.name}: unknown level {level!r}")
+        for gid in games or {}:
+            if gid in out:
+                raise ValueError(f"{path.name}: {gid} rated twice")
+            out[gid] = level
+    return out

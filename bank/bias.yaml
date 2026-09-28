@@ -1,0 +1,83 @@
+# Bias-proneness per game -- DRAFT, awaiting review (2026-09-28).
+#
+# How easily someone can LOVE this game without engaging its demand
+# (docs/quiz-chain.md §5). A love is MMM signal plus nuisance -- childhood,
+# friends, the world or story, what the PC could run -- and no champion can
+# deliver most of the nuisance, so for matching it is noise.
+#
+#   low     the love almost has to be the demand: there is little else to love
+#   medium  the demand is central, but a real non-gameplay pull exists
+#   high    loved most often for company, childhood, calm or availability
+#
+# Used by the first slice of the quiz chain: a high (and, when a question is
+# left over, a medium) love gets the one-tap "what made it stick?", and a love
+# without a gameplay answer counts at reduced weight. Low loves are never asked.
+#
+# Hand-judged, not data-seeded. The brainstorm proposed seeding from Steam
+# playtime; tested on the 28 Steam-backed games here, it measures game length
+# and free-to-play churn, not why a game is loved. Median playtime is shortest
+# for the most demand-pure games (Getting Over It 1.9 h, Jump King 2.5 h, Poly
+# Bridge 2.4 h -- finite or rage-quit), the average/median skew is highest for
+# free-to-play installs (Dota 2 46.8, Geometry Dash 12.6, Apex 11.0), and Cookie
+# Clicker's 84 h median is an idle game counting background time.
+#
+# `why` is the reason a love could be something other than the gameplay, in
+# plain words, so a reviewer can disagree with it rather than with a number.
+# Deep entries are rated as the variant they are: chess blitz is not chess
+# with grandpa, which is the reason the deep tier exists.
+
+low:
+  osu: "Nothing in it to love but the clicking."
+  aim-trainers: "An exercise, not a pastime: loving it is loving aim."
+  geometry-dash: "Every level is the timing demand; the music can't carry it alone."
+  getting-over-it: "The climb is the whole game. Its fame as a meme is what 'never really played it' catches."
+  jump-king: "The jump is the whole game; same meme caveat as Getting Over It."
+  factorio: "No story, little world: there is nothing to love but the factory."
+  poly-bridge: "A puzzle game, and the puzzles are all there is."
+  balatro: "The run-building is the game; the poker look is a skin."
+  tekken: "Loving a fighting game means loving the matchup and the execution."
+  street-fighter: "Same as Tekken; arcade nostalgia is thin for a 14-30 audience."
+  rainbow-six: "Its learning curve filters out casual love: it can't be enjoyed without the information play."
+  dota-2: "The barrier to entry is the filter: anyone who loves it has put in the hours."
+  tft: "The economy and the board are the game; there is little else to hold on to."
+  rubiks-cube: "Speedrunning a cube is the demand itself."
+  pokemon-vgc: "The competitive format: people who play it play it for the demand."
+  tetris-99: "A competitive battle royale; the pressure is the game."
+
+medium:
+  chess: "Played with family and at school as much as rated online; blitz and bullet are separate deep entries."
+  cs2: "The default shooter in Eastern Europe: many love the friend group and the years spent in it."
+  valorant: "Demanding, but the agents, the look and the friend queue carry a lot of love."
+  apex-legends: "Movement and gunplay pull most people; friends and the legends pull many."
+  overwatch: "The heroes and their lore pull people in as much as the play."
+  marvel-rivals: "The Marvel characters are a big draw on their own."
+  league-of-legends: "Friends, champions and Arcane pull people in; many play without engaging its macro."
+  hearthstone: "Collecting, the Blizzard world and casual play carry much of the love."
+  elden-ring: "The world and lore draw people in, but it can't be loved without getting through its fights."
+  hades: "Story, art and voice acting are half the appeal; the run loop is the other half."
+  rocket-league: "Mostly the mechanics, but casual chaos with friends is common."
+  brawlhalla: "Free and played casually with friends by many; competitively by some."
+  age-of-empires-2: "Nostalgia and LAN memories for the older band; ranked play for the dedicated."
+  tetris: "A childhood game for most; the flow of stacking is the gameplay for some."
+  cookie-clicker: "Loved as a joke or a background habit as often as for the loop."
+
+high:
+  among-us: "Loved for the friend group and the 2020 moment more than for deception."
+  fall-guys: "Party chaos: the fun is the silliness."
+  gang-beasts: "Couch chaos with friends; the physics comedy is the point."
+  liars-bar: "A party game for friends and streamers."
+  phasmophobia: "Scares with friends; the ghost-hunting deduction is secondary for most."
+  valheim: "Co-op survival with friends and the atmosphere carry the love."
+  stardew-valley: "The calm, the farm, the characters: a comfort game."
+  animal-crossing: "A comfort and collecting game, often a childhood console memory."
+  mario-kart: "Couch and family play; childhood."
+  mario-64: "Childhood nostalgia for most who name it."
+  smash-bros: "Mostly a couch party game with friends; competitive Smash is a minority."
+  wow: "Loved for the guild, the world and the years spent there."
+  candy-crush: "Played because it is on the phone."
+  tic-tac-toe: "Nobody loves it for its depth: school and childhood."
+  connect-4: "A childhood and family game."
+  battleship: "A childhood and family game."
+  8-ball-pool: "A bar and phone game with friends."
+  rock-paper-scissors: "A playground ritual; loving it is rarely about outguessing."
+  minecraft-creative: "Building and expressing, alone or with friends; no demand to engage."

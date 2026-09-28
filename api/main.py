@@ -49,6 +49,11 @@ def _games() -> list[dict[str, Any]]:
         return db.game_points(conn)
 
 
+def _champions() -> list[dict[str, Any]]:
+    with db.connect() as conn:
+        return db.champion_points(conn)
+
+
 # Steam serves this for every app; there is no key and no per-title check
 # needed, so a stored appid is enough to render a cover.
 STEAM_COVER = "https://cdn.cloudflare.steamstatic.com/steam/apps/{appid}/header.jpg"
@@ -127,6 +132,11 @@ class ResultRequest(BaseModel):
     # Set on every re-post after the first result, so sharpening updates the
     # session it belongs to instead of recording another one.
     session_id: int | None = None
+    # Slice 1 (docs/quiz-chain.md §3): every recognised game's verdict, the
+    # one-tap reasons, and every card shown. Optional so older clients work.
+    verdicts: dict[str, str] = Field(default_factory=dict)
+    reasons: dict[str, str] = Field(default_factory=dict)
+    served: list[str] = Field(default_factory=list)
 
 
 class FillRequest(BaseModel):
@@ -134,11 +144,49 @@ class FillRequest(BaseModel):
     loved: list[str] = Field(default_factory=list)
     disliked: list[str] = Field(default_factory=list)
     asked: int = 0
+    reasons: dict[str, str] = Field(default_factory=dict)
 
 
 class EstimateRequest(BaseModel):
     loved: list[str] = Field(default_factory=list)
     disliked: list[str] = Field(default_factory=list)
+    reasons: dict[str, str] = Field(default_factory=dict)
+
+
+class RoundRequest(BaseModel):
+    index: int = 0
+    # Recognised so far -- loved, fine or disliked -- which is what the stop
+    # rule counts; "fine" is in here and nowhere else.
+    played: list[str] = Field(default_factory=list)
+    loved: list[str] = Field(default_factory=list)
+    disliked: list[str] = Field(default_factory=list)
+    reasons: dict[str, str] = Field(default_factory=dict)
+
+
+class RoundResponse(BaseModel):
+    index: int
+    # None means the sweep is over: enough recognised and read, or no rounds left.
+    cards: list[Game] | None = None
+
+
+class WhyRequest(BaseModel):
+    loved: list[str] = Field(default_factory=list)
+    disliked: list[str] = Field(default_factory=list)
+    reasons: dict[str, str] = Field(default_factory=dict)
+    asked: int = 0
+
+
+class Reason(BaseModel):
+    id: str
+    label: str
+
+
+class WhyResponse(BaseModel):
+    # None when no follow-up would change the answer (quiz.why_next).
+    game: Game | None = None
+    kind: str | None = None
+    question: str | None = None
+    options: list[Reason] = Field(default_factory=list)
 
 
 class EstimateResponse(BaseModel):
@@ -154,6 +202,7 @@ class SharpenRequest(BaseModel):
     # reports where they are after it -- the two then disagree about the point,
     # and the second question is chosen for a position nobody is at any more.
     comparisons: list[Comparison] = Field(default_factory=list)
+    reasons: dict[str, str] = Field(default_factory=dict)
 
 
 class SharpenResponse(BaseModel):
@@ -211,6 +260,31 @@ def quiz_grid() -> list[Game]:
     return [_to_game(g) for g in quiz.grid(_games())]
 
 
+@api.post("/quiz/round", response_model=RoundResponse)
+def quiz_round(req: RoundRequest) -> RoundResponse:
+    """One round of the recognition sweep, or no cards when it should stop."""
+    cards = quiz.next_round(req.index, played=req.played, loved=req.loved,
+                            disliked=req.disliked, reasons=req.reasons, rows=_games())
+    return RoundResponse(index=req.index,
+                         cards=None if cards is None else [_to_game(g) for g in cards])
+
+
+@api.post("/quiz/why", response_model=WhyResponse)
+def quiz_why(req: WhyRequest) -> WhyResponse:
+    """The next one-tap follow-up worth asking, or none (quiz.why_next)."""
+    rows = _games()
+    found = quiz.why_next(req.loved, req.disliked, req.reasons, rows, _champions(),
+                          asked=req.asked)
+    if found is None:
+        return WhyResponse()
+    game = next(r for r in rows if r["game_id"] == found["game_id"])
+    labels = quiz.REASON_LABELS[found["kind"]]
+    return WhyResponse(
+        game=_to_game(game), kind=found["kind"], question=quiz.WHY_QUESTION[found["kind"]],
+        options=[Reason(id=o, label=labels[o]) for o in found["options"]],
+    )
+
+
 @api.post("/quiz/estimate", response_model=EstimateResponse)
 def quiz_estimate(req: EstimateRequest) -> EstimateResponse:
     """The running point, for the live readout.
@@ -220,7 +294,7 @@ def quiz_estimate(req: EstimateRequest) -> EstimateResponse:
     that is a state to show rather than an error.
     """
     try:
-        est = quiz.estimate(req.loved, req.disliked, rows=_games())
+        est = quiz.estimate(req.loved, req.disliked, rows=_games(), reasons=req.reasons)
     except ValueError:
         return EstimateResponse(dimensions={
             d: Dimension(value=0.5, informative=0, read=False,
@@ -233,7 +307,8 @@ def quiz_estimate(req: EstimateRequest) -> EstimateResponse:
 @api.post("/quiz/fill", response_model=NextResponse)
 def quiz_fill(req: FillRequest) -> NextResponse:
     """Stage 2: one card for a dimension the grid left unread, or None."""
-    item = quiz.fill_item(req.served, req.loved, req.disliked, _games(), asked=req.asked)
+    item = quiz.fill_item(req.served, req.loved, req.disliked, _games(), asked=req.asked,
+                          reasons=req.reasons)
     return NextResponse(item=None if item is None else _to_game(item), asked=req.asked)
 
 
@@ -242,7 +317,7 @@ def quiz_sharpen(req: SharpenRequest) -> SharpenResponse:
     """Stage 3: a contrastive pair on the axis that would change the answer."""
     rows = _games()
     try:
-        est = quiz.estimate(req.loved, req.disliked, rows=rows)
+        est = quiz.estimate(req.loved, req.disliked, rows=rows, reasons=req.reasons)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if req.comparisons:
@@ -277,7 +352,7 @@ def next_item(req: NextRequest) -> NextResponse:
 def result(req: ResultRequest) -> Result:
     rows = _games()
     try:
-        est = quiz.estimate(req.loved, req.disliked, rows=rows)
+        est = quiz.estimate(req.loved, req.disliked, rows=rows, reasons=req.reasons)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if req.comparisons:
@@ -325,7 +400,7 @@ def result(req: ResultRequest) -> Result:
             )
             result.session_id = req.session_id if updated else db.insert_quiz_session(
                 conn,
-                served=req.loved + req.disliked,
+                served=req.served or req.loved + req.disliked,
                 loved=req.loved,
                 disliked=req.disliked,
                 comparisons=comparisons,
@@ -334,6 +409,8 @@ def result(req: ResultRequest) -> Result:
                 champions=champions,
                 champion_prompt_version=_champion_version(),
                 game_prompt_version=rows[0]["prompt_version"] if rows else "unknown",
+                verdicts=req.verdicts or None,
+                reasons=req.reasons or None,
             )
     except Exception:  # noqa: BLE001 - see comment above
         logging.exception("could not record panel session")

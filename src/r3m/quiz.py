@@ -61,6 +61,55 @@ NEEDED = 1.0
 # Dislike is real evidence, but noisier than delight.
 DISLIKE_WEIGHT = 0.5
 
+# What a player can say made a love stick (docs/quiz-chain.md §5). Only the
+# first is about the game's demand; the rest are real reasons to love a game
+# that no champion can deliver, so for matching they are noise.
+LOVE_REASONS = ("gameplay", "people", "world", "nostalgia", "what_i_had")
+# What put them off. The last two cancel the dislike: "never really played it"
+# means it was never evidence, "not the gameplay" means it was about the art or
+# the setting, which says nothing about the three dimensions.
+DISLIKE_REASONS = ("gameplay", "never_played", "not_gameplay")
+# Where a person reads them. One tap each, so short, and in the player's words.
+REASON_LABELS = {
+    "love": {
+        "gameplay": "How it plays",
+        "people": "The people I played with",
+        "world": "The world or the story",
+        "nostalgia": "Nostalgia",
+        "what_i_had": "It was what I had",
+    },
+    "dislike": {
+        "gameplay": "How it plays",
+        "never_played": "I never really played it",
+        "not_gameplay": "Something else - the look, the setting",
+    },
+}
+WHY_QUESTION = {"love": "What made it stick?", "dislike": "What put you off?"}
+
+# How much a love counts when nobody asked why, by how easily the game is loved
+# for something other than its demand (bank/bias.yaml). Starting points, not
+# fits: round 2 of the panel measures how often loves of each level turn out to
+# be about the gameplay, and these follow that. Unrated games get no discount --
+# no prior is better than an invented one.
+UNCONFIRMED = {"low": 1.0, "medium": 0.75, "high": 0.4}
+
+
+def love_weight(row: dict[str, Any], reason: str | None) -> float:
+    if reason == "gameplay":
+        return 1.0
+    if reason in LOVE_REASONS:
+        return 0.0
+    return UNCONFIRMED.get(row.get("bias"), 1.0)
+
+
+def dislike_weight(reason: str | None) -> float | None:
+    """Multiplier on DISLIKE_WEIGHT; None removes the dislike altogether."""
+    if reason == "never_played":
+        return None
+    if reason == "not_gameplay":
+        return 0.0
+    return 1.0
+
 
 def opportunity(row: dict[str, Any], dimension: str) -> float:
     """How much chance this game gave the player to express a taste here.
@@ -132,15 +181,20 @@ def estimate(
     loved: list[str],
     disliked: list[str] | None = None,
     rows: list[dict[str, Any]] | None = None,
+    reasons: dict[str, str] | None = None,
 ) -> Estimate:
     if rows is None:
         with db.connect() as conn:
             rows = db.game_points(conn)
     by_id = {r["game_id"]: r for r in rows}
     disliked = disliked or []
+    reasons = reasons or {}
 
     liked_rows = [by_id[g] for g in loved if g in by_id]
-    disliked_rows = [by_id[g] for g in disliked if g in by_id]
+    # "Never really played it" was never evidence, so it leaves the dislikes
+    # entirely rather than staying at zero weight.
+    disliked_rows = [by_id[g] for g in disliked
+                     if g in by_id and dislike_weight(reasons.get(g)) is not None]
     unknown = [g for g in (*loved, *disliked) if g not in by_id]
 
     if not liked_rows:
@@ -148,12 +202,21 @@ def estimate(
         # estimate built only from reflections of dislikes would be a guess
         # wearing a number.
         raise ValueError("need at least one game you enjoyed")
+    love_w = {r["game_id"]: love_weight(r, reasons.get(r["game_id"])) for r in liked_rows}
+    if not any(love_w.values()):
+        # Every love was for the people, the world or the memory. That is no
+        # signal about how they play, and filling it with the midpoint is the
+        # imputation CLAUDE.md forbids -- so it is the same error as no love.
+        raise ValueError(
+            "every game you loved, you loved for something other than how it plays "
+            "-- pick one you loved for the gameplay itself"
+        )
 
     dims = {}
     for d in DIMENSIONS:
         total = weight = 0.0
         for r in liked_rows:
-            w = opportunity(r, d)
+            w = love_w[r["game_id"]] * opportunity(r, d)
             total += w * r[d]
             weight += w
         for r in disliked_rows:
@@ -167,7 +230,7 @@ def estimate(
             # offered, so disliking osu! used to raise meso. Rejecting a demand
             # cannot be evidence for wanting more of it, so the target is at
             # most what was on offer.
-            w = DISLIKE_WEIGHT * opportunity(r, d)
+            w = DISLIKE_WEIGHT * dislike_weight(reasons.get(r["game_id"])) * opportunity(r, d)
             total += w * min(1.0 - r[d], r[d])
             weight += w
         # Accumulated opportunity *is* how much was read, so it is the same
@@ -190,8 +253,7 @@ def suggest_for(dimension: str, exclude: list[str],
     if rows is None:
         with db.connect() as conn:
             rows = db.game_points(conn)
-    candidates = [r for r in rows
-                  if r["game_id"] not in exclude and r.get("in_bank", True)]
+    candidates = [r for r in servable(rows) if r["game_id"] not in exclude]
     # By demand, not by distance from the middle. A game far *below* the
     # midpoint is as far from it as one far above and presents none of the
     # dimension, so offering it to settle that dimension asks a question it
@@ -225,7 +287,7 @@ def next_item(
     rows: list[dict[str, Any]],
 ) -> dict[str, Any] | None:
     """The next game to ask about, or None when the quiz should stop."""
-    by_id = {r["game_id"]: r for r in rows if r.get("in_bank", True)}
+    by_id = {r["game_id"]: r for r in servable(rows)}
     if len(served) >= MAX_ITEMS:
         return None
 
@@ -332,7 +394,7 @@ def grid(rows: list[dict[str, Any]] | None = None, n: int = GRID) -> list[dict[s
     if rows is None:
         with db.connect() as conn:
             rows = db.game_points(conn)
-    pool = [r for r in rows if r.get("in_bank", True)]
+    pool = servable(rows)
     if not pool:
         return []
 
@@ -357,12 +419,165 @@ def grid(rows: list[dict[str, Any]] | None = None, n: int = GRID) -> list[dict[s
     return picked
 
 
+def servable(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Games that may appear as a card: the deck tier, in the bank.
+
+    A deep entry (a mode or a platform game, bank/hand.yaml) is what a deck pick
+    opens into and never a first-screen card -- with one exception: while its
+    parent has no label, it stands in for the parent. Minecraft and Pokémon are
+    labelled only through their deep entries (creative, VGC) until the new deck
+    is labelled; excluding those would silently take Minecraft off the grid.
+    The stand-in ends by itself the moment the parent has a label. Platforms
+    (Roblox, Garry's Mod) have no parent and never stand in.
+    """
+    labelled = {r["game_id"] for r in rows}
+    return [
+        r for r in rows
+        if r.get("in_bank", True) and (
+            r.get("tier", "deck") == "deck"
+            or (r.get("parent_id") and r["parent_id"] not in labelled)
+        )
+    ]
+
+
+# Rounds of the recognition sweep (docs/quiz-chain.md §3). The same order for
+# everyone for now: with ~47 labelled games, three rounds already show three
+# quarters of the bank, so there is nothing to choose between. Rounds become
+# per-player once the new deck is labelled.
+# Fourteen, not twelve: the 42 labelled games people did tap in the panel fit
+# three rounds exactly, so none is dropped for its position. Seven rows of two
+# on a phone.
+ROUND = 14
+MAX_ROUNDS = 3
+# Recognised games (loved, fine or disliked) after which, if every dimension is
+# also read, another round costs more attention than it returns.
+ENOUGH_RECOGNISED = 8
+# Shown in panel round 1 (2026-09-26, 16 sessions, the whole 28-card grid) and
+# tapped by nobody, loved or bounced. That is the only recognition evidence the
+# project has for the segment, so these go to the back of the rounds instead of
+# spending round 1 on cards people pass over. Spread alone put two of them in
+# round 1. A proper recognition order (Steam reach, panel tap rates) comes with
+# the labelled deck; this is the part the evidence already settles.
+NEVER_TAPPED = frozenset({
+    "animal-crossing", "cookie-clicker", "fall-guys", "marvel-rivals",
+    "pokemon-vgc", "stardew-valley", "tetris-99",
+})
+
+
+def next_round(
+    index: int,
+    *,
+    played: list[str],
+    loved: list[str],
+    disliked: list[str],
+    reasons: dict[str, str],
+    rows: list[dict[str, Any]],
+) -> list[dict[str, Any]] | None:
+    """Cards for round `index` (0-based), or None when the sweep should stop.
+
+    The first round always runs. After it the sweep stops once enough games are
+    recognised and every dimension is read -- so someone who has played a lot
+    answers one round, someone who recognises little sees two or three.
+    """
+    # Dealt like a deck, not cut in order. The spread order runs from the
+    # extremes to the middle, and the middle is where the mainstream lives
+    # (grid's docstring): cut into consecutive rounds, CS2, League and Valorant
+    # all fell past round 3 and were never shown. Dealt round-robin, every
+    # round is a cross-section -- extremes and mainstream -- so round 1 alone is
+    # a fair sample for a player who stops after it.
+    spread = grid(rows, n=len(rows))
+    main = [r for r in spread if r["game_id"] not in NEVER_TAPPED]
+    last = [r for r in spread if r["game_id"] in NEVER_TAPPED]
+    count = min(MAX_ROUNDS, max(1, -(-len(main) // ROUND)))
+    rounds = [main[i::count] for i in range(count)]
+    # Never-tapped cards only fill room left in the last round. The rest stay in
+    # the bank for the fill stage, which serves them only when they would read
+    # a dimension -- appended outright, they made round 3 twenty cards long.
+    rounds[-1] = rounds[-1] + last[:max(0, ROUND - len(rounds[-1]))]
+    rounds = [r for r in rounds if r]
+    if index >= len(rounds):
+        return None
+    if index > 0 and len(played) >= ENOUGH_RECOGNISED and loved:
+        try:
+            est = estimate(loved, disliked, rows=rows, reasons=reasons)
+        except ValueError:
+            est = None
+        if est is not None and not est.unread:
+            return None
+    return rounds[index]
+
+
+# Follow-up questions in the whole quiz. Each costs a screen, so they go where
+# the answer changes the result and nowhere else.
+WHY_MAX = 3
+# Top-five champions an answer must be able to displace to be worth asking.
+WHY_IMPACT = 1
+
+
+def _top(loved: list[str], disliked: list[str], reasons: dict[str, str],
+         rows: list[dict[str, Any]], champions: list[dict[str, Any]]) -> set[str] | None:
+    try:
+        est = estimate(loved, disliked, rows=rows, reasons=reasons)
+    except ValueError:
+        return None
+    return {m.champion_id for m in scoring.neighbourhood(est.point, n=5, rows=champions)}
+
+
+def why_next(
+    loved: list[str],
+    disliked: list[str],
+    reasons: dict[str, str],
+    rows: list[dict[str, Any]],
+    champions: list[dict[str, Any]],
+    *,
+    asked: int = 0,
+) -> dict[str, Any] | None:
+    """The one follow-up worth asking next, or None.
+
+    Candidates: loves of bias-prone games (high, then medium) and dislikes,
+    none already answered. Low-bias loves are never asked -- nobody loves osu!
+    for its story. A candidate is worth a screen only if its two possible
+    answers lead to different top-five champions: counting it in full against
+    not at all for a love, keeping against removing for a dislike. Whichever
+    moves the most is asked; ties go to high loves, then dislikes, then medium
+    loves. An answer that could remove the last counting love moves everything,
+    so it is always worth asking.
+    """
+    if asked >= WHY_MAX:
+        return None
+    by_id = {r["game_id"]: r for r in rows}
+    candidates: list[tuple[int, int, str, str]] = []
+    for g in loved:
+        bias = by_id.get(g, {}).get("bias")
+        if g in reasons or bias not in ("high", "medium"):
+            continue
+        yes = _top(loved, disliked, {**reasons, g: "gameplay"}, rows, champions)
+        no = _top(loved, disliked, {**reasons, g: "people"}, rows, champions)
+        impact = 5 if no is None else len(yes - no) if yes else 0
+        candidates.append((impact, 0 if bias == "high" else 2, g, "love"))
+    for g in disliked:
+        if g in reasons or g not in by_id:
+            continue
+        keep = _top(loved, disliked, {**reasons, g: "gameplay"}, rows, champions)
+        drop = _top(loved, disliked, {**reasons, g: "never_played"}, rows, champions)
+        impact = len(keep - drop) if keep and drop else 0
+        candidates.append((impact, 1, g, "dislike"))
+
+    worth = [c for c in candidates if c[0] >= WHY_IMPACT]
+    if not worth:
+        return None
+    _, _, game, kind = max(worth, key=lambda c: (c[0], -c[1]))
+    options = LOVE_REASONS if kind == "love" else DISLIKE_REASONS
+    return {"game_id": game, "kind": kind, "options": list(options)}
+
+
 def fill_item(
     served: list[str],
     loved: list[str],
     disliked: list[str],
     rows: list[dict[str, Any]],
     asked: int = 0,
+    reasons: dict[str, str] | None = None,
 ) -> dict[str, Any] | None:
     """Stage 2: one more card, or None when there is nothing left to read.
 
@@ -373,13 +588,15 @@ def fill_item(
     """
     if asked >= FILL_MAX or not loved:
         return None
-    est = estimate(loved, disliked, rows=rows)
+    try:
+        est = estimate(loved, disliked, rows=rows, reasons=reasons)
+    except ValueError:
+        return None  # no love counts: nothing to fill toward, the result says so
     if not est.unread:
         return None
     target = min(est.unread, key=lambda d: est.dimensions[d].informative)
 
-    candidates = [r for r in rows
-                  if r.get("in_bank", True) and r["game_id"] not in served]
+    candidates = [r for r in servable(rows) if r["game_id"] not in served]
     if not candidates:
         return None
     best = max(candidates, key=lambda r: demand(r, target))

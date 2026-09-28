@@ -487,6 +487,7 @@ def upsert_bank_game(
     parent_id: str | None,
     steam_appid: int | None,
     release_year: int | None,
+    bias: str | None = None,
 ) -> None:
     """Put one game from the bank files (r3m.bank) into the table.
 
@@ -501,8 +502,8 @@ def upsert_bank_game(
         cur.execute(
             """
             insert into game (id, name, mode, tier, parent_id, steam_appid,
-                              release_year, is_anchor, in_bank)
-            values (%s, %s, %s, %s, %s, %s, %s, false, true)
+                              release_year, bias, is_anchor, in_bank)
+            values (%s, %s, %s, %s, %s, %s, %s, %s, false, true)
             on conflict (id) do update set
                 name = excluded.name,
                 mode = excluded.mode,
@@ -510,9 +511,10 @@ def upsert_bank_game(
                 parent_id = excluded.parent_id,
                 steam_appid = coalesce(game.steam_appid, excluded.steam_appid),
                 release_year = coalesce(game.release_year, excluded.release_year),
+                bias = excluded.bias,
                 in_bank = true
             """,
-            (game_id, name, mode, tier, parent_id, steam_appid, release_year),
+            (game_id, name, mode, tier, parent_id, steam_appid, release_year, bias),
         )
 
 
@@ -625,7 +627,7 @@ def game_points(
             """
             select distinct on (l.game_id)
                    l.game_id, g.name, g.mode, g.in_bank, l.micro, l.meso, l.macro,
-                   g.steam_appid, g.release_year
+                   g.steam_appid, g.release_year, g.bias, g.tier, g.parent_id
             from game_label l
             join label_run r on r.id = l.label_run_id
             join game g on g.id = l.game_id
@@ -638,6 +640,7 @@ def game_points(
             {"game_id": r[0], "name": r[1], "mode": r[2], "in_bank": r[3],
              "micro": float(r[4]), "meso": float(r[5]), "macro": float(r[6]),
              "steam_appid": r[7], "release_year": r[8],
+             "bias": r[9], "tier": r[10], "parent_id": r[11],
              "prompt_version": prompt_version}
             for r in cur.fetchall()
         ]
@@ -660,25 +663,32 @@ def insert_quiz_session(
     champions: list[dict[str, Any]],
     champion_prompt_version: str,
     game_prompt_version: str,
+    verdicts: dict[str, str] | None = None,
+    reasons: dict[str, str] | None = None,
 ) -> int:
     """Store one completed quiz and return its id.
 
     Called when the result is shown, not when the page loads: an abandoned
-    session has nothing to compare against a real account.
+    session has nothing to compare against a real account. Verdicts and reasons
+    are fixed by then -- sharpening comes after them and changes neither -- so
+    update_quiz_session leaves them alone.
     """
     with conn.cursor() as cur:
         cur.execute(
             """
             insert into quiz_session (
                 served, loved, disliked, comparisons, point, dimensions,
-                champions, champion_prompt_version, game_prompt_version
+                champions, champion_prompt_version, game_prompt_version,
+                verdicts, reasons
             )
-            values (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             returning id
             """,
             (served, loved, disliked, Jsonb(comparisons), point,
              Jsonb(dimensions), Jsonb(champions),
-             champion_prompt_version, game_prompt_version),
+             champion_prompt_version, game_prompt_version,
+             Jsonb(verdicts) if verdicts is not None else None,
+             Jsonb(reasons) if reasons is not None else None),
         )
         session_id = cur.fetchone()[0]  # type: ignore[index]
     conn.commit()
