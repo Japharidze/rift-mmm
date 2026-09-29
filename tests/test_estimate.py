@@ -129,3 +129,14 @@ def test_a_dimension_is_settled_by_games_that_present_it():
             assert g[d] >= 0.5, (
                 f"offered {g['game_id']} ({d}={g[d]}) to settle {d}; it presents none"
             )
+
+
+def test_an_unread_dimension_never_explains_a_match():
+    """What was not read is said, not filled (CLAUDE.md). A player read only on
+    macro must not be told they lean away from execution."""
+    from r3m import scoring
+    e = est(["factorio"])
+    assert not e.dimensions["micro"].read and e.dimensions["micro"].value < 0.5 - quiz.INFORMATIVE
+    match = scoring.Match(champion_id="x", name="X", role="mid", point=(0.1, 0.1, 0.1), distance=0.0)
+    why = quiz.explain(e, match)
+    assert why is None or "execution" not in why.lower()

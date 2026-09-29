@@ -101,6 +101,10 @@ function Cover({ item }) {
    marker at the actual running mean, visibly provisional and captioned as
    still reading, is neither. The result screen is where the hard line sits:
    there an unread dimension prints "not enough to tell" and no number. */
+// Riot ids are GameName#TAG: 3-16 characters, then a 3-5 character tag. Two
+// of round 1's three ids came without the tag and had to be guessed.
+const RIOT_ID = /^[^#]{3,16}#[A-Za-z0-9]{3,5}$/;
+
 function Panel({ sessionId }) {
   const [riot, setRiot] = useState("");
   const [note, setNote] = useState("");
@@ -110,6 +114,7 @@ function Panel({ sessionId }) {
   if (!sessionId) return null;
   if (sent) return <p className="note">Thank you — that's genuinely useful.</p>;
 
+  const riotOk = !riot.trim() || RIOT_ID.test(riot.trim());
   const send = () => {
     post("/panel/details", {
       session_id: sessionId,
@@ -122,11 +127,11 @@ function Panel({ sessionId }) {
 
   return (
     <div className="panel">
-      <h1>Did it get you right?</h1>
+      <h1>Play League? Add your Riot ID</h1>
       <p className="gloss">
-        If you play League, your Riot ID lets us compare this result against the
-        champions you actually play. That comparison is the entire point of
-        asking — it is how we find out whether any of this works.
+        It is the single most useful thing you can give us: your Riot ID lets us
+        compare this result against the champions you actually play. That
+        comparison is how we find out whether any of this works.
       </p>
       <div className="row">
         <input
@@ -136,6 +141,9 @@ function Panel({ sessionId }) {
           onChange={e => setRiot(e.target.value)}
         />
       </div>
+      {!riotOk && (
+        <p className="note">Include the #tag after your name — for example Name#EUNE.</p>
+      )}
       <textarea
         className="field wide"
         rows={3}
@@ -148,7 +156,7 @@ function Panel({ sessionId }) {
         and public match history. Nothing else, no account access, and you can
         leave either field blank.
       </p>
-      <button onClick={send} disabled={!riot.trim() && !note.trim()}>Send</button>
+      <button onClick={send} disabled={(!riot.trim() && !note.trim()) || !riotOk}>Send</button>
       {failed && <p className="note">Couldn't send that — the result above is unaffected.</p>}
     </div>
   );
@@ -261,6 +269,14 @@ export default function App() {
   const [reasons, setReasons] = useState({});
   const [why, setWhy] = useState(null);
   const [whyAsked, setWhyAsked] = useState(0);
+  // Loves asked about after their round and left unanswered: never asked again.
+  const [skipped, setSkipped] = useState([]);
+  // The loves of the round just finished, while "what made these stick?" is up.
+  const [asking, setAsking] = useState([]);
+  const [loveReasons, setLoveReasons] = useState(null);
+  // "Do these champions feel right?" -- answered, or skipped, before the
+  // reading of the player appears (CLAUDE.md, frozen).
+  const [rated, setRated] = useState(null);
   const [dims, setDims] = useState(null);
 
   // Stage 2 only. Also the undo stack, which is why it holds names.
@@ -282,6 +298,17 @@ export default function App() {
   // re-post so the API updates that row; without it each comparison answered
   // recorded one more session.
   const sessionId = useRef(null);
+  // The raw answer log (migration 019): everything shown and answered, in
+  // order, so panel round 2 can be replayed against any later estimator.
+  const events = useRef([]);
+  const started = useRef(Date.now());
+  const log = useCallback((type, data = {}) => {
+    events.current.push({ t: Date.now() - started.current, type, ...data });
+  }, []);
+
+  useEffect(() => {
+    get("/quiz/reasons").then(setLoveReasons).catch(() => setLoveReasons(null));
+  }, []);
 
   const { loved, disliked } = useMemo(() => lists(verdicts), [verdicts]);
   const pendingCount = Object.values(verdicts).filter(v => v === null).length;
@@ -314,9 +341,11 @@ export default function App() {
       n: 5,
       comparisons: nextComparisons,
       session_id: sessionId.current,
+      events: [...events.current, { t: Date.now() - started.current, type: "result" }],
     })
       .then(r => {
         sessionId.current = r.session_id ?? null;
+        log("result", { point: r.point, champions: r.champions.map(c => [c.champion_id, c.role]) });
         const keys = r.champions.map(c => c.champion_id + c.role);
         const before = lastKeys.current;
         lastKeys.current = keys;
@@ -333,13 +362,16 @@ export default function App() {
           reasons: rs,
           comparisons: nextComparisons,
           used: nextComparisons.flatMap(c => [c.winner, c.loser]),
-        }).then(p => setPair(p.dimension ? p : null));
+        }).then(p => {
+          if (p.dimension) log("pair", { games: p.pair.map(g => g.id), dimension: p.dimension });
+          setPair(p.dimension ? p : null);
+        });
       })
       // Every love was for something other than the gameplay: not an error,
       // a state with its own way forward.
       .catch(e => (/gameplay itself/.test(e.message) ? setStage("nosignal") : fail(e)))
       .finally(() => setBusy(false));
-  }, [fail]);
+  }, [fail, log]);
 
   // Stage 2: one card at a time, only for a dimension still unread.
   const fillNext = useCallback((nextFills, v, rs, seen) => {
@@ -349,35 +381,37 @@ export default function App() {
     setBusy(true);
     post("/quiz/fill", { served: seen, loved: l, disliked: d, asked: nextFills.length, reasons: rs })
       .then(r => {
-        if (r.item) { setItem(r.item); setStage("fill"); return; }
+        if (r.item) { log("fill_shown", { game: r.item.id }); setItem(r.item); setStage("fill"); return; }
         return showResult([], v, rs, seen);
       })
       .catch(fail)
       .finally(() => setBusy(false));
-  }, [showResult, fail]);
+  }, [showResult, fail, log]);
 
   // The follow-ups: one at a time, only where the answer changes the result.
-  const startWhy = useCallback((v, rs, asked, seen) => {
+  // Loves were already asked after their round, so these are mostly dislikes.
+  const startWhy = useCallback((v, rs, asked, seen, skip) => {
     const { loved: l, disliked: d } = lists(v);
     if (!l.length) return fillNext([], v, rs, seen);
     setBusy(true);
-    post("/quiz/why", { loved: l, disliked: d, reasons: rs, asked })
+    post("/quiz/why", { loved: l, disliked: d, reasons: rs, asked, skip })
       .then(w => {
-        if (w.game) { setWhy(w); setStage("why"); return; }
+        if (w.game) { log("why_asked", { game: w.game.id, kind: w.kind }); setWhy(w); setStage("why"); return; }
         setWhy(null);
         return fillNext([], v, rs, seen);
       })
       .catch(fail)
       .finally(() => setBusy(false));
-  }, [fillNext, fail]);
+  }, [fillNext, fail, log]);
 
   // Stage 1: rounds of cards until the server says enough is known.
-  const loadRound = useCallback((index, v, rs, seen) => {
+  const loadRound = useCallback((index, v, rs, seen, skip = []) => {
     const { loved: l, disliked: d, played: p } = lists(v);
     setBusy(true);
     post("/quiz/round", { index, played: p, loved: l, disliked: d, reasons: rs, served: seen })
       .then(r => {
-        if (!r.cards) return startWhy(v, rs, 0, seen);
+        if (!r.cards) return startWhy(v, rs, 0, seen, skip);
+        log("round", { index, cards: r.cards.map(g => g.id) });
         setCards(r.cards);
         setRoundIndex(index);
         setServed([...seen, ...r.cards.map(g => g.id)]);
@@ -386,25 +420,66 @@ export default function App() {
       })
       .catch(fail)
       .finally(() => setBusy(false));
-  }, [startWhy, fail]);
+  }, [startWhy, fail, log]);
 
   useEffect(() => { loadRound(0, {}, {}, []); }, [loadRound]);
 
-  const play = id => setVerdicts(v => ({ ...v, [id]: null }));
-  const unplay = id => setVerdicts(v => { const n = { ...v }; delete n[id]; return n; });
-  const judge = (id, verdict) => setVerdicts(v => ({ ...v, [id]: verdict }));
+  const play = id => { log("verdict", { game: id, verdict: "played" }); setVerdicts(v => ({ ...v, [id]: null })); };
+  const unplay = id => { log("verdict", { game: id, verdict: "not_played" }); setVerdicts(v => { const n = { ...v }; delete n[id]; return n; }); };
+  const judge = (id, verdict) => { log("verdict", { game: id, verdict }); setVerdicts(v => ({ ...v, [id]: verdict })); };
+
+  // After a round: every love in it is asked why, one tap each, skippable --
+  // all of them, not only where this build's result would move, so the answers
+  // stay usable by any later estimator and the share of loves that are not
+  // about the gameplay can be measured (docs/quiz-chain.md §5, §8).
+  const endRound = useCallback(() => {
+    log("round_end", { index: roundIndex });
+    const fresh = cards.filter(g => verdicts[g.id] === "loved" && !reasons[g.id]);
+    if (fresh.length && loveReasons) {
+      fresh.forEach(g => log("why_asked", { game: g.id, kind: "love" }));
+      setAsking(fresh);
+      setStage("loves");
+      window.scrollTo(0, 0);
+      return;
+    }
+    loadRound(roundIndex + 1, verdicts, reasons, served, skipped);
+  }, [cards, verdicts, reasons, served, skipped, roundIndex, loveReasons, loadRound, log]);
+
+  const pickLoveReason = (id, option) => {
+    log("why", { game: id, kind: "love", reason: option });
+    setReasons(rs => ({ ...rs, [id]: option }));
+  };
+
+  const doneLoves = useCallback(() => {
+    const left = asking.filter(g => !reasons[g.id]).map(g => g.id);
+    left.forEach(g => log("why", { game: g, kind: "love", reason: null }));
+    const skip = [...skipped, ...left];
+    setSkipped(skip);
+    setAsking([]);
+    loadRound(roundIndex + 1, verdicts, reasons, served, skip);
+  }, [asking, reasons, skipped, roundIndex, verdicts, served, loadRound, log]);
 
   const answerWhy = useCallback(option => {
     if (!why) return;
+    log("why", { game: why.game.id, kind: why.kind, reason: option });
     const rs = { ...reasons, [why.game.id]: option };
     const asked = whyAsked + 1;
     setReasons(rs);
     setWhyAsked(asked);
-    startWhy(verdicts, rs, asked, seenAll);
-  }, [why, reasons, whyAsked, verdicts, seenAll, startWhy]);
+    startWhy(verdicts, rs, asked, seenAll, skipped);
+  }, [why, reasons, whyAsked, verdicts, seenAll, skipped, startWhy, log]);
+
+  const rate = value => {
+    log("feels_right", { value });
+    setRated(value);
+    if (value !== "skipped" && sessionId.current) {
+      post("/panel/details", { session_id: sessionId.current, feels_right: value }).catch(() => {});
+    }
+  };
 
   const answerFill = useCallback(verdict => {
     if (!item) return;
+    log("fill", { game: item.id, verdict });
     const nextFills = [...fills, { id: item.id, name: item.name, verdict }];
     const v = verdict === "never" ? verdicts : { ...verdicts, [item.id]: verdict };
     setFills(nextFills);
@@ -415,6 +490,7 @@ export default function App() {
   const undoFill = useCallback(() => {
     if (!fills.length) return;
     const last = fills[fills.length - 1];
+    log("fill_undo", { game: last.id });
     const nextFills = fills.slice(0, -1);
     const v = { ...verdicts };
     delete v[last.id];
@@ -427,6 +503,7 @@ export default function App() {
     if (!pair) return;
     const [a, b] = pair.pair;
     const [winner, loser] = winnerIdx === 0 ? [a, b] : [b, a];
+    log("comparison", { winner: winner.id, loser: loser.id, dimension: pair.dimension });
     const next = [...comparisons,
       { winner: winner.id, loser: loser.id, dimension: pair.dimension }];
     setComparisons(next);
@@ -438,7 +515,9 @@ export default function App() {
     setError(null); setVerdicts({}); setReasons({}); setWhy(null); setWhyAsked(0);
     setServed([]); setCards([]); setFills([]); setItem(null); setResult(null);
     setComparisons([]); setPair(null); setFresh([]);
+    setSkipped([]); setAsking([]); setRated(null);
     lastKeys.current = null; sessionId.current = null;
+    events.current = []; started.current = Date.now();
     loadRound(0, {}, {}, []);
   };
 
@@ -483,7 +562,7 @@ export default function App() {
         plays — the people, the world, the memories. Those are real reasons,
         but no champion can give them to you, so there is nothing to match on.</p>
         {roundIndex + 1 < MAX_ROUNDS && (
-          <button onClick={() => loadRound(roundIndex + 1, verdicts, reasons, seenAll)}
+          <button onClick={() => loadRound(roundIndex + 1, verdicts, reasons, seenAll, skipped)}
                   disabled={busy}>
             Show me more games
           </button>
@@ -507,6 +586,37 @@ export default function App() {
     const allDistant = result.champions.every(c => c.confidence === "distant");
     return (
       <main>
+        <h1>Champions to try</h1>
+        {result.champions.map(c => (
+          <div className="champ" key={c.champion_id + c.role}>
+            <div>
+              <strong>{c.name}</strong> <span className="gloss">{c.role}</span>
+              <span className={`tag ${c.confidence}`}>{CONFIDENCE[c.confidence]}</span>
+            </div>
+            {fresh.includes(c.champion_id + c.role) && (
+              <span className="fresh">moved in</span>
+            )}
+            {rated && c.because && <div className="gloss">{c.because}</div>}
+          </div>
+        ))}
+
+        {/* Asked about the champions before anything reads the player back to
+            them: shown after a reading, the rating measures how flattering the
+            reading was instead of the match (CLAUDE.md, frozen; §6.1). */}
+        {!rated && (
+          <div className="rating">
+            <h1>Do these champions feel right?</h1>
+            <div className="reasons inline">
+              {[["yes", "Yes"], ["partly", "Partly"], ["no", "No"]].map(([v, text]) => (
+                <button key={v} onClick={() => rate(v)}>{text}</button>
+              ))}
+              <button className="link" onClick={() => rate("skipped")}>Skip</button>
+            </div>
+          </div>
+        )}
+        {!rated ? null : <>
+        <Panel sessionId={result.session_id} />
+
         <h1>How you play</h1>
         <table><tbody>
           {Object.entries(result.dimensions).map(([dim, d]) => (
@@ -521,19 +631,6 @@ export default function App() {
           ))}
         </tbody></table>
 
-        <h1>Champions to try</h1>
-        {result.champions.map(c => (
-          <div className="champ" key={c.champion_id + c.role}>
-            <div>
-              <strong>{c.name}</strong> <span className="gloss">{c.role}</span>
-              <span className={`tag ${c.confidence}`}>{CONFIDENCE[c.confidence]}</span>
-            </div>
-            {fresh.includes(c.champion_id + c.role) && (
-              <span className="fresh">moved in</span>
-            )}
-            {c.because && <div className="gloss">{c.because}</div>}
-          </div>
-        ))}
 
         {/* Stage 3. Offered, never imposed: the list above is already the
             answer, and someone who stops here loses nothing. */}
@@ -576,8 +673,34 @@ export default function App() {
             {games.map(g => g.name).join(", ")}
           </p>
         ))}
-        <Panel sessionId={result.session_id} />
+        </>}
         <button onClick={restart}>Start again</button>
+      </main>
+    );
+  }
+
+  if (stage === "loves" && asking.length && loveReasons) {
+    return (
+      <main className="wide">
+        <h1>{loveReasons.question}</h1>
+        <p className="progress">One tap each — or skip any you'd rather not say.</p>
+        {asking.map(g => (
+          <div className="love-why" key={g.id}>
+            <div className="love-name"><strong>{g.name}</strong></div>
+            <div className="reasons inline">
+              {loveReasons.options.map(o => (
+                <button key={o.id}
+                        className={reasons[g.id] === o.id ? "on" : reasons[g.id] ? "off" : ""}
+                        onClick={() => pickLoveReason(g.id, o.id)}>
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+        <div className="actions">
+          <button className="next" onClick={doneLoves} disabled={busy}>Next</button>
+        </div>
       </main>
     );
   }
@@ -656,7 +779,7 @@ export default function App() {
       </div>
       <div className="actions">
         <button className="next" disabled={!cards.length || busy || pendingCount > 0}
-                onClick={() => loadRound(roundIndex + 1, verdicts, reasons, served)}>
+                onClick={endRound}>
           {allPlayed ? "Next" : "The rest I haven't played"}
         </button>
         {pendingCount > 0 && (

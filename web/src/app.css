@@ -174,3 +174,13 @@ button.link { border: none; padding: 0; text-decoration: underline;
 .row .field { flex: 1; min-width: 0; }
 .field.wide { display: block; width: 100%; box-sizing: border-box; resize: vertical; }
 .gloss.small { font-size: .75rem; margin: .6rem 0; }
+
+/* Panel round 2: "what made these stick?" for every love of a round, one row
+   per game, and the champion rating before the reading. */
+.love-why { padding: .6rem 0; border-bottom: 1px solid var(--line); }
+.love-name { margin-bottom: .4rem; }
+.reasons.inline { display: flex; flex-direction: row; flex-wrap: wrap; gap: .4rem; }
+.reasons.inline button { margin: 0; }
+.reasons.inline button.on { border-color: var(--pick); box-shadow: inset 0 0 0 1px var(--pick); }
+.reasons.inline button.off { color: var(--dim); }
+.rating { margin: 1.5rem 0; }

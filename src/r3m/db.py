@@ -678,6 +678,8 @@ def insert_quiz_session(
     game_prompt_version: str,
     verdicts: dict[str, str] | None = None,
     reasons: dict[str, str] | None = None,
+    events: list[dict[str, Any]] | None = None,
+    build: dict[str, Any] | None = None,
 ) -> int:
     """Store one completed quiz and return its id.
 
@@ -692,16 +694,18 @@ def insert_quiz_session(
             insert into quiz_session (
                 served, loved, disliked, comparisons, point, dimensions,
                 champions, champion_prompt_version, game_prompt_version,
-                verdicts, reasons
+                verdicts, reasons, events, build
             )
-            values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             returning id
             """,
             (served, loved, disliked, Jsonb(comparisons), point,
              Jsonb(dimensions), Jsonb(champions),
              champion_prompt_version, game_prompt_version,
              Jsonb(verdicts) if verdicts is not None else None,
-             Jsonb(reasons) if reasons is not None else None),
+             Jsonb(reasons) if reasons is not None else None,
+             Jsonb(events) if events is not None else None,
+             Jsonb(build) if build is not None else None),
         )
         session_id = cur.fetchone()[0]  # type: ignore[index]
     conn.commit()
@@ -718,6 +722,7 @@ def update_quiz_session(
     point: list[float],
     dimensions: dict[str, Any],
     champions: list[dict[str, Any]],
+    events: list[dict[str, Any]] | None = None,
 ) -> bool:
     """Fold a sharpening answer into the session it belongs to.
 
@@ -734,10 +739,12 @@ def update_quiz_session(
         cur.execute(
             """
             update quiz_session
-               set comparisons = %s, point = %s, dimensions = %s, champions = %s
+               set comparisons = %s, point = %s, dimensions = %s, champions = %s,
+                   events = coalesce(%s, events)
              where id = %s and loved = %s and disliked = %s
             """,
             (Jsonb(comparisons), point, Jsonb(dimensions), Jsonb(champions),
+             Jsonb(events) if events is not None else None,
              session_id, loved, disliked),
         )
         updated = cur.rowcount
@@ -751,6 +758,7 @@ def attach_panel_details(
     session_id: int,
     riot_id: str | None,
     feedback: str | None,
+    feels_right: str | None = None,
 ) -> bool:
     """Add a Riot id and/or free text to a session already stored.
 
@@ -765,10 +773,11 @@ def attach_panel_details(
             """
             update quiz_session
                set riot_id = coalesce(%s, riot_id),
-                   feedback = coalesce(%s, feedback)
+                   feedback = coalesce(%s, feedback),
+                   feels_right = coalesce(%s, feels_right)
              where id = %s
             """,
-            (riot_id or None, feedback or None, session_id),
+            (riot_id or None, feedback or None, feels_right or None, session_id),
         )
         updated = cur.rowcount
     conn.commit()

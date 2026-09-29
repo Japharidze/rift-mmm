@@ -10,7 +10,10 @@ is worth being blunt about.
 """
 
 import logging
-from typing import Any
+import os
+import subprocess
+from functools import cache
+from typing import Any, Literal
 
 from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -52,6 +55,33 @@ def _games() -> list[dict[str, Any]]:
 def _champions() -> list[dict[str, Any]]:
     with db.connect() as conn:
         return db.champion_points(conn)
+
+
+@cache
+def _commit() -> str | None:
+    # Railway sets this for GitHub deploys; the image has no .git to ask.
+    sha = os.environ.get("RAILWAY_GIT_COMMIT_SHA")
+    if sha:
+        return sha
+    try:
+        return subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
+                              text=True, check=True).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
+def _build(games: list[dict[str, Any]]) -> dict[str, Any]:
+    """What produced a stored result (migration 019): enough to know which
+    sessions a replay must re-score rather than trust."""
+    return {
+        "commit": _commit(),
+        "serving": quiz.SERVING,
+        "game_runs": sorted({r["label_run_id"] for r in games if r.get("label_run_id")}),
+        "champion_runs": sorted({r["label_run_id"] for r in _champions() if r.get("label_run_id")}),
+        "evidence": {"needed": quiz.NEEDED, "dislike_weight": quiz.DISLIKE_WEIGHT,
+                     "dislike_margin": quiz.DISLIKE_MARGIN, "low_corner": quiz.LOW_CORNER,
+                     "unconfirmed": quiz.UNCONFIRMED},
+    }
 
 
 # Steam serves this for every app; there is no key and no per-title check
@@ -137,6 +167,9 @@ class ResultRequest(BaseModel):
     verdicts: dict[str, str] = Field(default_factory=dict)
     reasons: dict[str, str] = Field(default_factory=dict)
     served: list[str] = Field(default_factory=list)
+    # Panel round 2: the raw answer log, so round 2 can be replayed against
+    # any later estimator (migration 019). Stored as sent.
+    events: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class FillRequest(BaseModel):
@@ -178,6 +211,8 @@ class WhyRequest(BaseModel):
     disliked: list[str] = Field(default_factory=list)
     reasons: dict[str, str] = Field(default_factory=dict)
     asked: int = 0
+    # Games already asked about and skipped: never asked twice.
+    skip: list[str] = Field(default_factory=list)
 
 
 class Reason(BaseModel):
@@ -228,6 +263,7 @@ class PanelDetails(BaseModel):
     # account, or the reverse, should be able to.
     riot_id: str | None = None
     feedback: str | None = None
+    feels_right: Literal["yes", "partly", "no"] | None = None
 
 
 class Result(BaseModel):
@@ -275,12 +311,22 @@ def quiz_round(req: RoundRequest) -> RoundResponse:
                          cards=None if cards is None else [_to_game(g) for g in cards])
 
 
+@api.get("/quiz/reasons", response_model=WhyResponse)
+def love_reasons() -> WhyResponse:
+    """The love reasons, asked for every love after each round (panel round 2):
+    asked of all of them, not only where this build's top five would move, so
+    the answers stay usable by any later estimator."""
+    labels = quiz.REASON_LABELS["love"]
+    return WhyResponse(kind="love", question=quiz.WHY_QUESTION["love"],
+                       options=[Reason(id=o, label=labels[o]) for o in quiz.LOVE_REASONS])
+
+
 @api.post("/quiz/why", response_model=WhyResponse)
 def quiz_why(req: WhyRequest) -> WhyResponse:
     """The next one-tap follow-up worth asking, or none (quiz.why_next)."""
     rows = _games()
     found = quiz.why_next(req.loved, req.disliked, req.reasons, rows, _champions(),
-                          asked=req.asked)
+                          asked=req.asked, skip=req.skip)
     if found is None:
         return WhyResponse()
     game = next(r for r in rows if r["game_id"] == found["game_id"])
@@ -403,6 +449,7 @@ def result(req: ResultRequest) -> Result:
                 point=list(est.point),
                 dimensions=dimensions,
                 champions=champions,
+                events=req.events or None,
             )
             result.session_id = req.session_id if updated else db.insert_quiz_session(
                 conn,
@@ -417,6 +464,8 @@ def result(req: ResultRequest) -> Result:
                 game_prompt_version=rows[0]["prompt_version"] if rows else "unknown",
                 verdicts=req.verdicts or None,
                 reasons=req.reasons or None,
+                events=req.events or None,
+                build=_build(rows),
             )
     except Exception:  # noqa: BLE001 - see comment above
         logging.exception("could not record panel session")
@@ -433,6 +482,7 @@ def panel_details(req: PanelDetails) -> dict[str, bool]:
             session_id=req.session_id,
             riot_id=req.riot_id,
             feedback=req.feedback,
+            feels_right=req.feels_right,
         )
     return {"stored": ok}
 

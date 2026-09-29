@@ -242,7 +242,10 @@ def estimate(
     disliked: list[str] | None = None,
     rows: list[dict[str, Any]] | None = None,
     reasons: dict[str, str] | None = None,
+    scale: dict[str, float] | None = None,
 ) -> Estimate:
+    """`scale` multiplies individual loves' weight -- the hook a robust
+    estimator re-weights through (r3m.simulate). Nothing in serving passes it."""
     if rows is None:
         with db.connect() as conn:
             rows = db.game_points(conn)
@@ -262,7 +265,8 @@ def estimate(
         # estimate built only from reflections of dislikes would be a guess
         # wearing a number.
         raise ValueError("need at least one game you enjoyed")
-    love_w = {r["game_id"]: love_weight(r, reasons.get(r["game_id"])) for r in liked_rows}
+    love_w = {r["game_id"]: love_weight(r, reasons.get(r["game_id"])) * (scale or {}).get(r["game_id"], 1.0)
+              for r in liked_rows}
     if not any(love_w.values()):
         # Every love was for the people, the world or the memory. That is no
         # signal about how they play, and filling it with the midpoint is the
@@ -391,9 +395,16 @@ def explain(est: Estimate, match: scoring.Match) -> str | None:
     agrees on — being sure about something the champion does not share is not
     a reason. Returns None when there is no such trait, because inventing a
     reason is worse than omitting one.
+
+    Only read dimensions qualify: what was not read is said, not filled
+    (CLAUDE.md). Until 2026-09-30 an unread axis could explain a match -- "you
+    lean away from execution" above a reading that said execution was not
+    enough to tell.
     """
     best, best_score = None, 0.0
     for i, d in enumerate(DIMENSIONS):
+        if not est.dimensions[d].read:
+            continue
         mine, theirs = est.dimensions[d].value, match.point[i]
         decided = abs(mine - 0.5)
         if decided < INFORMATIVE:
@@ -670,6 +681,10 @@ P_LOVED, P_DISLIKED = 0.6, 0.4
 # Distance from the current point at which loving a card becomes as likely as
 # not, and how sharply that falls off. 0.35 is about seven champion-widths.
 LOVE_MIDPOINT, LOVE_SOFTNESS = 0.35, 0.08
+# value = recognition ** RECOGNITION_POWER x information. 1 is the plain
+# product; 0 ignores recognition (inside the field SCORED already narrowed);
+# above 1 leans on it. The dial the simulation sweeps (r3m simulate).
+RECOGNITION_POWER = 1.0
 
 
 def verdict_odds(row: dict[str, Any], point: tuple[float, float, float] | None) -> tuple[float, float]:
@@ -784,7 +799,7 @@ def select_round(
     k = breadth(shown, played, by_id)
     now = _top(loved, disliked, reasons, rows, champions) if loved else None
     field = sorted(pool, key=lambda r: -recognition(r, k))[:SCORED]
-    value = {r["game_id"]: recognition(r, k) * information(
+    value = {r["game_id"]: recognition(r, k) ** RECOGNITION_POWER * information(
         r, loved, disliked, reasons, rows, champions, now, est) for r in field}
 
     n_explore = round(ROUND * EXPLORE_SHARE)
@@ -832,8 +847,13 @@ def why_next(
     champions: list[dict[str, Any]],
     *,
     asked: int = 0,
+    skip: list[str] | None = None,
 ) -> dict[str, Any] | None:
     """The one follow-up worth asking next, or None.
+
+    `skip`: games already asked about and left unanswered. In panel round 2
+    every love is asked after its round, so what reaches here is mostly
+    dislikes -- and a love someone chose not to explain is not asked again.
 
     Candidates: loves of bias-prone games (high, then medium) and dislikes,
     none already answered. Low-bias loves are never asked -- nobody loves osu!
@@ -850,14 +870,14 @@ def why_next(
     candidates: list[tuple[int, int, str, str]] = []
     for g in loved:
         bias = by_id.get(g, {}).get("bias")
-        if g in reasons or bias not in ("high", "medium"):
+        if g in reasons or g in (skip or ()) or bias not in ("high", "medium"):
             continue
         yes = _top(loved, disliked, {**reasons, g: "gameplay"}, rows, champions)
         no = _top(loved, disliked, {**reasons, g: "people"}, rows, champions)
         impact = 5 if no is None else len(yes - no) if yes else 0
         candidates.append((impact, 0 if bias == "high" else 2, g, "love"))
     for g in disliked:
-        if g in reasons or g not in by_id:
+        if g in reasons or g in (skip or ()) or g not in by_id:
             continue
         keep = _top(loved, disliked, {**reasons, g: "gameplay"}, rows, champions)
         drop = _top(loved, disliked, {**reasons, g: "never_played"}, rows, champions)
