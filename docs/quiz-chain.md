@@ -309,6 +309,22 @@ so for matching it is noise. Defences, stacked:
 - **Triangulation:** trust patterns across games, not single games. A love
   inconsistent with the rest of a player's picks is down-weighted (a robust
   estimate, not the current opportunity-weighted mean in `quiz.estimate`).
+
+  *Measured 2026-09-29, and not yet built.* After the one-unit evidence rule,
+  a single surprising love can overturn a dimension: a player at micro 0.04
+  (0.72 of evidence read) who loves osu! jumps to 0.75. Over 200 taste-shaped
+  profiles, 32% of surprising answers move the point more than one CLOSE band
+  (0.10); expected answers (a love of a near card, a dislike of a far one) do
+  so 0.2% of the time. Surprise *is* the information a card is asked for, so
+  the fix is not to bound it -- but it is also exactly where bias lives
+  (nostalgia, friends, the one childhood game). The designed answer is a
+  question, not a jump: a surprising love triggers the why-for-love or the
+  validator ("you loved osu! -- was it the precision itself?"). Until that
+  loop exists, the interim rule is triangulation: an answer that contradicts
+  the rest of the profile moves the point only partly, pending confirmation.
+  **The simulation must measure this, not reward it**: a selector scored on
+  how far one answer moves the point will learn to serve bias-prone surprises.
+  Its stability target counts expected answers only.
 - **Deep dives** are the most bias-resistant evidence: nostalgia explains
   loving CS, not choosing the AWP over a rifle.
 - **The validator** catches residual bias.
