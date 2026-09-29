@@ -432,8 +432,22 @@ a genre for every deck game (§3); and search aliases — the names people type
 ## 8. Measurement — panel round 2
 
 - **The comparison pass** (`r3m panel-check`, `r3m.panel`; built 2026-09-28)
-  places each player's recent mains in the space and reports three measures,
-  in this order:
+  places each player's recent mains in the space.
+
+  **Headline from round 2 (2026-09-30): each main on its own.** Mains are the
+  five most-played champions, merged across roles. Three recommenders each
+  order every champion -- the quiz point (by distance), the know-nothing
+  centre (by distance) and popularity (by games in the match sample) -- and
+  for each the pass reports where the *best* main lands, whether any main
+  reaches the five the quiz shows, each main's rank, and for the two points the
+  distance to the nearest main. Chance is printed beside them, because more
+  mains make a good best rank easier. Why: a mean over several mains of
+  different styles is smallest near the middle of the cloud, so the centre
+  won the measures below almost by construction -- the centroid failure,
+  softened. The best and the nearest main average nothing. This is round 2's
+  headline, alongside "do these champions feel right?".
+
+  Secondary measures, kept for continuity:
   1. **Personal fit** -- does *your* quiz point sit nearer your mains than
      other players' quiz points do? Other players are the baseline; by chance
      your own is closest 1 time in n. This is the question the panel exists for.
@@ -483,6 +497,24 @@ a genre for every deck game (§3); and search aliases — the names people type
   against each other, but not immune: a quiz point sitting near the popular
   champions can win it for everyone. The popularity baseline is not built yet;
   it belongs in the pass before round 2 is analysed.
+
+  *Built 2026-09-30, from the match sample (2,060 ranked solo games), not
+  from panel mains:* at round-2 sizes a baseline counted from panel mains
+  contains each player's own mains and partly grades itself. Two biases to
+  read it with: it is ranked solo, not the normals newcomers play; and bot lane
+  and support champions are over-counted per champion, since every game has
+  exactly one of each drawn from small pools -- a bot-lane main is easy for it.
+
+  **Headline, first run, 2026-09-30, n=3 -- sanity check, not a result.** On
+  the Opus 5.5 labels and the new evidence rules. Best main's rank, quiz /
+  centre / popularity, chance 16%: #2 18% / 11% / 8%; #8 4% / 37% / 19%;
+  #15 26% / 8% / 1% (a Kai'Sa-Jhin-Jinx bot player -- the popularity
+  bias above). A main among the five shown: quiz 0 of 3, centre 0, popularity
+  1. Only #8 (Hwei, Aurora, Azir) is placed better than chance, and better than
+  both baselines. The central bet points the wrong way on two players of
+  three. Nothing is concluded at n=3, and nothing is tuned toward it -- but if
+  round 2 repeats this with the clean metric, it is the most important
+  finding the project can produce.
 - A "do these champions feel right?" rating: the product goal is
   satisfaction, and this tests whether the bias worries are overblown. Asked
   about the champions and before the reading appears (§6.1), or the Barnum
