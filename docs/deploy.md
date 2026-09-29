@@ -89,7 +89,8 @@ it reaches the live database at once. In order:
 1. **Dump production first.** `quiz_session` holds the panel, which cannot be
    asked for twice: `DATABASE_URL="<the public url>" uv run r3m dump`.
 2. **Merge and let it deploy.** The container runs `r3m migrate` on start and
-   applies everything `dev` added (012-016 as of 2026-09-28): 012 drops
+   applies everything `dev` added (012-019 as of 2026-09-30; 019 adds the
+   round-2 replay columns -- events, build, feels_right): 012 drops
    `quiz_session.riot_region`, which the old code still writes -- safe at merge
    time because the new code arrives in the same deploy. During the rollout
    overlap the old container can fail a Riot-id submission for a few seconds;
