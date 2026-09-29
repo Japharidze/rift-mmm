@@ -162,7 +162,9 @@ over with `labels-import` (`docs/deploy.md`). The Gate 1 and Gate 2 numbers
 below were measured on the Opus 5 labels.
 
 The game bank is built from files (`bank/`, `r3m bank-import`): 300 deck
-games and 26 deep-tier modes and platforms; 276 of them are not labelled yet.
+games and 26 deep-tier modes and platforms, all labelled (run 29). Which
+cards a bank this size shows is the open serving problem: the fixed rounds
+were built for ~50 games and pick poorly from 300 (docs/quiz-chain.md §4).
 Next is the quiz chain in `docs/quiz-chain.md` — explicit recognition, a
 neutral verdict, why-questions, deep dives, and a hypothesis-testing loop —
 built in stages, smallest first.
