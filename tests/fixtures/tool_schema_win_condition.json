@@ -1,0 +1,98 @@
+{
+ "description": "Emit the ten sub-trait scores and a short rationale for one champion x role.",
+ "input_schema": {
+  "properties": {
+   "macro_cheat": {
+    "description": "Would a perfect coach, with no mechanical or read improvement, make this champion dramatically stronger than the same coaching would make an average champion?",
+    "maximum": 1.0,
+    "minimum": 0.0,
+    "title": "Macro Cheat",
+    "type": "number"
+   },
+   "macro_routing": {
+    "description": "How many decisions about where to be does this champion's player make, and how much do they change the game? Locked to a lane and moving when the team moves is low; choosing objectives, abandoning lanes, or constraining the enemy by presence is high.",
+    "maximum": 1.0,
+    "minimum": 0.0,
+    "title": "Macro Routing",
+    "type": "number"
+   },
+   "macro_win_condition": {
+    "description": "Does good play mean building toward a specific late-game plan rather than winning exchanges in isolation?",
+    "maximum": 1.0,
+    "minimum": 0.0,
+    "title": "Macro Win Condition",
+    "type": "number"
+   },
+   "meso_cheat": {
+    "description": "Would knowing the enemy's hidden state before it happens make this champion dramatically stronger than it would make an average champion?",
+    "maximum": 1.0,
+    "minimum": 0.0,
+    "title": "Meso Cheat",
+    "type": "number"
+   },
+   "meso_deception": {
+    "description": "Does the kit let the champion disguise intent or threaten falsely?",
+    "maximum": 1.0,
+    "minimum": 0.0,
+    "title": "Meso Deception",
+    "type": "number"
+   },
+   "meso_exploitation": {
+    "description": "Does power come from reading this specific opponent's habits over a match, rather than one fixed optimal line?",
+    "maximum": 1.0,
+    "minimum": 0.0,
+    "title": "Meso Exploitation",
+    "type": "number"
+   },
+   "meso_prediction": {
+    "description": "Does the kit force commitment before the enemy has shown what they will do? Instant and point-and-click abilities are low; slow projectiles, long casts, zones and traps aimed where the enemy will be are high.",
+    "maximum": 1.0,
+    "minimum": 0.0,
+    "title": "Meso Prediction",
+    "type": "number"
+   },
+   "micro_cheat": {
+    "description": "Would perfect inputs alone make this champion dramatically stronger?",
+    "maximum": 1.0,
+    "minimum": 0.0,
+    "title": "Micro Cheat",
+    "type": "number"
+   },
+   "micro_execution": {
+    "description": "Does effective use require chaining abilities in a tight timing window (cancels, resets, combo order)?",
+    "maximum": 1.0,
+    "minimum": 0.0,
+    "title": "Micro Execution",
+    "type": "number"
+   },
+   "micro_precision": {
+    "description": "Do core abilities require landing skillshots or precise placement, vs. auto-target or self-cast?",
+    "maximum": 1.0,
+    "minimum": 0.0,
+    "title": "Micro Precision",
+    "type": "number"
+   },
+   "rationale": {
+    "description": "2-4 sentences: why these scores, tied to specific abilities.",
+    "title": "Rationale",
+    "type": "string"
+   }
+  },
+  "required": [
+   "micro_precision",
+   "micro_execution",
+   "micro_cheat",
+   "meso_deception",
+   "meso_prediction",
+   "meso_exploitation",
+   "meso_cheat",
+   "macro_routing",
+   "macro_win_condition",
+   "macro_cheat",
+   "rationale"
+  ],
+  "title": "ChampionLabel",
+  "type": "object"
+ },
+ "name": "emit_champion_label"
+}

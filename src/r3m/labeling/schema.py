@@ -138,6 +138,20 @@ def tool_schema(middle: str = "macro_win_condition") -> dict:
     drop = ("macro_resources" if middle == "macro_win_condition"
             else "macro_win_condition")
     schema["properties"].pop(drop, None)
+    # The model class makes both middle items optional so one class serves
+    # every version, which renders the kept one as "number or null, default
+    # null". The validated win_condition runs (v3: label_run 9/10; games-v2:
+    # run 17) predate that and saw a plain number from 0 to 1, and a re-run on
+    # a new model must present the same tool or it tests the model plus a
+    # schema change. Restored for win_condition only: the v10 runs (21/22) were
+    # made with the nullable macro_resources and keep it.
+    # tests/test_labeling_request.py pins the win_condition tool byte for byte.
+    if middle == "macro_win_condition":
+        kept = schema["properties"][middle]
+        number = next(b for b in kept.pop("anyOf", [kept]) if b.get("type") == "number")
+        kept.pop("default", None)
+        kept.update(number)
+        schema["properties"][middle] = dict(sorted(kept.items()))
     required = [r for r in schema.get("required", []) if r != drop]
     if middle not in required:
         required.insert(required.index("macro_routing") + 1, middle)

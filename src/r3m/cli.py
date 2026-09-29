@@ -91,11 +91,12 @@ def _label(args: argparse.Namespace) -> int:
     champions = args.champions.split(",") if args.champions else None
     print(
         f"labelling {'all live champion x role rows' if champions is None else champions} "
-        f"with {args.model} at effort {args.effort} ...",
+        f"with {args.model} at effort {args.effort}, prompt {args.prompt_version} ...",
         flush=True,
     )
     result = labeling_run.run(
-        model=args.model, effort=args.effort, champions=champions, note=args.note
+        model=args.model, effort=args.effort, champions=champions, note=args.note,
+        prompt_version=args.prompt_version,
     )
     if result.targeted == 0:
         print(
@@ -115,6 +116,11 @@ def _label(args: argparse.Namespace) -> int:
         )
     for failure in result.failed:
         print(f"  FAILED {failure.champion_id} ({failure.role}): {failure.error}")
+    u = result.usage
+    cost = u.dollars(args.model)
+    print(f"usage: {u.calls} calls, input {u.input:,} + cache write {u.cache_write:,} + "
+          f"cache read {u.cache_read:,}, output {u.output:,} tokens"
+          + (f" ~ ${cost:.2f} at list price" if cost is not None else ""))
     if result.labelled:
         _autodump()
     return 1 if result.failed else 0
@@ -485,6 +491,12 @@ def main() -> int:
         "--effort", default=labeling_run.DEFAULT_EFFORT, choices=EFFORTS,
         help=f"output_config.effort, recorded on the label_run "
              f"(default: {labeling_run.DEFAULT_EFFORT})",
+    )
+    label_cmd.add_argument(
+        "--prompt-version", default=labeling_run.PROMPT_VERSION,
+        choices=sorted(labeling_run.PROMPTS),
+        help=f"champion prompt (default: {labeling_run.PROMPT_VERSION}; v3 is the "
+             f"validated production prompt, see docs/sub-traits.md)",
     )
     label_cmd.add_argument(
         "--champions", help="comma-separated champion ids to label (default: every live role)"

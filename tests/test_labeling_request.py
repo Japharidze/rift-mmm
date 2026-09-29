@@ -52,3 +52,32 @@ def test_no_thinking_field_and_effort_is_explicit():
 def test_opus_5_5_is_priced():
     u = run.Usage(calls=1, input=1_000_000, output=1_000_000, cache_write=1_000_000, cache_read=1_000_000)
     assert u.dollars("claude-opus-5-5") == 4.00 + 20.00 + 5.00 + 0.20
+
+
+def test_the_win_condition_tool_is_byte_identical_to_the_validated_runs():
+    # Generated from the schema.py that made label_run 9/10 (v3) and run 17
+    # (games-v2); both produce this exact tool. A new model is only comparable
+    # with the old labels if it is shown the same tool.
+    import json
+    from pathlib import Path
+    from r3m.labeling.schema import tool_schema
+    fixture = json.loads((Path(__file__).parent / "fixtures" / "tool_schema_win_condition.json").read_text())
+    assert json.loads(json.dumps(tool_schema("macro_win_condition"), sort_keys=True)) == fixture
+
+
+def test_the_v3_prompt_is_the_one_that_made_the_production_labels():
+    # sha256 of prompt v3's system prompt as restored from git (0b8961e^).
+    import hashlib
+    from r3m.labeling import prompt_v3
+    assert prompt_v3.PROMPT_VERSION == "v3"
+    assert hashlib.sha256(prompt_v3.SYSTEM_PROMPT.encode()).hexdigest() == \
+        "c49a6a91d015fe7b1db2b85530df557bac8ced3783adced81990c3f7013e4398"
+
+
+def test_a_v3_run_sends_the_v3_prompt_and_the_win_condition_tool():
+    call = first_call(run._call, "claude-opus-5-5", champion_name="Ahri", title="t", role="mid",
+                      kit_text="k", prompt_version="v3")
+    from r3m.labeling import prompt_v3
+    assert call["system"][0]["text"] == prompt_v3.SYSTEM_PROMPT
+    props = call["tools"][0]["input_schema"]["properties"]
+    assert "macro_win_condition" in props and "macro_resources" not in props

@@ -14,6 +14,7 @@ import anthropic
 
 from r3m import db
 from r3m.config import settings
+from r3m.labeling import prompt_v3
 from r3m.labeling.prompt import (
     MACRO_MIDDLE,
     PROMPT_VERSION,
@@ -118,6 +119,7 @@ class LabelRunResult:
     targeted: int
     labelled: int
     failed: list[LabelFailure] = field(default_factory=list)
+    usage: Usage = field(default_factory=Usage)
 
 
 def _client() -> anthropic.Anthropic:
@@ -138,6 +140,16 @@ def missing_tool_use(response: anthropic.types.Message) -> RuntimeError:
     )
 
 
+# Champion prompt versions a run can use: the system prompt and the middle
+# macro item its tool asks for. v3 is the validated production prompt
+# (docs/sub-traits.md); v10 is the latest experiment, kept runnable. The user
+# message is identical across both.
+PROMPTS = {
+    "v3": (prompt_v3.SYSTEM_PROMPT, "macro_win_condition"),
+    PROMPT_VERSION: (SYSTEM_PROMPT, MACRO_MIDDLE),
+}
+
+
 def _call(
     client: anthropic.Anthropic,
     *,
@@ -147,6 +159,8 @@ def _call(
     title: str,
     role: str,
     kit_text: str,
+    prompt_version: str = PROMPT_VERSION,
+    usage: Usage | None = None,
 ) -> tuple[ChampionLabel, dict]:
     """One champion x role, retried on a malformed response.
 
@@ -170,11 +184,11 @@ def _call(
             system=[
                 {
                     "type": "text",
-                    "text": SYSTEM_PROMPT,
+                    "text": PROMPTS[prompt_version][0],
                     "cache_control": {"type": "ephemeral"},
                 }
             ],
-            tools=[tool_schema(MACRO_MIDDLE)],
+            tools=[tool_schema(PROMPTS[prompt_version][1])],
             tool_choice=tool_choice(model),
             messages=[
                 {
@@ -188,6 +202,8 @@ def _call(
                 }
             ],
         )
+        if usage is not None:
+            usage.add(response.usage)
         tool_use = next((b for b in response.content if b.type == "tool_use"), None)
         if tool_use is None:
             last_error = missing_tool_use(response)
@@ -208,6 +224,7 @@ def run(
     effort: str = DEFAULT_EFFORT,
     champions: Sequence[str] | None = None,
     note: str | None = None,
+    prompt_version: str = PROMPT_VERSION,
 ) -> LabelRunResult:
     """Label every live champion x role, or just `champions` if given.
 
@@ -220,7 +237,10 @@ def run(
     moment the process began -- close enough to be useful, and the difference
     only shows when early champions fail.
     """
+    if prompt_version not in PROMPTS:
+        raise ValueError(f"unknown champion prompt version {prompt_version!r}; have {sorted(PROMPTS)}")
     client = _client()
+    usage = Usage()
 
     with db.connect() as conn:
         targets = db.labelling_targets(conn, champion_ids=champions)
@@ -247,6 +267,8 @@ def run(
                     title=target["title"],
                     role=target["role"],
                     kit_text=target["kit_text"],
+                    prompt_version=prompt_version,
+                    usage=usage,
                 )
             except Exception as exc:
                 failed.append(LabelFailure(target["champion_id"], target["role"], str(exc)))
@@ -254,7 +276,7 @@ def run(
 
             if label_run_id is None:
                 label_run_id = db.insert_label_run(
-                    conn, prompt_version=PROMPT_VERSION, model=model, effort=effort,
+                    conn, prompt_version=prompt_version, model=model, effort=effort,
                     note=note,
                 )
 
@@ -276,5 +298,6 @@ def run(
             labelled += 1
 
     return LabelRunResult(
-        label_run_id=label_run_id, targeted=len(targets), labelled=labelled, failed=failed
+        label_run_id=label_run_id, targeted=len(targets), labelled=labelled, failed=failed,
+        usage=usage,
     )
