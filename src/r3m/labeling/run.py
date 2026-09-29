@@ -55,7 +55,28 @@ MAX_RETRIES = 5
 # reads 0.1x. Check against the pricing page before quoting a number.
 PRICES = {
     "claude-opus-5": {"input": 5.00, "output": 25.00, "cache_write": 6.25, "cache_read": 0.50},
+    # Verified on the pricing page 2026-09-29. Cache reads are 0.05x input on
+    # this model, not the usual 0.1x -- the rate that matters for a prompt that
+    # is ~99% cached.
+    "claude-opus-5-5": {"input": 4.00, "output": 20.00, "cache_write": 5.00, "cache_read": 0.20},
 }
+
+# Models that still accept a forced tool call. Opus 5.5 rejects
+# tool_choice {"type": "tool"} with a 400 (its migration guide, 2026-09-22), so
+# it gets "auto" -- safe here because both system prompts already say "Respond
+# only by calling the emit_champion_label tool", so no prompt wording changes
+# and v3 / games-v2 stay the validated versions. A reply without the call is
+# caught by missing_tool_use and retried. Opus 5 keeps the forced call: that is
+# how every validated Opus 5 label was made, and a fallback to it must match.
+# Deliberately no server-side `fallbacks`: a refused call answered by another
+# model would mix two labelling regimes in one run.
+FORCED_TOOL_CHOICE = {"claude-opus-5"}
+
+
+def tool_choice(model: str) -> dict[str, str]:
+    if model in FORCED_TOOL_CHOICE:
+        return {"type": "tool", "name": TOOL_NAME}
+    return {"type": "auto"}
 
 
 @dataclass
@@ -154,7 +175,7 @@ def _call(
                 }
             ],
             tools=[tool_schema(MACRO_MIDDLE)],
-            tool_choice={"type": "tool", "name": TOOL_NAME},
+            tool_choice=tool_choice(model),
             messages=[
                 {
                     "role": "user",
