@@ -85,25 +85,36 @@ def test_dislike_only_rejects_the_demand_that_game_presented():
             f"{d} moved on a dislike of a game that presented no {d} demand"
 
 
-def test_a_dislike_corrects_a_player_above_the_demand_and_not_one_below():
-    """A dislike says the player is below what was offered -- no more.
+def test_a_dislike_the_loves_already_explain_moves_nothing():
+    """A dislike says *too much on at least one* presented dimension.
 
-    Someone whose loves put micro above Tekken's 0.88 and who bounces off it
-    was over-read, and is corrected down. Someone already below 0.88 was
-    expected to bounce off it: the answer confirms the estimate and moves
-    nothing. Until 2026-09-29 a dislike reflected the demand (1 - x), which read
-    the second player as wanting micro near 0.12.
+    Tekken presents micro 0.88 and meso 0.78. The osu!-and-CS2 player sits
+    above it on micro but below it on meso, so the dislike is already explained
+    -- it was the mind-games -- and nothing moves, micro least of all. Until
+    2026-09-30 the rule read the OR as an AND and dragged micro down.
     """
-    above = est(["osu", "cs2"])
-    assert above.dimensions["micro"].value > 0.88
-    # Small by design: one dislike nudges, it does not overturn the loves.
-    assert est(["osu", "cs2"], ["tekken"]).dimensions["micro"].value \
-        < above.dimensions["micro"].value
+    before = est(["osu", "cs2"])
+    assert before.dimensions["micro"].value > 0.88 - quiz.DISLIKE_MARGIN
+    assert before.dimensions["meso"].value < 0.78 - quiz.DISLIKE_MARGIN
+    assert est(["osu", "cs2"], ["tekken"]).point == before.point
 
     below = est(["hades", "valheim"])
-    assert below.dimensions["micro"].value < 0.88
-    assert est(["hades", "valheim"], ["tekken"]).dimensions["micro"].value \
-        == below.dimensions["micro"].value
+    assert est(["hades", "valheim"], ["tekken"]).point == below.point
+
+
+def test_an_unexplained_dislike_corrects_only_the_cheapest_dimension():
+    """Above the game on every dimension it presents, so the loves explain
+    nothing: the dislike corrects the one dimension that needs the smallest
+    move -- here meso, 0.20 away against micro's 0.36 -- and leaves the rest.
+    Which dimension it really was is the why question's to name.
+    """
+    rows = ROWS + [{"game_id": "brawler", "name": "brawler", "mode": None, "in_bank": True,
+                    "micro": 0.60, "meso": 0.60, "macro": 0.10}]
+    before = quiz.estimate(["cs2", "tekken"], [], rows=rows)
+    after = quiz.estimate(["cs2", "tekken"], ["brawler"], rows=rows)
+    assert after.dimensions["meso"].value < before.dimensions["meso"].value
+    assert after.dimensions["micro"].value == before.dimensions["micro"].value
+    assert after.dimensions["macro"].value == before.dimensions["macro"].value
 
 
 def test_a_dimension_is_settled_by_games_that_present_it():

@@ -107,11 +107,12 @@ def test_a_cancelled_dislike_is_removed(reason):
 
 
 def test_a_dislike_about_the_gameplay_still_counts():
-    # osu! loved, CS2 disliked: the loves put micro above CS2's, so the
-    # dislike is informative. (The other way round it is expected, and moves
-    # nothing whatever the reason.)
-    assert point(["osu"], ["cs2"], reasons={"cs2": "gameplay"}) == point(["osu"], ["cs2"])
-    assert point(["osu"], ["cs2"]) != point(["osu"])
+    # CS2 loved, the 0.4/0.4/0.4 row disliked: CS2 already sits above it on
+    # all three, so nothing the loves say explains the dislike and it moves
+    # the point. (A dislike the loves explain moves nothing whatever the
+    # reason, so it could not show the reason being honoured.)
+    assert point(["cs2"], ["roblox"], reasons={"roblox": "gameplay"}) == point(["cs2"], ["roblox"])
+    assert point(["cs2"], ["roblox"]) != point(["cs2"])
 
 
 # -- which "why" to ask -----------------------------------------------------------

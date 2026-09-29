@@ -203,6 +203,40 @@ class Estimate:
         return [g["game_id"] for g in (*self.loved, *self.disliked)]
 
 
+def dislike_target(row: dict[str, Any], current: dict[str, float]) -> tuple[str, float] | None:
+    """The one (dimension, value) a dislike argues for, or None if it argues nothing.
+
+    A dislike rejects the demand that game presented and nothing else: bouncing
+    off osu! says you wanted less execution, and says nothing about mind-games
+    or macro, because osu! never asked for any. So a game speaks only where it
+    presents demand -- the rule that made loving Factorio silent on meso,
+    applied to dislikes. A low-corner dislike therefore argues nothing:
+    bouncing off Solitaire rejects nothing, because nothing was asked. (The
+    real case, "too shallow", belongs to an explicit reason.)
+
+    And it says *too much on at least one* presented dimension -- an OR, not
+    an AND. If the loves already put the player below the game on any of them,
+    the dislike is explained and carries no position. If nothing explains it,
+    it corrects only the dimension that needs the smallest move to explain it,
+    to just under what was offered. Which dimension it really was, the why
+    question can name later; this only declines to guess more than it must.
+
+    History, 2026-09-29: the target was the reflection 1 - x, which read a
+    micro-0.51 player disliking osu! as wanting micro 0.07. Then, for one day,
+    "below what was offered on every presented dimension", which dragged the
+    micro of a player who had disliked a game for its meso; in the simulation
+    it moved a dimension away from the truth 64-83% of the times it moved one.
+    """
+    presented = [d for d in DIMENSIONS if row[d] >= LOW_CORNER and d in current]
+    if not presented:
+        return None
+    ceiling = {d: row[d] - DISLIKE_MARGIN for d in presented}
+    if any(current[d] <= ceiling[d] for d in presented):
+        return None
+    d = min(presented, key=lambda d: current[d] - ceiling[d])
+    return d, max(0.0, ceiling[d])
+
+
 def estimate(
     loved: list[str],
     disliked: list[str] | None = None,
@@ -238,44 +272,33 @@ def estimate(
             "-- pick one you loved for the gameplay itself"
         )
 
-    dims = {}
+    total = dict.fromkeys(DIMENSIONS, 0.0)
+    weight = dict.fromkeys(DIMENSIONS, 0.0)
     for d in DIMENSIONS:
-        total = weight = 0.0
         for r in liked_rows:
             w = love_w[r["game_id"]] * opportunity(r, d)
-            total += w * r[d]
-            weight += w
-        # Where the loves alone put the player. Dislikes are read against
-        # this, not against a running value, so answer order cannot matter.
-        current = total / weight if weight else None
-        for r in disliked_rows:
-            # A dislike rejects the demand that game presented and nothing
-            # else: bouncing off osu! says you wanted less execution, and says
-            # nothing about mind-games or macro, because osu! never asked for
-            # any. So a game speaks only where it presents demand -- the rule
-            # that made loving Factorio silent on meso, applied to dislikes.
-            # It also silences a low-corner dislike entirely: bouncing off
-            # Solitaire rejects nothing, because nothing was asked. (The real
-            # case, "too shallow", belongs to an explicit reason.)
-            if r[d] < LOW_CORNER:
-                continue
-            #
-            # It says the player is below what was offered -- no more. So the
-            # target is the lower of where they already are and just under
-            # the demand: someone at micro 0.51 disliking osu! (0.93) was
-            # expected to, and the answer costs nothing; someone at 0.95 gets
-            # a real, small correction. Until 2026-09-29 the target was the
-            # reflection 1 - x (capped at x), which read that same dislike as
-            # wanting micro 0.07 and let one expected answer swing all five.
-            w = DISLIKE_WEIGHT * dislike_weight(reasons.get(r["game_id"])) * opportunity(r, d)
-            below = max(0.0, r[d] - DISLIKE_MARGIN)
-            total += w * (below if current is None else min(current, below))
-            weight += w
+            total[d] += w * r[d]
+            weight[d] += w
+    # Where the loves alone put the player. Dislikes are read against this,
+    # not against a running value, so answer order cannot matter.
+    current = {d: total[d] / weight[d] for d in DIMENSIONS if weight[d]}
+
+    for r in disliked_rows:
+        target = dislike_target(r, current)
+        if target is None:
+            continue
+        d, value = target
+        w = DISLIKE_WEIGHT * dislike_weight(reasons.get(r["game_id"])) * opportunity(r, d)
+        total[d] += w * value
+        weight[d] += w
+
+    dims = {}
+    for d in DIMENSIONS:
         # Accumulated opportunity *is* how much was read, so it is the same
         # number that weighs the evidence. Nothing to keep in step.
         dims[d] = DimensionEstimate(
-            value=round(total / weight, 2) if weight else 0.5,
-            informative=round(weight, 2),
+            value=round(total[d] / weight[d], 2) if weight[d] else 0.5,
+            informative=round(weight[d], 2),
         )
 
     return Estimate(loved=liked_rows, disliked=disliked_rows, unknown=unknown, dimensions=dims)
