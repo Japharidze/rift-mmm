@@ -375,7 +375,7 @@ export default function App() {
   const loadRound = useCallback((index, v, rs, seen) => {
     const { loved: l, disliked: d, played: p } = lists(v);
     setBusy(true);
-    post("/quiz/round", { index, played: p, loved: l, disliked: d, reasons: rs })
+    post("/quiz/round", { index, played: p, loved: l, disliked: d, reasons: rs, served: seen })
       .then(r => {
         if (!r.cards) return startWhy(v, rs, 0, seen);
         setCards(r.cards);

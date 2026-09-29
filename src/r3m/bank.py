@@ -49,6 +49,10 @@ STEAM_FILE = BANK_DIR / "steam.yaml"
 # re-running the generator cannot wipe hand judgments.
 BIAS_FILE = BANK_DIR / "bias.yaml"
 BIAS_LEVELS = ("low", "medium", "high")
+# Recognition prior for the hand-picked games (migration 018); Steam games use
+# their lifetime reach instead.
+RENOWN_FILE = BANK_DIR / "renown.yaml"
+RENOWN_LEVELS = ("universal", "wide", "niche")
 GAME_ANCHORS = ROOT / "anchors" / "games.yaml"
 
 # Deck entries from Steam, existing Steam-backed games included. With ~35 video
@@ -502,12 +506,14 @@ def bank_entries() -> list[dict[str, Any]]:
             "id": e["id"], "name": e["name"], "mode": e.get("mode"),
             "tier": "deep" if deep else "deck", "parent_id": e.get("parent"),
             "steam_appid": (e.get("steam") or [None])[0], "release_year": e.get("year"),
+            "reach": None,
         })
     for e in load_yaml(STEAM_FILE)["selected"] + load_yaml(STEAM_FILE)["reserve"]:
         if e.get("keep"):
             entries.append({
                 "id": e["id"], "name": e["name"], "mode": None, "tier": "deck",
                 "parent_id": None, "steam_appid": e["steam"], "release_year": e.get("year"),
+                "reach": e.get("reach"),
             })
 
     ids = [e["id"] for e in entries]
@@ -522,6 +528,12 @@ def bank_entries() -> list[dict[str, Any]]:
         raise ValueError(f"{BIAS_FILE.name} rates games not in the bank: {stray}")
     for e in entries:
         e["bias"] = bias.get(e["id"])
+    renown = load_levels(RENOWN_FILE, RENOWN_LEVELS)
+    stray = sorted(set(renown) - known)
+    if stray:
+        raise ValueError(f"{RENOWN_FILE.name} rates games not in the bank: {stray}")
+    for e in entries:
+        e["renown"] = renown.get(e["id"])
     orphans = [e["id"] for e in entries if e["parent_id"] and e["parent_id"] not in known]
     if orphans:
         raise ValueError(f"parent not in the bank for: {orphans}")
@@ -546,12 +558,17 @@ def import_bank(conn) -> ImportResult:
 
 def load_bias(path: Path = BIAS_FILE) -> dict[str, str]:
     """game id -> low / medium / high. A game rated twice is an error."""
+    return load_levels(path, BIAS_LEVELS)
+
+
+def load_levels(path: Path, levels: tuple[str, ...]) -> dict[str, str]:
+    """game id -> level, from a file grouped by level. A game rated twice is an error."""
     if not path.exists():
         return {}
     data = load_yaml(path) or {}
     out: dict[str, str] = {}
     for level, games in data.items():
-        if level not in BIAS_LEVELS:
+        if level not in levels:
             raise ValueError(f"{path.name}: unknown level {level!r}")
         for gid in games or {}:
             if gid in out:

@@ -161,6 +161,10 @@ class RoundRequest(BaseModel):
     loved: list[str] = Field(default_factory=list)
     disliked: list[str] = Field(default_factory=list)
     reasons: dict[str, str] = Field(default_factory=dict)
+    # Every card shown so far. The fixed rounds ignore it; the card selector
+    # needs it so it never repeats a card and knows what this player recognised
+    # out of what they saw.
+    served: list[str] = Field(default_factory=list)
 
 
 class RoundResponse(BaseModel):
@@ -264,7 +268,9 @@ def quiz_grid() -> list[Game]:
 def quiz_round(req: RoundRequest) -> RoundResponse:
     """One round of the recognition sweep, or no cards when it should stop."""
     cards = quiz.next_round(req.index, played=req.played, loved=req.loved,
-                            disliked=req.disliked, reasons=req.reasons, rows=_games())
+                            disliked=req.disliked, reasons=req.reasons, rows=_games(),
+                            shown=req.served,
+                            champions=_champions() if quiz.SERVING == "selector" else None)
     return RoundResponse(index=req.index,
                          cards=None if cards is None else [_to_game(g) for g in cards])
 

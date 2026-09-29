@@ -505,6 +505,8 @@ def upsert_bank_game(
     steam_appid: int | None,
     release_year: int | None,
     bias: str | None = None,
+    reach: int | None = None,
+    renown: str | None = None,
 ) -> None:
     """Put one game from the bank files (r3m.bank) into the table.
 
@@ -519,8 +521,8 @@ def upsert_bank_game(
         cur.execute(
             """
             insert into game (id, name, mode, tier, parent_id, steam_appid,
-                              release_year, bias, is_anchor, in_bank)
-            values (%s, %s, %s, %s, %s, %s, %s, %s, false, true)
+                              release_year, bias, reach, renown, is_anchor, in_bank)
+            values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, false, true)
             on conflict (id) do update set
                 name = excluded.name,
                 mode = excluded.mode,
@@ -529,9 +531,11 @@ def upsert_bank_game(
                 steam_appid = coalesce(game.steam_appid, excluded.steam_appid),
                 release_year = coalesce(game.release_year, excluded.release_year),
                 bias = excluded.bias,
+                reach = excluded.reach,
+                renown = excluded.renown,
                 in_bank = true
             """,
-            (game_id, name, mode, tier, parent_id, steam_appid, release_year, bias),
+            (game_id, name, mode, tier, parent_id, steam_appid, release_year, bias, reach, renown),
         )
 
 
@@ -641,7 +645,7 @@ def game_points(
             select distinct on (l.game_id)
                    l.game_id, g.name, g.mode, g.in_bank, l.micro, l.meso, l.macro,
                    g.steam_appid, g.release_year, g.bias, g.tier, g.parent_id,
-                   r.id, r.prompt_version, r.model, r.effort
+                   r.id, r.prompt_version, r.model, r.effort, g.reach, g.renown
             from game_label l
             join label_run r on r.id = l.label_run_id
             join game g on g.id = l.game_id
@@ -655,7 +659,8 @@ def game_points(
              "micro": float(r[4]), "meso": float(r[5]), "macro": float(r[6]),
              "steam_appid": r[7], "release_year": r[8],
              "bias": r[9], "tier": r[10], "parent_id": r[11],
-             "label_run_id": r[12], "prompt_version": r[13], "model": r[14], "effort": r[15]}
+             "label_run_id": r[12], "prompt_version": r[13], "model": r[14], "effort": r[15],
+             "reach": r[16], "renown": r[17]}
             for r in cur.fetchall()
         ]
 

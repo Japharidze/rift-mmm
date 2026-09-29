@@ -1,0 +1,99 @@
+# Renown of the hand-picked games -- DRAFT, awaiting review (2026-09-29).
+#
+# The recognition prior for the games Steam cannot rank (bank/hand.yaml): has a
+# typical player in the segment -- 14-30, EUNE, plays on PC, new to League --
+# ever PLAYED it? Played, not heard of: the card asks "played it?".
+#
+#   universal  most have
+#   wide       a sizeable minority
+#   niche      few
+#
+# The first factor of a card's value (docs/quiz-chain.md §4). Steam games get
+# theirs from lifetime reach instead (migration 018). Both are priors: panel tap
+# rates correct them wherever the panel has shown the card.
+#
+# Judged for EUNE on purpose: Durak, Mafia and nine men's morris are schoolyard
+# staples east of Berlin; Nintendo titles are less owned there than in the west.
+# Deep entries are not rated: they are never first-screen cards.
+
+universal:
+  # video
+  league-of-legends: "The segment is League newcomers; most have played some."
+  minecraft: "Played by nearly everyone in the age band."
+  fortnite: "Free, everywhere, the age band's default for years."
+  tetris: "Played in some form by nearly everyone."
+  candy-crush: "On nearly every phone at some point."
+  solitaire: "Bundled with Windows for decades."
+  minesweeper: "Bundled with Windows for decades."
+  # classic
+  chess: "Everyone has played it, if only at school."
+  rock-paper-scissors: "Universal."
+  tic-tac-toe: "Universal."
+  uno: "In most households and on every school trip."
+  monopoly: "In most households."
+  checkers: "Universal."
+  jenga: "Universal at parties."
+  table-tennis: "Ping pong at school, camps, offices."
+  durak: "The default card game in Eastern Europe."
+  sudoku: "Newspapers and phones."
+
+wide:
+  # video
+  tft: "Riot's second game; many League newcomers have tried it."
+  valorant: "Big in the age band, but a shooter many skip."
+  wow: "A generation's MMO; the older band especially."
+  hearthstone: "Free, on PC and phone, for a decade."
+  osu: "Huge in its niche, known well beyond it."
+  smash-bros: "Nintendo, so less owned in EUNE."
+  mario-kart: "Nintendo, so less owned in EUNE; played at friends' though."
+  mario-64: "Nintendo classic, the older band."
+  animal-crossing: "Nintendo; big in 2020."
+  pokemon: "Nintendo handhelds; most of the age band touched one."
+  genshin-impact: "Very large free audience."
+  starcraft-2: "The older band's RTS."
+  warcraft-3: "The older band; DotA's origin."
+  escape-from-tarkov: "Large, especially in Eastern Europe."
+  geoguessr: "Streamers made it widely played."
+  wordle: "The 2022 daily habit."
+  agar-io: "The 2015 browser wave."
+  zelda-botw: "Nintendo; the Switch's defining game."
+  mario-party: "Nintendo party game."
+  wii-sports: "The older band's childhood."
+  pinball-space-cadet: "Bundled with Windows XP; the older band."
+  # classic
+  poker: "Played casually by many, seriously by few."
+  blackjack: "Casino classic, played casually."
+  dominoes: "Common in EUNE households."
+  connect-4: "Childhood board game."
+  battleship: "Childhood game, on paper or in a box."
+  scrabble: "Known, played by a minority."
+  darts: "Pubs and basements."
+  foosball: "Bars, schools, offices."
+  charades: "Party staple."
+  8-ball-pool: "Bars, and a big phone game."
+  catan: "The best-known modern board game."
+  risk: "A family board-game classic."
+  cluedo: "A family board-game classic."
+  mafia-party: "Schools and camps, especially in Eastern Europe."
+  exploding-kittens: "Very popular modern party card game."
+  dobble: "Common family game."
+  yu-gi-oh: "The age band's playground card game."
+  pokemon-tcg: "The age band's playground card game."
+  backgammon: "Common in the Balkans and Greece."
+  nine-mens-morris: "Mlynek / Moara: an EUNE schoolyard staple."
+
+niche:
+  # video
+  aim-trainers: "Practice tools, played by the competitive few."
+  legends-of-runeterra: "Riot's smaller card game."
+  metin2: "Big once in Romania and Poland; niche now."
+  tibia: "Poland's old MMO; niche outside it."
+  travian: "Browser strategy, an older niche."
+  club-penguin: "Childhood for some; closed in 2017."
+  # classic
+  rubiks-cube: "The card is speedrunning, not owning a cube."
+  codenames: "Known among board-gamers."
+  secret-hitler: "Known among board-gamers."
+  magic-the-gathering: "A dedicated minority."
+  go: "Rare in Europe."
+  stratego: "An older, smaller classic."
