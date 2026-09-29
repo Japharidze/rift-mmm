@@ -99,7 +99,23 @@ it reaches the live database at once. In order:
    not carry `bank/`, so tiers, parents, bias levels and the new games reach
    production only this way. New games stay out of the quiz until labelled --
    `game_points` only returns labelled games.
-4. **Optionally store the panel's mains:**
+4. **Bring the labels over, then choose what is served.** Labels are made
+   locally, and a dump/restore would clobber the panel (`restore` refuses a
+   non-empty database anyway), so they travel labels-only:
+
+       uv run r3m labels-export --runs <ids> --out dumps/labels-<date>.json
+       DATABASE_URL="<the public url>" uv run r3m labels-import dumps/labels-<date>.json
+       DATABASE_URL="<the public url>" uv run r3m canonical --champion-runs <new> --game-runs <new>
+
+   Import appends new `label_run` rows with production's own ids -- they are
+   not the local ids, which is why the import prints the mapping -- verifies a
+   checksum over every score, and skips runs already present, so repeating it
+   is safe. Nothing is served until `canonical` names the new ids, and
+   `canonical` refuses a set mixing models or effort levels. Migration 017
+   flags the validated Opus 5 runs (9 + 10, 17) as served on production, as it
+   does locally: checked 2026-09-29, production's runs 9, 10 and 17 are the same
+   runs as local (prompt, model and start time identical).
+5. **Optionally store the panel's mains:**
    `DATABASE_URL="<the public url>" uv run r3m panel-check --write`, with a
    fresh Riot development key. Reads `data/panel-mains.json` first, so it
    costs no Riot calls for players already fetched.

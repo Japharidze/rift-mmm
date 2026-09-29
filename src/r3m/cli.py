@@ -7,7 +7,7 @@ from pathlib import Path
 
 import httpx
 
-from r3m import anchors, bank, db, dump as dump_mod, fetch, ingest, panel, quiz as quiz_mod, sample, scoring
+from r3m import anchors, bank, db, dump as dump_mod, fetch, ingest, panel, quiz as quiz_mod, sample, scoring, transfer
 from r3m.labeling import games as labeling_games
 from r3m.labeling import run as labeling_run
 from r3m.migrate import apply_migrations
@@ -246,6 +246,31 @@ def _label_games(args: argparse.Namespace) -> int:
     if result.labelled:
         _autodump()
     return 1 if result.failed else 0
+
+
+def _labels_export(args: argparse.Namespace) -> int:
+    ids = [int(x) for x in args.runs.split(",")]
+    with db.connect() as conn:
+        data = transfer.export_runs(conn, ids)
+    out = Path(args.out)
+    transfer.write(data, out)
+    for e in data["runs"]:
+        r = e["run"]
+        print(f"label_run {r['id']:>3}  {e['kind']:8} {r['prompt_version']:9} {r['model']} "
+              f"effort {r['effort'] or 'default'}  {len(e['labels'])} labels")
+    print(f"wrote {out}")
+    return 0
+
+
+def _labels_import(args: argparse.Namespace) -> int:
+    data = transfer.read(Path(args.file))
+    with db.connect() as conn:
+        report = transfer.import_runs(conn, data)
+    for r in report:
+        print(f"source run {r['source']:>3} -> label_run {r['target']:>3}  {r['kind']:8} "
+              f"{r['rows']} labels  {r['status']}")
+    print("\nnothing is served until you run `r3m canonical` with the ids above")
+    return 0
 
 
 def _canonical(args: argparse.Namespace) -> int:
@@ -610,6 +635,19 @@ def main() -> int:
     match_cmd.add_argument("macro", type=float)
     match_cmd.add_argument("-n", type=int, default=5, help="how many (default: 5)")
     match_cmd.set_defaults(func=_match)
+
+    export_cmd = sub.add_parser(
+        "labels-export", help="write label runs and their labels to a file (for another database)"
+    )
+    export_cmd.add_argument("--runs", required=True, help="label_run ids, e.g. 28,29")
+    export_cmd.add_argument("--out", required=True, help="output JSON path")
+    export_cmd.set_defaults(func=_labels_export)
+
+    import_cmd = sub.add_parser(
+        "labels-import", help="append label runs from an export; idempotent, touches nothing else"
+    )
+    import_cmd.add_argument("file", help="a labels-export JSON file")
+    import_cmd.set_defaults(func=_labels_import)
 
     canonical_cmd = sub.add_parser(
         "canonical", help="show or change which label runs are served"

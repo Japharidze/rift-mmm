@@ -191,6 +191,16 @@ for cheap iteration.
 
 ## Version history
 
+> **Read the failure counts below with a correction (found 2026-09-29).** Until
+> that date `check-anchors` graded each anchor champion on whichever of its
+> labelled lanes came last, not the anchored lane, so Camille (anchored top) was
+> graded on her support row in every check recorded here. Each count is off by
+> up to three comparisons of 75, in whichever direction Camille's support row
+> happened to fall. Differences of that size between versions -- "29 vs 31",
+> "28 vs 29" -- are not findings; re-grade with the fixed check before reading
+> anything into them. The v3 baseline re-graded correctly is 31 blocking
+> failures.
+
 ### v10 — registered and run 2026-09-24 (label_run 21)
 
 **The change.** `macro_win_condition` is removed and `macro_resources` takes
