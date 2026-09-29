@@ -163,8 +163,11 @@ below were measured on the Opus 5 labels.
 
 The game bank is built from files (`bank/`, `r3m bank-import`): 300 deck
 games and 26 deep-tier modes and platforms, all labelled (run 29). Which
-cards a bank this size shows is the open serving problem: the fixed rounds
-were built for ~50 games and pick poorly from 300 (docs/quiz-chain.md §4).
+cards a bank this size shows is the open serving problem, so until the card
+selector exists (docs/quiz-chain.md §4) the quiz serves exactly panel round 1's
+28 cards and fills from its 43-game bank (`quiz.SERVING = "panel-round-1"`):
+panel round 2 then tests the new evidence mechanics, not a new card set, and
+obscure titles -- likely the least reliably labelled -- stay off screen.
 Next is the quiz chain in `docs/quiz-chain.md` — explicit recognition, a
 neutral verdict, why-questions, deep dives, and a hypothesis-testing loop —
 built in stages, smallest first.

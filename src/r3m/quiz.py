@@ -419,7 +419,46 @@ def grid(rows: list[dict[str, Any]] | None = None, n: int = GRID) -> list[dict[s
     return picked
 
 
+# What the quiz may put on screen, until the card selector exists
+# (docs/quiz-chain.md §4, "a card is a question"). Decided 2026-09-29.
+#
+# "panel-round-1": exactly the cards panel round 1 saw. Rounds deal its 28 grid
+# cards -- the 7 nobody tapped included, as they were shown then -- and fill
+# draws from the same 43-game bank round 1 filled from. Two reasons. Round 2
+# then tests what actually changed, the evidence mechanics (played / never,
+# fine, why), not a new card set. And labels likely track fame: games-v2 labels
+# from the model's own knowledge of a title, so the obscure extremes a 300-game
+# bank surfaces are both less recognisable and less reliably labelled.
+#
+# "bank": the whole labelled deck (servable_bank below), for when a selector
+# chooses cards by recognition as well as spread.
+SERVING = "panel-round-1"
+# Reconstructed 2026-09-29 as the 43-game bank minus the 15 it never showed,
+# and verified against production: every game tapped in round 1 is one of these
+# 28 or one of the two fill cards it served (osu, tekken).
+PANEL_ROUND_1_CARDS = frozenset({
+    "age-of-empires-2", "among-us", "animal-crossing", "apex-legends", "balatro",
+    "brawlhalla", "chess", "cookie-clicker", "cs2", "dota-2", "elden-ring",
+    "factorio", "fall-guys", "gang-beasts", "geometry-dash", "hades",
+    "hearthstone", "liars-bar", "mario-64", "marvel-rivals", "minecraft-creative",
+    "phasmophobia", "pokemon-vgc", "rocket-league", "stardew-valley", "tetris-99",
+    "valheim", "wow",
+})
+PANEL_ROUND_1_BANK = PANEL_ROUND_1_CARDS | frozenset({
+    "candy-crush", "getting-over-it", "jump-king", "league-of-legends",
+    "mario-kart", "osu", "overwatch", "poly-bridge", "rainbow-six", "smash-bros",
+    "street-fighter", "tekken", "tetris", "tft", "valorant",
+})
+
+
 def servable(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Games that may appear as a card, under the current SERVING mode."""
+    if SERVING == "panel-round-1":
+        return [r for r in rows if r["game_id"] in PANEL_ROUND_1_BANK]
+    return servable_bank(rows)
+
+
+def servable_bank(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Games that may appear as a card: the deck tier, in the bank.
 
     A deep entry (a mode or a platform game, bank/hand.yaml) is what a deck pick
@@ -486,8 +525,14 @@ def next_round(
     # round is a cross-section -- extremes and mainstream -- so round 1 alone is
     # a fair sample for a player who stops after it.
     spread = grid(rows, n=len(rows))
-    main = [r for r in spread if r["game_id"] not in NEVER_TAPPED]
-    last = [r for r in spread if r["game_id"] in NEVER_TAPPED]
+    if SERVING == "panel-round-1":
+        # Round 1's grid, dealt into rounds, never-tapped cards in their place:
+        # changing which cards show would confound the test of the mechanics.
+        main = [r for r in spread if r["game_id"] in PANEL_ROUND_1_CARDS]
+        last = []
+    else:
+        main = [r for r in spread if r["game_id"] not in NEVER_TAPPED]
+        last = [r for r in spread if r["game_id"] in NEVER_TAPPED]
     count = min(MAX_ROUNDS, max(1, -(-len(main) // ROUND)))
     # Capped at ROUND: dealt without a cap, a 300-game bank made three rounds
     # of ~100 cards (2026-09-29, the day the deck was labelled). Which ROUND

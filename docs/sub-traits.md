@@ -238,6 +238,34 @@ and meso 0.14 (was 0.19 / 0.22). The corners are no closer in practice -- no
 champion within 0.30 of any corner of the cube, as Gate 2 found -- so the
 confidence bands still carry the result for pure tastes.
 
+**Matching on the new space (checked the same day, no API spend).**
+
+- *The confidence bands still hold.* They are 2 and 5 champion-widths, a
+  champion-width being the median nearest-neighbour distance between champion
+  x role rows: 0.051 on Opus 5, **0.050** on Opus 5.5. The space moved; its
+  spacing did not. CLOSE 0.10 and FAIR 0.25 stand.
+- *Players through the whole pipeline* -- a point estimated from that label
+  set's own game labels, matched against its own champion labels:
+
+      player                          Opus 5 nearest        Opus 5.5 nearest     top-5 overlap
+      loves osu!                      Draven 0.46           Draven 0.47          3/5
+      loves Among Us                  Teemo 0.28 (distant)  Teemo 0.23 (fair)    3/5
+      loves Factorio                  Nasus 0.20            Nasus 0.19           5/5
+      loves CS2                       Zed 0.21              Gangplank 0.13       2/5
+      loves Street Fighter            Ekko 0.15             Zed 0.21             2/5
+      loves Hearthstone + TFT         Tryndamere 0.21       Nocturne 0.13        2/5
+      Sergi (Valheim, Factorio, Hades) Ryze 0.20            Bel'Veth 0.15        1/5
+
+  Six of seven land as close or closer; none drops a confidence band; the pure
+  tastes keep their answers and the mixed ones reorder, as a new calibration
+  should. Sergi's mains (Thresh, Bard, Zilean) are still missed: three low-meso
+  loves leave meso unread, which the quiz reports.
+- *These persona definitions are recorded here because Gate 2's were not.*
+  Re-deriving Gate 2 from each game's anchor point reproduces osu! -> Draven,
+  Factorio -> Nasus and the Hearthstone/TFT five exactly, but not Among Us ->
+  Blitzcrank or CS2 -> Lee Sin, so Gate 2 used points nobody wrote down. From
+  now on a persona is "loves these games", run through `quiz.estimate`.
+
 **For a human eye:** the new games furthest from their genre's typical macro
 are Outer Wilds 0.70, Portal 2 0.65, Darkest Dungeon 0.80, Path of Exile 0.90,
 Teardown 0.83, Divinity: Original Sin 2 0.75 (above), DAVE THE DIVER 0.32,

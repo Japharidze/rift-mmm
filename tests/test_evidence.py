@@ -46,6 +46,13 @@ CHAMPIONS = [
 ]
 
 
+@pytest.fixture(autouse=True)
+def whole_bank_serving(monkeypatch):
+    # These fixtures are not panel games; most tests here exercise the bank
+    # rules. The panel-round-1 mode has its own tests below.
+    monkeypatch.setattr(quiz, "SERVING", "bank")
+
+
 def point(loved, disliked=(), reasons=None):
     return quiz.estimate(list(loved), list(disliked), rows=ROWS, reasons=reasons).point
 
@@ -185,3 +192,33 @@ def test_no_round_is_ever_larger_than_a_round():
     for i in range(quiz.MAX_ROUNDS):
         cards = quiz.next_round(i, played=[], loved=[], disliked=[], reasons={}, rows=big)
         assert cards is not None and len(cards) <= quiz.ROUND
+
+
+# -- panel-round-1 serving ------------------------------------------------------
+
+def _panel_rows():
+    ids = sorted(quiz.PANEL_ROUND_1_BANK) + ["to-the-moon", "naruto-storm-4"]  # two new bank games
+    return [{"game_id": g, "micro": (i * 37 % 100) / 100, "meso": (i * 53 % 100) / 100,
+             "macro": (i * 71 % 100) / 100, "bias": None,
+             "tier": "deep" if g in ("minecraft-creative", "pokemon-vgc", "tetris-99") else "deck",
+             "parent_id": None, "in_bank": True} for i, g in enumerate(ids)]
+
+
+def test_panel_rounds_are_exactly_round_ones_28_cards(monkeypatch):
+    monkeypatch.setattr(quiz, "SERVING", "panel-round-1")
+    rows = _panel_rows()
+    shown = []
+    for i in range(quiz.MAX_ROUNDS):
+        cards = quiz.next_round(i, played=[], loved=[], disliked=[], reasons={}, rows=rows)
+        if cards:
+            assert len(cards) <= quiz.ROUND
+            shown += [c["game_id"] for c in cards]
+    assert set(shown) == quiz.PANEL_ROUND_1_CARDS and len(shown) == 28
+    assert set(quiz.NEVER_TAPPED) <= set(shown)        # the dead cards are back, as in round 1
+
+
+def test_panel_fill_draws_only_from_round_ones_bank(monkeypatch):
+    monkeypatch.setattr(quiz, "SERVING", "panel-round-1")
+    ids = {r["game_id"] for r in quiz.servable(_panel_rows())}
+    assert ids == set(quiz.PANEL_ROUND_1_BANK)
+    assert "to-the-moon" not in ids
