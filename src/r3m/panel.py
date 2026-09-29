@@ -189,10 +189,10 @@ def variants(conn: Any) -> list[Variant]:
     """
     champions = db.champion_points(conn)
     games = db.game_points(conn)
-    c_route = db.subtrait_values(conn, kind="champion", column="macro_routing",
-                                 prompt_version=champions[0]["prompt_version"])
-    g_route = db.subtrait_values(conn, kind="game", column="macro_routing",
-                                 prompt_version=games[0]["prompt_version"])
+    # Same (canonical) runs as the points above, so the variant differs from
+    # the production matcher in the one column it swaps and nothing else.
+    c_route = db.subtrait_values(conn, kind="champion", column="macro_routing")
+    g_route = db.subtrait_values(conn, kind="game", column="macro_routing")
 
     def swap(rows: list[dict[str, Any]], key: Callable, values: dict) -> list[dict[str, Any]]:
         return [{**r, "macro": values.get(key(r), r["macro"])} for r in rows]

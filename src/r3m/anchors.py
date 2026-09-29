@@ -70,7 +70,8 @@ def load(path: Path = ANCHORS_FILE) -> dict[str, dict[str, Any]]:
     return {entry["id"]: entry for entry in data["champions"]}
 
 
-def check(prompt_version: str | None = None, path: Path = ANCHORS_FILE) -> CheckResult:
+def check(prompt_version: str | None = None, path: Path = ANCHORS_FILE, *,
+          runs: list[int] | None = None) -> CheckResult:
     """Grade a prompt version's labels against the anchors.
 
     Scoped by prompt version rather than by run, and via db.champion_points so
@@ -83,12 +84,20 @@ def check(prompt_version: str | None = None, path: Path = ANCHORS_FILE) -> Check
     anchors = load(path)
 
     with db.connect() as conn:
-        scores = db.champion_points(conn, prompt_version=prompt_version)
+        # runs: a pilot grades exactly its own run(s); otherwise one prompt
+        # version, or the canonical (served) set when neither is given.
+        scores = db.champion_points(conn, prompt_version=prompt_version, runs=runs)
 
     if not scores:
         raise RuntimeError("no labels to check - run `r3m label` first")
 
-    labelled = {s["champion_id"]: s for s in scores}
+    # Keyed by champion x role: an anchor is one lane (Surnex placed Camille
+    # top). Keyed by champion alone, a two-lane champion was graded on
+    # whichever row came last -- Camille's support row, in every check before
+    # 2026-09-29.
+    by_role = {(s["champion_id"], s["role"]): s for s in scores}
+    labelled = {cid: by_role[(cid, a["role"])] for cid, a in anchors.items()
+                if (cid, a["role"]) in by_role}
     comparisons = [
         Comparison(
             champion_id=cid,
@@ -104,7 +113,9 @@ def check(prompt_version: str | None = None, path: Path = ANCHORS_FILE) -> Check
     ]
 
     return CheckResult(
-        prompt_version=scores[0]["prompt_version"],
+        prompt_version=", ".join(sorted({f"{s['prompt_version']} run {s['label_run_id']} "
+                                         f"{s['model']} effort {s['effort'] or 'default'}"
+                                         for s in scores})),
         rows=len(scores),
         comparisons=comparisons,
         unlabelled=sorted(cid for cid in anchors if cid not in labelled),

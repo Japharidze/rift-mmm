@@ -392,51 +392,84 @@ def replace_match_data_roles(conn: psycopg.Connection) -> int:
         return cur.rowcount
 
 
+def label_runs(
+    conn: psycopg.Connection,
+    *,
+    kind: str,
+    runs: Sequence[int] | None = None,
+    prompt_version: str | None = None,
+) -> list[int]:
+    """Which label runs to read, for champions or games.
+
+    In order of precedence: explicit `runs` (a pilot or a comparison names the
+    runs it means); every run of one `prompt_version` (grading a version, as
+    check-anchors does); otherwise the **canonical** runs of that kind
+    (label_run.canonical, migration 017) -- the served set. Serving never falls
+    through to "whatever ran last": with several regimes sharing a prompt
+    version, that is regime mixing by accident.
+
+    Only a database with no canonical runs at all falls back to the old rule,
+    the widest-coverage prompt version, so a fresh database still serves.
+    """
+    table = "champion_label" if kind == "champion" else "game_label"
+    with conn.cursor() as cur:
+        if runs:
+            return list(runs)
+        if prompt_version is not None:
+            cur.execute(
+                f"""select distinct r.id from label_run r join {table} l on l.label_run_id = r.id
+                    where r.prompt_version = %s order by r.id""",
+                (prompt_version,),
+            )
+            return [r[0] for r in cur.fetchall()]
+        cur.execute(
+            f"""select r.id from label_run r
+                where r.canonical and exists (select 1 from {table} l where l.label_run_id = r.id)
+                order by r.id"""
+        )
+        canonical = [r[0] for r in cur.fetchall()]
+        if canonical:
+            return canonical
+        cur.execute(
+            f"""select r.prompt_version from label_run r join {table} l on l.label_run_id = r.id
+                group by r.prompt_version
+                order by count(distinct l.{"champion_id, l.role" if kind == "champion" else "game_id"}) desc,
+                         max(r.id) desc
+                limit 1"""
+        )
+        row = cur.fetchone()
+    return label_runs(conn, kind=kind, prompt_version=row[0]) if row else []
+
+
 def champion_points(
-    conn: psycopg.Connection, prompt_version: str | None = None
+    conn: psycopg.Connection,
+    prompt_version: str | None = None,
+    *,
+    runs: Sequence[int] | None = None,
 ) -> list[dict[str, Any]]:
     """Every champion x role as an MMM point, one row each.
 
-    Scoped to a single prompt version, because scores from different wordings
-    are not comparable and mixing them would quietly blend two spaces. Within
-    that version the latest label per champion x role wins, which is what makes
-    a gap-filling run (label_run 10 over 9) union correctly instead of
-    double-counting.
-
-    The default is the version with the widest coverage, not the most recent
-    one. A rejected experiment over 35 champions is usually the newest thing in
-    the table, and defaulting to it silently scored matches against a twentieth
-    of the roster.
+    From one set of runs (label_runs: the canonical set unless told otherwise).
+    Within the set the latest label per champion x role wins, which is what
+    makes a gap-filling run (label_run 10 over 9) union correctly instead of
+    double-counting. Each row says which run, prompt, model and effort made it.
     """
+    ids = label_runs(conn, kind="champion", runs=runs, prompt_version=prompt_version)
+    if not ids:
+        return []
     with conn.cursor() as cur:
-        if prompt_version is None:
-            cur.execute(
-                """
-                select r.prompt_version
-                from label_run r
-                join champion_label l on l.label_run_id = r.id
-                group by r.prompt_version
-                order by count(distinct (l.champion_id, l.role)) desc,
-                         max(r.id) desc
-                limit 1
-                """
-            )
-            row = cur.fetchone()
-            if row is None:
-                return []
-            prompt_version = row[0]
-
         cur.execute(
             """
             select distinct on (l.champion_id, l.role)
-                   l.champion_id, c.name, l.role, l.micro, l.meso, l.macro
+                   l.champion_id, c.name, l.role, l.micro, l.meso, l.macro,
+                   r.id, r.prompt_version, r.model, r.effort
             from champion_label l
             join label_run r on r.id = l.label_run_id
             join champion c on c.id = l.champion_id
-            where r.prompt_version = %s
+            where l.label_run_id = any(%s)
             order by l.champion_id, l.role, l.label_run_id desc
             """,
-            (prompt_version,),
+            (ids,),
         )
         return [
             {
@@ -446,29 +479,13 @@ def champion_points(
                 "micro": float(r[3]),
                 "meso": float(r[4]),
                 "macro": float(r[5]),
-                "prompt_version": prompt_version,
+                "label_run_id": r[6],
+                "prompt_version": r[7],
+                "model": r[8],
+                "effort": r[9],
             }
             for r in cur.fetchall()
         ]
-
-
-def upsert_game(
-    conn: psycopg.Connection, *, game_id: str, name: str,
-    mode: str | None, is_anchor: bool, in_bank: bool = True,
-) -> None:
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            insert into game (id, name, mode, is_anchor, in_bank)
-            values (%s, %s, %s, %s, %s)
-            on conflict (id) do update set
-                name = excluded.name,
-                mode = excluded.mode,
-                is_anchor = excluded.is_anchor,
-                in_bank = excluded.in_bank
-            """,
-            (game_id, name, mode, is_anchor, in_bank),
-        )
 
 
 def game_ids(conn: psycopg.Connection) -> set[str]:
@@ -546,34 +563,40 @@ _GAME_LABEL_COLUMNS = (
 
 
 def subtrait_values(
-    conn: psycopg.Connection, *, kind: str, column: str, prompt_version: str
+    conn: psycopg.Connection,
+    *,
+    kind: str,
+    column: str,
+    prompt_version: str | None = None,
+    runs: Sequence[int] | None = None,
 ) -> dict[Any, float]:
-    """One sub-trait for every champion x role or game, at one prompt version.
+    """One sub-trait for every champion x role or game.
 
-    Same row choice as champion_points / game_points (latest label per item
-    within the version), so a matcher variant that swaps one column in reads
-    exactly the rows the production matcher reads. Keys: (champion_id, role)
-    for champions, game_id for games.
+    Same run choice and row choice as champion_points / game_points
+    (label_runs, then the latest label per item), so a matcher variant that
+    swaps one column in reads exactly the rows the production matcher reads.
+    Keys: (champion_id, role) for champions, game_id for games.
     """
     allowed = CHAMPION_LABEL_COLUMNS if kind == "champion" else _GAME_LABEL_COLUMNS
     if column not in allowed or column == "rationale":
         raise ValueError(f"not a {kind} sub-trait: {column}")
+    ids = label_runs(conn, kind=kind, runs=runs, prompt_version=prompt_version)
     if kind == "champion":
         query = f"""
             select distinct on (l.champion_id, l.role) l.champion_id, l.role::text, l.{column}
-            from champion_label l join label_run r on r.id = l.label_run_id
-            where r.prompt_version = %s
+            from champion_label l
+            where l.label_run_id = any(%s)
             order by l.champion_id, l.role, l.label_run_id desc
         """
     else:
         query = f"""
             select distinct on (l.game_id) l.game_id, l.{column}
-            from game_label l join label_run r on r.id = l.label_run_id
-            where r.prompt_version = %s
+            from game_label l
+            where l.label_run_id = any(%s)
             order by l.game_id, l.label_run_id desc
         """
     with conn.cursor() as cur:
-        cur.execute(query, (prompt_version,))
+        cur.execute(query, (ids,))
         rows = cur.fetchall()
     if kind == "champion":
         return {(r[0], r[1]): float(r[2]) for r in rows if r[2] is not None}
@@ -598,58 +621,43 @@ def insert_game_label(
 
 
 def game_points(
-    conn: psycopg.Connection, prompt_version: str | None = None
+    conn: psycopg.Connection,
+    prompt_version: str | None = None,
+    *,
+    runs: Sequence[int] | None = None,
 ) -> list[dict[str, Any]]:
     """Every game as an MMM point, one row each.
 
-    Same rules as champion_points: scoped to one prompt version, widest
-    coverage by default rather than newest, latest label per game within it.
-    `bank` is carried through so the quiz can exclude items that make fine
-    anchors and useless questions.
+    Same rules as champion_points: one set of runs (canonical unless told
+    otherwise), latest label per game within it. `bank`, tier and bias are
+    carried through for the quiz.
     """
+    ids = label_runs(conn, kind="game", runs=runs, prompt_version=prompt_version)
+    if not ids:
+        return []
     with conn.cursor() as cur:
-        if prompt_version is None:
-            cur.execute(
-                """
-                select r.prompt_version
-                from label_run r join game_label l on l.label_run_id = r.id
-                group by r.prompt_version
-                order by count(distinct l.game_id) desc, max(r.id) desc
-                limit 1
-                """
-            )
-            row = cur.fetchone()
-            if row is None:
-                return []
-            prompt_version = row[0]
-
         cur.execute(
             """
             select distinct on (l.game_id)
                    l.game_id, g.name, g.mode, g.in_bank, l.micro, l.meso, l.macro,
-                   g.steam_appid, g.release_year, g.bias, g.tier, g.parent_id
+                   g.steam_appid, g.release_year, g.bias, g.tier, g.parent_id,
+                   r.id, r.prompt_version, r.model, r.effort
             from game_label l
             join label_run r on r.id = l.label_run_id
             join game g on g.id = l.game_id
-            where r.prompt_version = %s
+            where l.label_run_id = any(%s)
             order by l.game_id, l.label_run_id desc
             """,
-            (prompt_version,),
+            (ids,),
         )
         return [
             {"game_id": r[0], "name": r[1], "mode": r[2], "in_bank": r[3],
              "micro": float(r[4]), "meso": float(r[5]), "macro": float(r[6]),
              "steam_appid": r[7], "release_year": r[8],
              "bias": r[9], "tier": r[10], "parent_id": r[11],
-             "prompt_version": prompt_version}
+             "label_run_id": r[12], "prompt_version": r[13], "model": r[14], "effort": r[15]}
             for r in cur.fetchall()
         ]
-
-
-# ---------------------------------------------------------------------------
-# Panel sessions (migrations/011_panel.sql)
-# ---------------------------------------------------------------------------
-
 
 def insert_quiz_session(
     conn: psycopg.Connection,
@@ -824,3 +832,43 @@ def has_column(conn: psycopg.Connection, table: str, column: str) -> bool:
             (table, column),
         )
         return cur.fetchone() is not None
+
+
+def canonical_runs(conn: psycopg.Connection) -> list[dict[str, Any]]:
+    """The served label runs (migration 017), with what made them."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            select r.id, r.prompt_version, r.model, r.effort, r.started_at::date,
+                   (select count(*) from champion_label l where l.label_run_id = r.id),
+                   (select count(*) from game_label g where g.label_run_id = r.id)
+            from label_run r where r.canonical order by r.id
+            """
+        )
+        return [
+            {"id": r[0], "prompt_version": r[1], "model": r[2], "effort": r[3], "date": r[4],
+             "kind": "champion" if r[5] else "game", "rows": r[5] or r[6]}
+            for r in cur.fetchall()
+        ]
+
+
+def set_canonical(conn: psycopg.Connection, *, kind: str, ids: Sequence[int]) -> None:
+    """Replace the served runs of one kind. Checks belong to the caller
+    (r3m canonical), which refuses a set that mixes regimes."""
+    table = "champion_label" if kind == "champion" else "game_label"
+    with conn.cursor() as cur:
+        cur.execute(
+            f"select r.id from label_run r where r.id = any(%s) "
+            f"and exists (select 1 from {table} l where l.label_run_id = r.id)",
+            (list(ids),),
+        )
+        found = {r[0] for r in cur.fetchall()}
+        missing = sorted(set(ids) - found)
+        if missing:
+            raise ValueError(f"no {kind} labels in label_run {missing}")
+        cur.execute(
+            f"update label_run r set canonical = false "
+            f"where exists (select 1 from {table} l where l.label_run_id = r.id)"
+        )
+        cur.execute("update label_run set canonical = true where id = any(%s)", (list(ids),))
+    conn.commit()

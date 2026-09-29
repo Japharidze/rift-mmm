@@ -81,3 +81,18 @@ def test_a_v3_run_sends_the_v3_prompt_and_the_win_condition_tool():
     assert call["system"][0]["text"] == prompt_v3.SYSTEM_PROMPT
     props = call["tools"][0]["input_schema"]["properties"]
     assert "macro_win_condition" in props and "macro_resources" not in props
+
+
+def test_a_reply_without_the_tool_call_is_counted():
+    class NoTool(Recorder):
+        def create(self, **kw):
+            self.calls.append(kw)
+            return NS(content=[NS(type="text", text="Here are the scores...")], stop_reason="end_turn",
+                      usage=NS(input_tokens=1, output_tokens=1,
+                               cache_creation_input_tokens=0, cache_read_input_tokens=0))
+    usage = run.Usage()
+    try:
+        games._call(NoTool(), model="claude-opus-5-5", effort="medium", name="Hades", mode=None, usage=usage)
+    except RuntimeError:
+        pass
+    assert usage.calls == run.MAX_ATTEMPTS and usage.no_tool == run.MAX_ATTEMPTS and usage.invalid == 0

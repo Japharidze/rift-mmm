@@ -88,6 +88,12 @@ class Usage:
     output: int = 0
     cache_write: int = 0
     cache_read: int = 0
+    # Attempts that had to be retried. no_tool: the reply never called the
+    # tool -- the cost of tool_choice "auto" on models that reject a forced
+    # call, and the number that says whether the prompt needs a firmer
+    # instruction. invalid: the call came back and failed validation.
+    no_tool: int = 0
+    invalid: int = 0
 
     def add(self, u: Any) -> None:
         self.calls += 1
@@ -207,11 +213,15 @@ def _call(
         tool_use = next((b for b in response.content if b.type == "tool_use"), None)
         if tool_use is None:
             last_error = missing_tool_use(response)
+            if usage is not None:
+                usage.no_tool += 1
             continue
         try:
             label = ChampionLabel.model_validate(tool_use.input)
         except Exception as exc:  # pydantic ValidationError, mainly
             last_error = exc
+            if usage is not None:
+                usage.invalid += 1
             continue
         return label, tool_use.input
     assert last_error is not None

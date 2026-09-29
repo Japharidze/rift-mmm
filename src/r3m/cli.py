@@ -121,6 +121,7 @@ def _label(args: argparse.Namespace) -> int:
     print(f"usage: {u.calls} calls, input {u.input:,} + cache write {u.cache_write:,} + "
           f"cache read {u.cache_read:,}, output {u.output:,} tokens"
           + (f" ~ ${cost:.2f} at list price" if cost is not None else ""))
+    print(f"retries: {u.no_tool} replies without the tool call, {u.invalid} invalid calls")
     if result.labelled:
         _autodump()
     return 1 if result.failed else 0
@@ -135,7 +136,8 @@ def _place(args: argparse.Namespace) -> int:
 
 
 def _check_anchors(args: argparse.Namespace) -> int:
-    result = anchors.check(prompt_version=args.prompt_version)
+    runs = [int(x) for x in args.runs.split(",")] if args.runs else None
+    result = anchors.check(prompt_version=args.prompt_version, runs=runs)
     print(f"prompt {result.prompt_version}  ({result.rows} champion x role rows)\n")
 
     current = None
@@ -240,9 +242,45 @@ def _label_games(args: argparse.Namespace) -> int:
     print(f"usage: {u.calls} calls, input {u.input:,} + cache write {u.cache_write:,} + "
           f"cache read {u.cache_read:,}, output {u.output:,} tokens"
           + (f" ~ ${cost:.2f} at list price" if cost is not None else ""))
+    print(f"retries: {u.no_tool} replies without the tool call, {u.invalid} invalid calls")
     if result.labelled:
         _autodump()
     return 1 if result.failed else 0
+
+
+def _canonical(args: argparse.Namespace) -> int:
+    """Show or change the served label runs, refusing a mixed regime."""
+    with db.connect() as conn:
+        before = db.canonical_runs(conn)
+        changes = {k: [int(x) for x in v.split(",")] for k, v in
+                   (("champion", args.champion_runs), ("game", args.game_runs)) if v}
+        if changes:
+            # What the set would be after the change, checked before writing.
+            with conn.cursor() as cur:
+                cur.execute("select id, prompt_version, model, effort from label_run where id = any(%s)",
+                            ([i for ids in changes.values() for i in ids],))
+                proposed = {r[0]: r[1:] for r in cur.fetchall()}
+            after = [(r["id"], r["kind"], r["prompt_version"], r["model"], r["effort"])
+                     for r in before if r["kind"] not in changes]
+            after += [(i, k, *proposed.get(i, (None, None, None)))
+                      for k, ids in changes.items() for i in ids]
+            regimes = {(m, e) for _, _, _, m, e in after}
+            if len(regimes) > 1:
+                print("refused: the served set would mix models or effort levels -- "
+                      + "; ".join(f"{m} effort {e or 'default'}" for m, e in sorted(regimes, key=str))
+                      + ". Champions and games must share one labelling regime (CLAUDE.md).")
+                return 1
+            for kind in ("champion", "game"):
+                versions = {p for _, k, p, _, _ in after if k == kind}
+                if len(versions) > 1:
+                    print(f"refused: {kind} runs would mix prompt versions {sorted(versions)}")
+                    return 1
+            for kind, ids in changes.items():
+                db.set_canonical(conn, kind=kind, ids=ids)
+        for r in db.canonical_runs(conn):
+            print(f"{r['kind']:8} label_run {r['id']:>3}  {r['prompt_version']:9} {r['model']}  "
+                  f"effort {r['effort'] or 'default'}  {r['rows']} rows  ({r['date']})")
+    return 0
 
 
 def _bank_candidates(args: argparse.Namespace) -> int:
@@ -552,7 +590,10 @@ def main() -> int:
     )
     check_cmd.add_argument(
         "--prompt-version", default=None,
-        help="which prompt version's labels to grade (default: widest coverage)",
+        help="which prompt version's labels to grade (default: the canonical runs)",
+    )
+    check_cmd.add_argument(
+        "--runs", help="grade exactly these label_run ids, e.g. a pilot (overrides --prompt-version)"
     )
     check_cmd.set_defaults(func=_check_anchors)
 
@@ -569,6 +610,13 @@ def main() -> int:
     match_cmd.add_argument("macro", type=float)
     match_cmd.add_argument("-n", type=int, default=5, help="how many (default: 5)")
     match_cmd.set_defaults(func=_match)
+
+    canonical_cmd = sub.add_parser(
+        "canonical", help="show or change which label runs are served"
+    )
+    canonical_cmd.add_argument("--champion-runs", help="label_run ids to serve for champions, e.g. 9,10")
+    canonical_cmd.add_argument("--game-runs", help="label_run ids to serve for games, e.g. 17")
+    canonical_cmd.set_defaults(func=_canonical)
 
     candidates_cmd = sub.add_parser(
         "bank-candidates",

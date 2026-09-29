@@ -58,11 +58,15 @@ def _call(client, *, model: str, effort: str, name: str, mode: str | None,
         tool_use = next((b for b in response.content if b.type == "tool_use"), None)
         if tool_use is None:
             last_error = missing_tool_use(response)
+            if usage is not None:
+                usage.no_tool += 1
             continue
         try:
             return ChampionLabel.model_validate(tool_use.input), tool_use.input
         except Exception as exc:
             last_error = exc
+            if usage is not None:
+                usage.invalid += 1
     assert last_error is not None
     raise last_error
 
