@@ -123,6 +123,12 @@ def _counts_in(blob: bytes) -> dict[str, int]:
             counts[table] = 0
             continue
         body = text[text.index("\n", start) + 1:]
+        # An empty table's block is the terminator alone, with no newline
+        # before it; searching for "\n\." then ran on into the next table.
+        # Panel sessions were never empty until a test row was removed.
+        if body.startswith("\\."):
+            counts[table] = 0
+            continue
         counts[table] = body[: body.index("\n\\.")].count("\n") + 1
     return counts
 

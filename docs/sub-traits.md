@@ -108,6 +108,87 @@ No misfires, including the two anchors hand-annotated as exceptions (Riven's
 meso, Yuumi's micro) — the harder bar than matching the easy cases.
 
 
+## Labelling model
+
+### Opus 5.5 pilot — 2026-09-29 (label_run 24-27)
+
+**Question.** Move both sides -- 196 champion rows and the whole game deck --
+from Opus 5 to Opus 5.5 ($4/$20, cache reads $0.20 against $5/$25/$0.50)?
+Matching compares a point built from game labels with champion labels, so a
+model is one regime for both sides or neither.
+
+**Setup.** The validated prompts, unchanged: champions v3 (restored verbatim
+from git as `prompt_v3.py`), games games-v2. The tool the model sees is
+byte-identical to the one runs 9, 10 and 17 saw (it had drifted to "number or
+null" for `macro_win_condition` since v10; restored and pinned by a test). The
+one request difference: Opus 5.5 rejects a forced `tool_choice`, so it gets
+`auto` -- both prompts already say "Respond only by calling the
+emit_champion_label tool". 25 champion anchors (27 rows) and 50 game anchors,
+at effort medium (runs 24, 25) and high (26, 27).
+
+**Baseline: the validated Opus 5 set** (runs 9 + 10, 17), never run 23 (Opus 5
+low effort, made with the drifted tool).
+
+**A grading bug fixed first.** `check-anchors` keyed labels by champion, not
+champion x role, so a two-lane anchor was graded on whichever row came last:
+Camille (anchored top) was graded on her support row in every check before
+this. Graded correctly, the v3 baseline has **31** blocking failures, not the
+29 recorded under v10 below; earlier failure counts in this file carry the same
+error.
+
+**Cost and compliance.** $1.24 (medium) + $1.39 (high) for 154 calls. Every
+call returned a valid tool call on the first attempt: `auto` costs nothing
+extra here.
+
+**Anchors.**
+
+    champions (25)       blocking   in band   micro r  meso r  macro r
+    Opus 5 (9+10)        31/75      38/75     0.83     0.71    0.53
+    5.5 medium (24)      29/75      40/75     0.80     0.75    0.49
+    5.5 high (26)        29/75      42/75     0.79     0.74    0.47
+
+    games (43)           micro r / in band   meso r / in band   macro r / in band
+    Opus 5 (17)          0.95 / 35           0.80 / 25          0.60 / 15
+    5.5 medium (25)      0.94 / 34           0.78 / 27          0.65 / 20
+    5.5 high (27)        0.93 / 30           0.77 / 25          0.67 / 23
+
+Champions hold (inside the +/-4 same-wording noise). Games hold on micro and
+meso and **improve on macro**, the load-bearing, least-verified axis.
+
+**A new calibration, not noise.** Against Opus 5 the labels move 0.05-0.09 on
+average -- three to four times re-run noise -- and systematically, and not the
+same way on both sides:
+
+    mean shift vs Opus 5 (medium)   micro    meso     macro
+    champions                       -0.07    -0.07    -0.01
+    games                           -0.03    -0.04    -0.07
+
+So a 5.5 game deck beside Opus 5 champions would be misaligned by up to 0.07 on
+macro: switching is all or nothing.
+
+**The contrasts matching now uses** (among items that have the dimension):
+
+    spread of the contrast          Opus 5   5.5 med  5.5 high   agreement with Opus 5
+    champions precision-execution   0.244    0.274    0.279      r 0.92 / 0.94
+    champions prediction-deception  0.317    0.278    0.271      r 0.94 / 0.93
+    games precision-execution       0.189    0.207    0.220      r 0.81 / 0.81
+    games prediction-deception      0.146    0.122    0.116      r 0.82 / 0.85
+
+The micro split sharpens on both sides. The meso split narrows -- on games,
+where it was already the weaker reach (half the champion spread), by about a
+sixth. That is the cost of switching.
+
+**Effort barely matters on 5.5:** medium and high differ by 0.019-0.026, re-run
+noise, on both sides. The one exception is the game meso contrast (medium vs
+high r 0.80).
+
+**Also on Opus 5, free, from existing runs:** low effort (run 23) keeps six of
+seven sub-traits within re-run noise and both contrasts (r 0.97 / 0.91 against
+high, same as a re-run), the meso one about 8% narrower. Low effort is usable
+for cheap iteration.
+
+**Decision:** *pending (Sergi).*
+
 ## Version history
 
 ### v10 — registered and run 2026-09-24 (label_run 21)
