@@ -74,18 +74,36 @@ def test_low_corner_is_read_not_unread():
 def test_dislike_only_rejects_the_demand_that_game_presented():
     """Bouncing off osu! rejects the demand osu! presented -- micro -- and
     nothing else. It has meso 0.06 and macro 0.10, so it offered no opportunity
-    to form a view on either, and neither may move.
+    to form a view on either, and neither may move at all: a game speaks only
+    where it presents demand, the same rule that keeps loving Factorio silent
+    on meso.
     """
     before = est(["cs2", "tekken"])
     after = est(["cs2", "tekken"], ["osu"])
-    assert after.dimensions["micro"].value < before.dimensions["micro"].value - 0.02, \
-        "disliking osu! should lower micro"
     for d in ("meso", "macro"):
-        # Values are rounded to two places, so the comparison is too: plain
-        # float subtraction makes an exact 0.02 come out as 0.020000000000000018.
-        moved = round(abs(after.dimensions[d].value - before.dimensions[d].value), 2)
-        assert moved <= 0.02, \
-            f"{d} moved {moved} on a dislike of a game that presented no {d} demand"
+        assert after.dimensions[d].value == before.dimensions[d].value, \
+            f"{d} moved on a dislike of a game that presented no {d} demand"
+
+
+def test_a_dislike_corrects_a_player_above_the_demand_and_not_one_below():
+    """A dislike says the player is below what was offered -- no more.
+
+    Someone whose loves put micro above Tekken's 0.88 and who bounces off it
+    was over-read, and is corrected down. Someone already below 0.88 was
+    expected to bounce off it: the answer confirms the estimate and moves
+    nothing. Until 2026-09-29 a dislike reflected the demand (1 - x), which read
+    the second player as wanting micro near 0.12.
+    """
+    above = est(["osu", "cs2"])
+    assert above.dimensions["micro"].value > 0.88
+    # Small by design: one dislike nudges, it does not overturn the loves.
+    assert est(["osu", "cs2"], ["tekken"]).dimensions["micro"].value \
+        < above.dimensions["micro"].value
+
+    below = est(["hades", "valheim"])
+    assert below.dimensions["micro"].value < 0.88
+    assert est(["hades", "valheim"], ["tekken"]).dimensions["micro"].value \
+        == below.dimensions["micro"].value
 
 
 def test_a_dimension_is_settled_by_games_that_present_it():

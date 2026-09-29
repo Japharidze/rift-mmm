@@ -45,8 +45,21 @@ INFORMATIVE = 0.25
 # absence is then the thing on offer. See `opportunity`.
 LOW_CORNER = 0.35
 # Opportunity a dimension must accumulate before it counts as read, in the
-# units `opportunity` returns: one game presenting the dimension in full, or
-# two presenting half of it each.
+# units `opportunity` returns: each game hands over at most one unit, split
+# across the three dimensions.
+#
+# PROVISIONAL. 0.5 since the one-unit rule (2026-09-29), from 1.0 when a game
+# could hand over up to a unit on *each* dimension. Chosen inside the window
+# the two estimator tests leave -- Sergi's builders session must leave meso
+# unread (it accumulates 0.44), the relaxed player must read micro (0.59) --
+# which means the threshold is set by the same fixtures that check it. Nothing
+# independent calibrates it yet; panel round 2 should.
+#
+# The fill-stage rates below are history. Re-measured 2026-09-29 on the Opus
+# 5.5 labels, loving random picks: the fill stage runs for 2% of five-pick
+# sessions at the old 1.0 and 0% here, from panel round 1's cards or the whole
+# deck, and never at eight picks or more. Random picks are not how people
+# pick, so these say little either way.
 #
 # Was a count of answers. A count cannot express the thing that broke: three
 # games can be answered about and still offer nothing to answer *with*.
@@ -58,9 +71,11 @@ LOW_CORNER = 0.35
 # random picks from the grid, the fill stage now runs for 84% of five-pick
 # sessions and 32% of eight-pick ones, and someone who tapped twelve games has
 # genuinely been read and skips it.
-NEEDED = 1.0
+NEEDED = 0.5
 # Dislike is real evidence, but noisier than delight.
 DISLIKE_WEIGHT = 0.5
+# How far under a disliked game's demand the dislike places the player.
+DISLIKE_MARGIN = 0.05
 
 # What a player can say made a love stick (docs/quiz-chain.md §5). Only the
 # first is about the game's demand; the rest are real reasons to love a game
@@ -115,6 +130,13 @@ def dislike_weight(reason: str | None) -> float | None:
 def opportunity(row: dict[str, Any], dimension: str) -> float:
     """How much chance this game gave the player to express a taste here.
 
+    One game, one unit of evidence (2026-09-29). A game's opportunities sum to
+    at most 1 across the three dimensions, split by demand: CS2 spreads its
+    unit over all three, osu! puts nearly all of it on micro. Before, each
+    dimension got up to a unit of its own, and a low-corner game got about
+    0.82 on every one -- one Solitaire answer weighed like two and a half
+    full-demand games, and displaced four of a read player's top five.
+
     A game's coordinate on a dimension is how much *demand* it presents there
     (anchors/games.yaml, on converting Surnex's categories: his groupings are
     about proportion, this scale is about magnitude). Demand presented is
@@ -126,12 +148,15 @@ def opportunity(row: dict[str, Any], dimension: str) -> float:
     dimension presents a different thing -- the absence of demand itself --
     and loving *that* is evidence for a low-demand taste. It is why Animal
     Crossing is informative about a relaxed player and Factorio is not
-    informative about meso, though both score about 0.13 on it.
+    informative about meso, though both score about 0.13 on it. That unit is
+    spread evenly: what it says -- no demand here -- is the same about all
+    three, whatever the small differences in how little each is asked for.
     """
     presence = max(row[d] for d in DIMENSIONS)
     if presence < LOW_CORNER:
-        return 1.0 - presence
-    return float(row[dimension])
+        return (1.0 - presence) / 3
+    return float(row[dimension]) / max(1.0, sum(row[d] for d in DIMENSIONS))
+
 
 
 def demand(row: dict[str, Any], dimension: str) -> float:
@@ -220,19 +245,31 @@ def estimate(
             w = love_w[r["game_id"]] * opportunity(r, d)
             total += w * r[d]
             weight += w
+        # Where the loves alone put the player. Dislikes are read against
+        # this, not against a running value, so answer order cannot matter.
+        current = total / weight if weight else None
         for r in disliked_rows:
             # A dislike rejects the demand that game presented and nothing
             # else: bouncing off osu! says you wanted less execution, and says
-            # nothing about mind-games, because osu! never asked for any.
+            # nothing about mind-games or macro, because osu! never asked for
+            # any. So a game speaks only where it presents demand -- the rule
+            # that made loving Factorio silent on meso, applied to dislikes.
+            # It also silences a low-corner dislike entirely: bouncing off
+            # Solitaire rejects nothing, because nothing was asked. (The real
+            # case, "too shallow", belongs to an explicit reason.)
+            if r[d] < LOW_CORNER:
+                continue
             #
-            # The reflection is capped at the level presented. Plain 1 - x is
-            # only a reflection when x is above the midpoint; below it, it
-            # argues the player wanted *more* of a thing the game never
-            # offered, so disliking osu! used to raise meso. Rejecting a demand
-            # cannot be evidence for wanting more of it, so the target is at
-            # most what was on offer.
+            # It says the player is below what was offered -- no more. So the
+            # target is the lower of where they already are and just under
+            # the demand: someone at micro 0.51 disliking osu! (0.93) was
+            # expected to, and the answer costs nothing; someone at 0.95 gets
+            # a real, small correction. Until 2026-09-29 the target was the
+            # reflection 1 - x (capped at x), which read that same dislike as
+            # wanting micro 0.07 and let one expected answer swing all five.
             w = DISLIKE_WEIGHT * dislike_weight(reasons.get(r["game_id"])) * opportunity(r, d)
-            total += w * min(1.0 - r[d], r[d])
+            below = max(0.0, r[d] - DISLIKE_MARGIN)
+            total += w * (below if current is None else min(current, below))
             weight += w
         # Accumulated opportunity *is* how much was read, so it is the same
         # number that weighs the evidence. Nothing to keep in step.

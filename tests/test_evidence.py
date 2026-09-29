@@ -107,8 +107,11 @@ def test_a_cancelled_dislike_is_removed(reason):
 
 
 def test_a_dislike_about_the_gameplay_still_counts():
-    assert point(["cs2"], ["osu"], reasons={"osu": "gameplay"}) == point(["cs2"], ["osu"])
-    assert point(["cs2"], ["osu"]) != point(["cs2"])
+    # osu! loved, CS2 disliked: the loves put micro above CS2's, so the
+    # dislike is informative. (The other way round it is expected, and moves
+    # nothing whatever the reason.)
+    assert point(["osu"], ["cs2"], reasons={"cs2": "gameplay"}) == point(["osu"], ["cs2"])
+    assert point(["osu"], ["cs2"]) != point(["osu"])
 
 
 # -- which "why" to ask -----------------------------------------------------------
