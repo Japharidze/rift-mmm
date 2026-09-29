@@ -187,7 +187,62 @@ seven sub-traits within re-run noise and both contrasts (r 0.97 / 0.91 against
 high, same as a re-run), the meso one about 8% narrower. Low effort is usable
 for cheap iteration.
 
-**Decision:** *pending (Sergi).*
+**Decision (Sergi, 2026-09-29): Opus 5.5, effort high, both sides.** Reasons
+in order: a one-time asset everything depends on is not where to save $1.10;
+high was better where it matters (game macro, champion anchor bands); and the
+one effort-sensitive number, the game meso split, is the subtlest judgement in
+the rubric. On that number medium in fact narrowed less (0.122 vs 0.116), so
+it was a tie and the first reason decided it.
+
+### The relabel — 2026-09-29 (label_run 28, 29, 30)
+
+Run 28: all 196 champion x role rows, v3. Run 29: the whole game bank, 300 deck
++ 26 deep, games-v2. Both Opus 5.5 at high effort; zero failures. $3.54 +
+$5.96, plus $0.90 for run 30, a second pass over 50 random deck games (seed
+20260929) to measure noise on the regime that is served. Retries: 0 replies
+without the tool call anywhere; 2 invalid tool calls among the 198 champion
+attempts, both fine on retry. Served locally from 2026-09-29 via `r3m
+canonical` (runs 28 + 29); production after the merge, through
+`labels-import`.
+
+**Anchors, full runs.**
+
+    champions (25)          blocking  in band   micro  meso  macro (in band)
+    Opus 5 (9+10)           31/75     38/75     14     14    10
+    Opus 5.5 high (28)      28/75     43/75     18     13    12
+
+    games (43)              micro r / band   meso r / band   macro r / band
+    Opus 5 (17)             0.95 / 35        0.80 / 25       0.60 / 15
+    Opus 5.5 high (29)      0.93 / 32        0.78 / 26       0.67 / 24
+
+Game macro, the load-bearing axis, gains nine anchors in band -- the one change
+here clearly past the +/-4 noise.
+
+**Noise on the served regime.** Games, run 29 vs run 30 (n=50): noise/spread
+0.07 (micro) to 0.17 (macro_cheat); aggregates 0.07 / 0.10 / 0.16. Champions,
+from the pilot run 26 vs run 28 on the same 27 rows: micro_precision and
+micro_execution 0.09, meso_deception and meso_prediction 0.13 (Opus 5: 0.12 /
+0.15 / 0.16 / 0.20), exploitation and meso_cheat still the noisiest at 0.27.
+Both contrasts re-test at r 0.99 (champions) and r 0.97 (games).
+
+**The meso split was not narrowed after all.** On the 50 anchors it lost a
+sixth of its spread; across the whole bank it is the widest the game side has
+had -- spread 0.161 over 85 games (Opus 5: 0.146 over 21), range -0.35..+0.60,
+its two sub-traits less entangled (within-dimension r 0.54, was 0.65). The new
+games supply the contrast the anchor set lacked, as docs/quiz-chain.md §2
+predicted. The micro split reaches 126 games (spread 0.179).
+
+**The space moved.** Across all 196 champion rows micro drops 0.11 and meso
+0.08 against Opus 5 (macro -0.02): the champion cloud now reaches micro 0.11
+and meso 0.14 (was 0.19 / 0.22). The corners are no closer in practice -- no
+champion within 0.30 of any corner of the cube, as Gate 2 found -- so the
+confidence bands still carry the result for pure tastes.
+
+**For a human eye:** the new games furthest from their genre's typical macro
+are Outer Wilds 0.70, Portal 2 0.65, Darkest Dungeon 0.80, Path of Exile 0.90,
+Teardown 0.83, Divinity: Original Sin 2 0.75 (above), DAVE THE DIVER 0.32,
+People Playground 0.05, METAL GEAR RISING 0.15 (below). Each reads as a genre
+tag misleading rather than a label wrong; worth a glance, not a relabel.
 
 ## Version history
 

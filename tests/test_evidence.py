@@ -175,3 +175,13 @@ def test_cards_nobody_tapped_in_the_panel_go_to_the_back(monkeypatch):
     order = [g for r in rounds for g in r]
     assert "stardew-valley" in quiz.NEVER_TAPPED
     assert order[-1] == "stardew-valley"   # the only never-tapped game in these rows
+
+
+def test_no_round_is_ever_larger_than_a_round():
+    # A 300-game bank dealt into three uncapped rounds gave ~100 cards each.
+    big = [{"game_id": f"g{i}", "micro": (i * 37 % 100) / 100, "meso": (i * 53 % 100) / 100,
+            "macro": (i * 71 % 100) / 100, "bias": None, "tier": "deck", "parent_id": None,
+            "in_bank": True} for i in range(300)]
+    for i in range(quiz.MAX_ROUNDS):
+        cards = quiz.next_round(i, played=[], loved=[], disliked=[], reasons={}, rows=big)
+        assert cards is not None and len(cards) <= quiz.ROUND

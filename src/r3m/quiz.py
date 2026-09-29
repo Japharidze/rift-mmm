@@ -444,9 +444,9 @@ def servable(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 # everyone for now: with ~47 labelled games, three rounds already show three
 # quarters of the bank, so there is nothing to choose between. Rounds become
 # per-player once the new deck is labelled.
-# Fourteen, not twelve: the 42 labelled games people did tap in the panel fit
-# three rounds exactly, so none is dropped for its position. Seven rows of two
-# on a phone.
+# Fourteen, not twelve: with the original 50-game bank, the 42 games people
+# did tap in the panel fit three rounds exactly, so none was dropped for its
+# position. Seven rows of two on a phone. A hard cap, not a target.
 ROUND = 14
 MAX_ROUNDS = 3
 # Recognised games (loved, fine or disliked) after which, if every dimension is
@@ -489,7 +489,12 @@ def next_round(
     main = [r for r in spread if r["game_id"] not in NEVER_TAPPED]
     last = [r for r in spread if r["game_id"] in NEVER_TAPPED]
     count = min(MAX_ROUNDS, max(1, -(-len(main) // ROUND)))
-    rounds = [main[i::count] for i in range(count)]
+    # Capped at ROUND: dealt without a cap, a 300-game bank made three rounds
+    # of ~100 cards (2026-09-29, the day the deck was labelled). Which ROUND
+    # cards a bank that size should show is the recognition question
+    # (docs/quiz-chain.md §4, "a card is a question"); until that selector
+    # exists, each round takes the first ROUND of its dealt pile.
+    rounds = [main[i::count][:ROUND] for i in range(count)]
     # Never-tapped cards only fill room left in the last round. The rest stay in
     # the bank for the fill stage, which serves them only when they would read
     # a dimension -- appended outright, they made round 3 twenty cards long.

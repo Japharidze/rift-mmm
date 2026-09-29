@@ -151,9 +151,15 @@ service (`docs/deploy.md`) and serve as the panel: every completed quiz is a
 `quiz_session` row, optionally with a Riot id (EUNE only, so no region is
 stored) and a comment. First round 2026-09-26: 16 rows, ~9 testers.
 
-Champions stay on v3. `docs/sub-traits.md` ran v10 and concluded a relabel is
-not justified (blocking failures 28 vs 29, inside noise; external agreement
-flat), so the 196-row set below is production, not a placeholder.
+Champions stay on prompt v3 (`docs/sub-traits.md` ran v10 and concluded a new
+prompt is not justified). The labelling *model* changed on 2026-09-29: all 196
+champion rows and the whole 326-game bank were relabelled on Opus 5.5 at high
+effort (label_run 28, 29), one regime for both sides -- see `docs/sub-traits.md`,
+Labelling model. Served labels are an explicit canonical run set per database
+(`r3m canonical`, migration 017), never "the latest run"; production still
+serves the validated Opus 5 set (9 + 10, 17) until the merge brings the new runs
+over with `labels-import` (`docs/deploy.md`). The Gate 1 and Gate 2 numbers
+below were measured on the Opus 5 labels.
 
 The game bank is built from files (`bank/`, `r3m bank-import`): 300 deck
 games and 26 deep-tier modes and platforms; 276 of them are not labelled yet.
