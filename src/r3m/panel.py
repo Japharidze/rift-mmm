@@ -5,7 +5,22 @@ The only external measure of match quality this project has
 account: fetch the player's recent games and measure how the quiz point sits
 relative to the champions they actually play.
 
-**Three measures, in order of what they answer:**
+**The headline (from panel round 2): each main on its own.** A player's mains
+are their most-played champions, merged across roles. Each recommender --
+the quiz point, the know-nothing centre, and popularity ("recommend what is
+most played", from the match sample) -- orders every champion, and for each
+we report where the *best* main lands, whether any main reaches the five the
+quiz shows, where each main lands, and (for the two points) how far the
+nearest main is. Chance for the first two depends on how many mains there
+are, so it is printed beside them. CLAUDE.md requires a change to beat the
+popularity baseline, not only the know-nothing point.
+
+Why not the measures below as the headline: a mean over several mains of
+different styles is smallest near the middle of the cloud, so the centre
+wins it almost by construction -- the same failure as the centroid, softened.
+The best main and the nearest main do not average anything.
+
+**Secondary measures, in order of what they answer:**
 
 1. **Personal fit** -- is *your* quiz point nearer your mains than the other
    players' quiz points are? This is the question the panel exists to answer
@@ -68,6 +83,10 @@ THIN = 10
 # not a power calculation: replace it with one once round 2 shows how much the
 # per-player measures actually vary.
 MIN_VERDICT_N = 30
+# The headline's mains: a player's most-played champions, merged across roles.
+MAINS = 5
+# The quiz shows five champions.
+HIT_AT = 5
 # Round 1 asked for "Name#TAG" and two of three answers came without a tag.
 # Accounts migrated to Riot ids got their region as the default tag, so those
 # are tried in order and the report marks the tag as guessed.
@@ -129,6 +148,9 @@ class MainPoints:
         self._champion = {c: tuple(st.mean(p[i] for p in ps) for i in range(3))
                           for c, ps in by_champion.items()}
 
+    def rows_of(self, champion: str) -> list[tuple[tuple[str, str], Point]]:
+        return [(k, p) for k, p in self._row.items() if k[0] == champion]
+
     def get(self, champion: str, role: str) -> Point | None:
         return self._row.get((champion, role)) or self._champion.get(champion)  # type: ignore[return-value]
 
@@ -165,6 +187,57 @@ def centroid(placed: list[tuple[str, Point, int]]) -> tuple[Point | None, int]:
     if not total:
         return None, 0
     return tuple(sum(g * p[i] for _, p, g in placed) / total for i in range(3)), total  # type: ignore[return-value]
+
+
+def top_mains(mains: Mains, known: set[str], n: int = MAINS) -> list[tuple[str, int]]:
+    """(champion, games) for the player's n most-played labelled champions."""
+    games: Counter = Counter()
+    for champion, _, g in mains:
+        if champion in known:
+            games[champion] += g
+    return games.most_common(n)
+
+
+def order_from(point: Point, rows: list[dict[str, Any]]) -> list[str]:
+    return [m.champion_id for m in scoring.neighbourhood(point, n=len(rows), rows=rows)]
+
+
+def order_by_popularity(popularity: dict[str, int], rows: list[dict[str, Any]]) -> list[str]:
+    champions = sorted({r["champion_id"] for r in rows})
+    return sorted(champions, key=lambda c: -popularity.get(c, 0))
+
+
+@dataclass(frozen=True)
+class Ranking:
+    """Where one recommender puts a player's mains. Ranks are percentiles of
+    the recommender's order, 0 = first."""
+    best: float
+    hit: bool                       # a main among the first HIT_AT
+    each: list[tuple[str, float]]
+    nearest: float | None = None    # point recommenders only
+
+
+def ranking(order: list[str], mains: list[tuple[str, int]],
+            point: Point | None = None, main_points: MainPoints | None = None) -> Ranking:
+    pos = {c: i / (len(order) - 1) for i, c in enumerate(order)}
+    each = [(c, pos[c]) for c, _ in mains if c in pos]
+    nearest = None
+    if point is not None and main_points is not None:
+        near = [math.dist(point, p) for c, _ in mains
+                for (champion, _role), p in main_points.rows_of(c)]
+        nearest = min(near) if near else None
+    return Ranking(best=min(r for _, r in each), hit=any(c in order[:HIT_AT] for c, _ in each),
+                   each=each, nearest=nearest)
+
+
+def chance(n_champions: int, n_mains: int) -> tuple[float, float]:
+    """(expected best-main percentile, P(a main in the first HIT_AT)) for a
+    random order: more mains make both easier, so the bar moves with them."""
+    best = (n_champions - n_mains) / (n_mains + 1) / max(1, n_champions - 1)
+    if n_champions <= HIT_AT:
+        return best, 1.0
+    hit = 1 - math.comb(n_champions - n_mains, HIT_AT) / math.comb(n_champions, HIT_AT)
+    return best, hit
 
 
 def roster_centre(rows: list[dict[str, Any]]) -> Point:
@@ -214,6 +287,11 @@ class VariantResult:
     dist_ref: float | None        # the same two from the know-nothing point
     rank_ref: float | None
     actual_point: Point | None    # centroid, stored only
+    mains: list[tuple[str, int]] = field(default_factory=list)   # the headline's
+    quiz: Ranking | None = None
+    centre: Ranking | None = None
+    popular: Ranking | None = None                               # None: no match sample
+    n_champions: int = 0
 
 
 @dataclass
@@ -266,7 +344,8 @@ def _resolve(api: Any, raw: str) -> tuple[str | None, str | None, bool]:
 
 
 def check_session(api: Any, session: dict[str, Any], variant_list: list[Variant], *,
-                  cache: dict[str, Any] | None = None, refetch: bool = False) -> SessionCheck:
+                  cache: dict[str, Any] | None = None, refetch: bool = False,
+                  popularity: dict[str, int] | None = None) -> SessionCheck:
     out = SessionCheck(session_id=session["id"], riot_id=session["riot_id"],
                        stored_point=tuple(session["point"]),
                        recommended=[c["name"] for c in session.get("champions", [])])
@@ -298,8 +377,21 @@ def check_session(api: Any, session: dict[str, Any], variant_list: list[Variant]
             return out
         if session.get("comparisons"):
             est = quiz.apply_comparisons(est, session["comparisons"], v.game_rows)
-        placed = MainPoints(v.champion_rows).placed(out.mains)
+        points = MainPoints(v.champion_rows)
+        placed = points.placed(out.mains)
         centre = roster_centre(v.champion_rows)
+        known = {r["champion_id"] for r in v.champion_rows}
+        mains = top_mains(out.mains, known)
+        head: dict[str, Any] = {}
+        if mains:
+            head = dict(
+                mains=mains,
+                quiz=ranking(order_from(est.point, v.champion_rows), mains, est.point, points),
+                centre=ranking(order_from(centre, v.champion_rows), mains, centre, points),
+                popular=(ranking(order_by_popularity(popularity, v.champion_rows), mains)
+                         if popularity else None),
+                n_champions=len(known),
+            )
         out.by_variant[v.name] = VariantResult(
             quiz_point=est.point,
             placed=placed,
@@ -308,6 +400,7 @@ def check_session(api: Any, session: dict[str, Any], variant_list: list[Variant]
             dist_ref=mean_distance(centre, placed),
             rank_ref=mean_rank(centre, placed, v.champion_rows),
             actual_point=centroid(placed)[0],
+            **head,
         )
     return out
 
@@ -337,6 +430,22 @@ def _num(x: float | None) -> str:
     return "-" if x is None else f"{x:.3f}"
 
 
+def _headline(name: str, v: VariantResult) -> list[str]:
+    if not v.mains or v.quiz is None:
+        return [f"   [{name}] no labelled mains"]
+    best, hit = chance(v.n_champions, len(v.mains))
+    out = [f"   [{name}] mains: " + ", ".join(f"{c} x{g}" for c, g in v.mains),
+           f"      {'':14} {'best':>5} {'hit':>4} {'nearest':>8}   each main"]
+    for label, r in (("quiz point", v.quiz), ("know-nothing", v.centre), ("popularity", v.popular)):
+        if r is None:
+            out.append(f"      {label:14} (no match sample in this database)")
+            continue
+        out.append(f"      {label:14} {_pct(r.best):>5} {'yes' if r.hit else 'no':>4} {_num(r.nearest):>8}   "
+                   + ", ".join(f"{c} {_pct(x)}" for c, x in r.each))
+    out.append(f"      {'chance':14} {_pct(best):>5} {_pct(hit):>4}")
+    return out
+
+
 def report(checks: list[SessionCheck]) -> str:
     usable = [c for c in checks if not c.error and c.placed_games]
     n = len(usable)
@@ -348,6 +457,12 @@ def report(checks: list[SessionCheck]) -> str:
             "pipeline works; no average and no variant difference is reported at this n.",
         ]
     lines += [
+        f"HEADLINE, each main on its own (mains = the {MAINS} most-played champions):",
+        "  best: where the best-placed main lands in the recommender's order (0% first).",
+        f"  hit: a main among the first {HIT_AT}, the champions the quiz shows.",
+        "  nearest: the point to the nearest main.  chance: a random order, for this many mains.",
+        "  popularity is 'recommend what is most played'; a change must beat it (CLAUDE.md).",
+        "SECONDARY:",
         "personal fit: your quiz point's rank among all players' quiz points, by distance",
         "  to your mains (1 = yours is closest; by chance 1 in n).",
         "dist: quiz point to each main, games-weighted.  rank: where your mains sit among",
@@ -368,6 +483,8 @@ def report(checks: list[SessionCheck]) -> str:
         lines.append("   mains: " + (", ".join(f"{ch} {r} x{k}" for ch, r, k in c.mains[:6]) or "none"))
         lines.append("   recommended then: " + (", ".join(c.recommended) or "-"))
         for name, v in c.by_variant.items():
+            lines += _headline(name, v)
+        for name, v in c.by_variant.items():
             fit = fits[name].get(c.session_id)
             fit_s = "-" if fit is None else f"{fit[0]} of {fit[1]}"
             lines.append(f"   {name:14} quiz {_fmt(v.quiz_point)}  personal fit {fit_s}  "
@@ -376,6 +493,18 @@ def report(checks: list[SessionCheck]) -> str:
 
     if n >= MIN_VERDICT_N:
         lines.append("")
+        for name in names:
+            rs = [c.by_variant[name] for c in usable if c.by_variant[name].quiz]
+            for label, get in (("quiz point", lambda v: v.quiz), ("know-nothing", lambda v: v.centre),
+                               ("popularity", lambda v: v.popular)):
+                got = [get(v) for v in rs if get(v) is not None]
+                if got:
+                    lines.append(f"{name:14} HEADLINE {label:12} best main {_pct(st.mean(g.best for g in got))}, "
+                                 f"hit {_pct(st.mean(g.hit for g in got))} of {len(got)} players")
+            ch = [chance(v.n_champions, len(v.mains)) for v in rs]
+            if ch:
+                lines.append(f"{name:14} HEADLINE {'chance':12} best main {_pct(st.mean(b for b, _ in ch))}, "
+                             f"hit {_pct(st.mean(h for _, h in ch))}")
         for name in names:
             own = sum(1 for r, _ in fits[name].values() if r == 1)
             fit_pct = st.mean((r - 1) / (m - 1) for r, m in fits[name].values())

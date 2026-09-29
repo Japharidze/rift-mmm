@@ -341,14 +341,15 @@ def _panel_check(args: argparse.Namespace) -> int:
             print("no sessions with a Riot id to check")
             return 0
         variant_list = panel.variants(conn)
+        popularity = db.champion_popularity(conn)
         cache = panel.load_cache()
         api = RiotApi(platform=panel.PLATFORM)
         checks = []
         try:
             for s in sessions:
                 print(f"checking #{s['id']} ...", flush=True)
-                checks.append(panel.check_session(api, s, variant_list,
-                                                  cache=cache, refetch=args.refetch))
+                checks.append(panel.check_session(api, s, variant_list, cache=cache,
+                                                  refetch=args.refetch, popularity=popularity))
         except httpx.HTTPStatusError as exc:
             if exc.response.status_code in (401, 403):
                 print("Riot rejected the key: development keys expire every 24 hours. "

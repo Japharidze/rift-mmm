@@ -143,3 +143,29 @@ def test_below_the_floor_the_report_says_sanity_check_and_gives_no_average():
     text = panel.report(checks)
     assert "SANITY CHECK ONLY (n=3" in text
     assert "closest for" not in text and "minus" not in text
+
+
+# -- the headline: each main on its own ---------------------------------------------
+
+def test_the_best_main_is_scored_on_its_own_not_averaged_with_the_rest():
+    # Mains at opposite corners: their average is the middle, where no single
+    # main is. The quiz point sitting on one of them must score as a hit.
+    points = panel.MainPoints(CHAMPIONS)
+    mains = [("Ahri", 10), ("Garen", 10)]
+    at_ahri = panel.ranking(panel.order_from((0.8, 0.6, 0.4), CHAMPIONS), mains, (0.8, 0.6, 0.4), points)
+    assert at_ahri.best == 0.0 and at_ahri.nearest == 0.0 and at_ahri.hit
+    assert dict(at_ahri.each)["Garen"] > 0
+
+
+def test_popularity_orders_by_games_and_chance_moves_with_the_number_of_mains():
+    order = panel.order_by_popularity({"Garen": 50, "Ahri": 10}, CHAMPIONS)
+    assert order == ["Garen", "Ahri", "Karthus"]
+    one, _ = panel.chance(170, 1)
+    five, _ = panel.chance(170, 5)
+    assert one == pytest.approx(0.5, abs=0.01) and five < one
+    assert panel.chance(170, 1)[1] == pytest.approx(5 / 170)
+
+
+def test_mains_merge_roles_and_skip_unlabelled_champions():
+    mains = [("Karthus", "mid", 3), ("Karthus", "jungle", 4), ("Nobody", "top", 9), ("Ahri", "mid", 5)]
+    assert panel.top_mains(mains, {"Karthus", "Ahri"}) == [("Karthus", 7), ("Ahri", 5)]

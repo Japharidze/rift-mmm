@@ -775,6 +775,20 @@ def attach_panel_details(
     return updated > 0
 
 
+def champion_popularity(conn: psycopg.Connection) -> dict[str, int]:
+    """Games per champion in the match sample -- the panel's popularity baseline
+    ("recommend what is most played"). Empty where no sample was loaded."""
+    rows = conn.execute(
+        """
+        select c.id, count(*)
+        from match_participant p
+        join champion c on c.riot_key = p.champion_key
+        group by c.id
+        """
+    ).fetchall()
+    return {champion: n for champion, n in rows}
+
+
 def panel_sessions_to_check(
     conn: psycopg.Connection, *, include_checked: bool = False
 ) -> list[dict[str, Any]]:
