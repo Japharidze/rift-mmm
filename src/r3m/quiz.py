@@ -109,12 +109,18 @@ REASON_LABELS = {
 }
 WHY_QUESTION = {"love": "What made it stick?", "dislike": "What put you off?"}
 
-# How much a love counts when nobody asked why, by how easily the game is loved
-# for something other than its demand (bank/bias.yaml). Starting points, not
-# fits: round 2 of the panel measures how often loves of each level turn out to
-# be about the gameplay, and these follow that. Unrated games get no discount --
-# no prior is better than an invented one.
-UNCONFIRMED = {"low": 1.0, "medium": 0.75, "high": 0.4}
+# How much a love counts when no reason was given, by how easily the game is
+# loved for something other than its demand (bank/bias.yaml). Unrated games get
+# no discount -- no prior is better than an invented one.
+#
+# 2026-09-30 (Sergi): medium 0.75 -> 1.0 and high 0.4 -> 0.7. Medium games are
+# never asked, so their discount was one the player could never see or confirm
+# -- untestable, and it silently shaved every Hades love; the bias defence is
+# the asking, and unasked means counted in full. A high game is asked, and a
+# skip there mostly means impatience rather than "I loved it for the people":
+# at 0.4 the most recognised games (Fortnite, Minecraft) paid for the player
+# being in a hurry. Round 2 measures how often high loves are about the gameplay.
+UNCONFIRMED = {"low": 1.0, "medium": 1.0, "high": 0.7}
 # Which loves get "what made it stick?" after their round: only the games
 # easiest to love for something else (bank/bias.yaml). Asking every love made a
 # twelve-question screen in the first upgraded session (2026-09-30); Hades or
@@ -1218,6 +1224,11 @@ DEEP_DIVES_FILE = ROOT / "bank" / "deep_dives.yaml"
 # single answer relocates the point; the two options of a question pull the
 # same size in opposite directions, so a random answerer does not drift.
 DEEP_DIVE_SIZE = {"small": 0.04, "medium": 0.08}
+# All deep-dive answers together move one dimension at most this far (scoring's
+# CLOSE band) -- the principle already applied to comparisons: no single source
+# relocates the point. Two macro answers in two families stacked to +0.16 in a
+# test and lifted the point above every champion (2026-09-30, Sergi).
+DEEP_DIVE_CAP = 0.10
 # Families asked about per session: two families is six questions at most,
 # about thirty seconds.
 DEEP_DIVE_FAMILIES = 2
@@ -1274,7 +1285,8 @@ def deep_dive_next(
 
 def apply_deep_dives(est: "Estimate", answered: list[dict[str, Any]]) -> "Estimate":
     """Fold deep-dive answers into the point: each moves its axis by its size,
-    in its option's direction. Split answers and skips move nothing."""
+    in its option's direction, and all of them together move one dimension at
+    most DEEP_DIVE_CAP. Split answers and skips move nothing."""
     delta = {d: 0.0 for d in DIMENSIONS}
     for a in answered:
         found = _question(a.get("question", ""))
@@ -1285,6 +1297,7 @@ def apply_deep_dives(est: "Estimate", answered: list[dict[str, Any]]) -> "Estima
         if option is None or q["axis"] in SPLITS or q["axis"] not in DIMENSIONS:
             continue
         delta[q["axis"]] += option["sign"] * DEEP_DIVE_SIZE[q["size"]]
+    delta = {d: max(-DEEP_DIVE_CAP, min(DEEP_DIVE_CAP, v)) for d, v in delta.items()}
     if not any(delta.values()):
         return est
     dims = {

@@ -1,4 +1,4 @@
-# Bias-proneness per game -- DRAFT, awaiting review (2026-09-28).
+# Bias-proneness per game -- drafted 2026-09-28 and 2026-09-30, reviewed by Sergi 2026-09-30.
 #
 # How easily someone can LOVE this game without engaging its demand
 # (docs/quiz-chain.md §5). A love is MMM signal plus nuisance -- childhood,
@@ -9,9 +9,12 @@
 #   medium  the demand is central, but a real non-gameplay pull exists
 #   high    loved most often for company, childhood, calm or availability
 #
-# Used by the first slice of the quiz chain: a high (and, when a question is
-# left over, a medium) love gets the one-tap "what made it stick?", and a love
-# without a gameplay answer counts at reduced weight. Low loves are never asked.
+# Used since 2026-09-30 (panel-round-2): only a high love is asked "what made
+# it stick?", with several reasons allowed. "How it plays" among them counts
+# the love in full; other reasons only, zero; left unanswered, 0.7 -- a skip is
+# mostly impatience. Medium and low loves are never asked and count in full: a
+# discount the player can never see or confirm cannot be tested, so the bias
+# defence is the asking (quiz.UNCONFIRMED, quiz.ASK_REASON_LEVELS).
 #
 # Hand-judged, not data-seeded. The brainstorm proposed seeding from Steam
 # playtime; tested on the 28 Steam-backed games here, it measures game length
@@ -43,7 +46,7 @@ low:
   rubiks-cube: "Speedrunning a cube is the demand itself."
   pokemon-vgc: "The competitive format: people who play it play it for the demand."
   tetris-99: "A competitive battle royale; the pressure is the game."
-  # -- drafted 2026-09-30 for the 70 panel-round-2 cards, awaiting review --
+  # -- drafted 2026-09-30 for the 70 panel-round-2 cards, reviewed the same day --
   sekiro-shadows-die-twice: "Nothing to love but the fights; no party, little story pull."
   sid-meiers-civilization-vi: "The pull is 'one more turn' -- the planning itself."
   bloons-td-6: "Placing towers against waves is the whole game."
@@ -65,18 +68,15 @@ medium:
   age-of-empires-2: "Nostalgia and LAN memories for the older band; ranked play for the dedicated."
   tetris: "A childhood game for most; the flow of stacking is the gameplay for some."
   cookie-clicker: "Loved as a joke or a background habit as often as for the loop."
-  # -- drafted 2026-09-30 for the 70 panel-round-2 cards, awaiting review --
+  # -- drafted 2026-09-30 for the 70 panel-round-2 cards, reviewed the same day --
   people-playground: "A sandbox: the pull is spectacle as much as building."
   beamng-drive: "Driving physics, but much of the love is the crashes."
-  scp-secret-laboratory: "Tense and social; the chaos with others is half of it."
   new-world-aeternum: "An MMO: the world and the group pull as hard as the combat."
-  team-fortress-2: "Real demand, and years of community and nostalgia."
   titanfall-2: "The movement is demand; the campaign story is a real pull."
   arma-3: "Military sim communities and roleplay as much as the play."
   mount-blade-ii-bannerlord: "Battles are demand; the sandbox kingdom is a pull of its own."
   dont-starve-together: "Survival demand, but usually played for the company."
   palworld: "Survival and creature collecting; the novelty and friends pull."
-  agar-io: "Simple and competitive, and a 2015 nostalgia game."
   borderlands-2: "Shooting and loot, and co-op and humour."
   paladins: "A hero shooter, often the free one friends played."
   terraria: "Deep demand, and a childhood co-op game for many."
@@ -102,7 +102,7 @@ high:
   8-ball-pool: "A bar and phone game with friends."
   rock-paper-scissors: "A playground ritual; loving it is rarely about outguessing."
   minecraft-creative: "Building and expressing, alone or with friends; no demand to engage."
-  # -- drafted 2026-09-30 for the 70 panel-round-2 cards, awaiting review --
+  # -- drafted 2026-09-30 for the 70 panel-round-2 cards, reviewed the same day --
   peak: "A co-op climbing game loved for the friends and the laughs."
   poker: "Played for the friends, the table and the money."
   foosball: "A bar and school game with friends."
@@ -121,3 +121,7 @@ high:
   fortnite: "The age band's social space: friends, events, skins."
   minecraft: "Childhood, friends and building, for nearly everyone."
   grand-theft-auto-v: "The open world, the story and messing about online."
+  # -- moved from medium in Sergi's review, 2026-09-30 --
+  team-fortress-2: "Loved for the humour, the community and years of nostalgia as much as the play."
+  scp-secret-laboratory: "Proximity chat and social chaos are the game."
+  agar-io: "A school-computer nostalgia game for this age band."

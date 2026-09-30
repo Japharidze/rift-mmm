@@ -77,6 +77,16 @@ def test_split_answers_and_skips_are_logged_but_move_nothing():
     assert quiz.apply_deep_dives(_est(), answered).point == (0.5, 0.5, 0.5)
 
 
+def test_all_deep_dives_together_move_a_dimension_at_most_the_cap():
+    # Two medium macro answers from two families would stack to +0.16.
+    answered = [{"question": "cs2-between", "option": "buy"}, {"question": "hades-boons", "option": "planned"},
+                {"question": "elden-build", "option": "planned"}]
+    after = quiz.apply_deep_dives(_est(), answered)
+    assert after.point[2] == pytest.approx(0.5 + quiz.DEEP_DIVE_CAP)
+    down = [{"question": "cs2-between", "option": "own"}, {"question": "hades-boons", "option": "moment"}]
+    assert quiz.apply_deep_dives(_est(), down).point[2] == pytest.approx(0.5 - quiz.DEEP_DIVE_CAP)
+
+
 def test_opposite_answers_to_one_question_cancel():
     up = quiz.apply_deep_dives(_est(), [{"question": "chess-time", "option": "fast"}])
     down = quiz.apply_deep_dives(up, [{"question": "chess-time", "option": "slow"}])

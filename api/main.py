@@ -81,7 +81,8 @@ def _build(games: list[dict[str, Any]]) -> dict[str, Any]:
         "evidence": {"love_reasons": {"asked": list(quiz.ASK_REASON_LEVELS), "multi": True},
                      "needed": quiz.NEEDED, "dislike_weight": quiz.DISLIKE_WEIGHT,
                      "dislike_margin": quiz.DISLIKE_MARGIN, "low_corner": quiz.LOW_CORNER,
-                     "unconfirmed": quiz.UNCONFIRMED},
+                     "unconfirmed": quiz.UNCONFIRMED,
+                     "comparison_pull": quiz.COMPARISON_PULL, "deep_dive_cap": quiz.DEEP_DIVE_CAP},
     }
 
 
