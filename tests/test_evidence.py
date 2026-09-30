@@ -299,3 +299,9 @@ def test_only_games_easiest_to_love_for_something_else_are_asked():
     assert not quiz.asks_love_reason({"bias": "medium"})   # Hades
     assert not quiz.asks_love_reason({"bias": "low"})      # osu!
     assert not quiz.asks_love_reason({})
+
+
+def test_the_follow_up_never_asks_about_a_love_the_round_screen_would_not():
+    # Medium loves (Hades, Chess, CS2) are never asked, after the rounds either.
+    rows = [dict(r, bias="medium") for r in ROWS]
+    assert quiz.why_next(["cs2", "chess"], [], {}, rows, CHAMPIONS) is None

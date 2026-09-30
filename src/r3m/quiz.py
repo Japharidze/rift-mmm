@@ -996,7 +996,11 @@ def why_next(
     candidates: list[tuple[int, int, str, str]] = []
     for g in loved:
         bias = by_id.get(g, {}).get("bias")
-        if g in reasons or g in (skip or ()) or bias not in ("high", "medium"):
+        # The same rule as the screen after each round (asks_love_reason): a
+        # medium game is never asked, here either. Until 2026-09-30 this list
+        # was high *and* medium, so Chess, CS2 or Rocket League came back as a
+        # follow-up after the rounds had rightly skipped them.
+        if g in reasons or g in (skip or ()) or not asks_love_reason(by_id.get(g, {})):
             continue
         yes = _top(loved, disliked, {**reasons, g: "gameplay"}, rows, champions)
         no = _top(loved, disliked, {**reasons, g: "people"}, rows, champions)
