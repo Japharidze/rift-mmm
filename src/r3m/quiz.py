@@ -28,10 +28,14 @@ about — monetisation, art style, the friend who made them play it.
 """
 
 import math
+from functools import cache
 from dataclasses import dataclass, field
 from typing import Any
 
+import yaml
+
 from r3m import db, scoring
+from r3m.config import ROOT
 
 DIMENSIONS = ("micro", "meso", "macro")
 
@@ -951,7 +955,14 @@ NUDGE = 0.05
 # and turned the cap into the only parameter. At a fifth, one answer nudges by
 # about NUDGE (enough to reorder the list, not to relocate it) and it takes
 # roughly a full SHARPEN_MAX of agreeing answers to reach the ceiling.
-COMPARISON_PULL = 0.2
+#
+# 0.15 since 2026-09-30, when comparisons moved before the result and the
+# cumulative cap came off. Simulated at 70 cards, cap off: at 0.2, 9.8% of
+# single comparisons moved the point more than scoring.CLOSE; at 0.15, 1.1%,
+# with error 0.313 -> 0.286 over the comparisons -- the same gain the capped
+# 0.2 gave (0.287). Each comparison is still capped at CLOSE on its own, so
+# none can relocate the point alone.
+COMPARISON_PULL = 0.15
 
 
 def contrastive(a: dict[str, Any], b: dict[str, Any]) -> str | None:
@@ -1051,19 +1062,18 @@ def apply_comparisons(
     comparisons: list[dict[str, str]],
     rows: list[dict[str, Any]],
 ) -> "Estimate":
-    """Fold pairwise answers into the point, bounded in total.
+    """Fold pairwise answers into the point, each one bounded.
 
-    A comparison carries more information than a verdict, so each one pulls
-    half the distance to the winner's level. The *cumulative* displacement is
-    then capped at scoring.CLOSE -- a per-pair cap would not achieve this,
-    since three permitted pulls can walk the point anywhere.
+    Each comparison pulls COMPARISON_PULL of the gap to the winner's level on
+    the dimension the pair isolates, and no single comparison moves the point
+    more than scoring.CLOSE.
 
-    The cap is a trade, not a parameter. Capping the best evidence in the
-    pipeline below what it warrants is deliberate underweighting; it is right
-    here only because the user is watching a result they have already been
-    shown, and stability beats marginal accuracy while the list is visibly
-    rearranging. If this stage ever runs *before* the result is shown, the cap
-    comes off.
+    Until 2026-09-30 comparisons came after the result and the *cumulative*
+    displacement was capped at CLOSE: a deliberate underweighting, right only
+    while the player watched a result they had already been shown rearrange.
+    They now come before the reveal -- the player narrowing it down, not
+    adjusting a shown answer -- so that cap came off, as this docstring said it
+    would, and the bound moved to each answer.
     """
     by_id = {r["game_id"]: r for r in rows}
     delta = {d: 0.0 for d in DIMENSIONS}
@@ -1074,12 +1084,8 @@ def apply_comparisons(
         d = c.get("dimension") or contrastive(winner, loser)
         if d not in DIMENSIONS:
             continue
-        delta[d] += COMPARISON_PULL * (winner[d] - est.dimensions[d].value)
-
-    size = sum(v * v for v in delta.values()) ** 0.5
-    if size > scoring.CLOSE:
-        scale = scoring.CLOSE / size
-        delta = {d: v * scale for d, v in delta.items()}
+        pull = COMPARISON_PULL * (winner[d] - est.dimensions[d].value)
+        delta[d] += max(-scoring.CLOSE, min(scoring.CLOSE, pull))
 
     dims = {
         d: DimensionEstimate(
@@ -1090,3 +1096,96 @@ def apply_comparisons(
     }
     return Estimate(loved=est.loved, disliked=est.disliked,
                     unknown=est.unknown, dimensions=dims)
+
+
+# ---------------------------------------------------------------------------
+# Deep dives (docs/quiz-chain.md §3, §4): how someone played a game they loved.
+# ---------------------------------------------------------------------------
+
+DEEP_DIVES_FILE = ROOT / "bank" / "deep_dives.yaml"
+# One answer's pull on its axis. Below scoring.CLOSE, so like a comparison no
+# single answer relocates the point; the two options of a question pull the
+# same size in opposite directions, so a random answerer does not drift.
+DEEP_DIVE_SIZE = {"small": 0.04, "medium": 0.08}
+# Families asked about per session: two families is six questions at most,
+# about thirty seconds.
+DEEP_DIVE_FAMILIES = 2
+# The two splits decided in docs/quiz-chain.md §2. Answers on them are logged
+# and not applied: matching does not use the splits yet, and logged answers
+# plus Riot-id mains are how split matching gets tested before it ships.
+SPLITS = ("micro_split", "meso_split")
+
+
+@cache
+def deep_dives() -> dict[str, dict[str, Any]]:
+    with DEEP_DIVES_FILE.open() as fh:
+        return yaml.safe_load(fh)
+
+
+def _question(qid: str) -> tuple[str, dict[str, Any]] | None:
+    for family, f in deep_dives().items():
+        for q in f["questions"]:
+            if q["id"] == qid:
+                return family, q
+    return None
+
+
+def deep_dive_next(
+    loved: list[str],
+    reasons: dict[str, str],
+    answered: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    """The next deep-dive question, or None.
+
+    Only about games loved for the gameplay: a love named for the people, the
+    world, nostalgia or what they had is not asked about -- the answer would
+    describe a game the player did not choose for how it plays. A love nobody
+    gave a reason for counts as gameplay, as it does in the estimate. Families
+    in the order their first game was loved, at most DEEP_DIVE_FAMILIES.
+    `answered` holds every question already put, answered or skipped.
+    """
+    asked = {a["question"] for a in answered}
+    families: list[str] = []
+    for g in loved:
+        if reasons.get(g) not in (None, "gameplay"):
+            continue
+        for family, f in deep_dives().items():
+            if g in f["games"] and family not in families:
+                families.append(family)
+    for family in families[:DEEP_DIVE_FAMILIES]:
+        for q in deep_dives()[family]["questions"]:
+            if q["id"] not in asked:
+                return {"family": family, "name": deep_dives()[family]["name"], **q}
+    return None
+
+
+def apply_deep_dives(est: "Estimate", answered: list[dict[str, Any]]) -> "Estimate":
+    """Fold deep-dive answers into the point: each moves its axis by its size,
+    in its option's direction. Split answers and skips move nothing."""
+    delta = {d: 0.0 for d in DIMENSIONS}
+    for a in answered:
+        found = _question(a.get("question", ""))
+        if found is None or a.get("option") is None:
+            continue
+        _, q = found
+        option = next((o for o in q["options"] if o["id"] == a["option"]), None)
+        if option is None or q["axis"] in SPLITS or q["axis"] not in DIMENSIONS:
+            continue
+        delta[q["axis"]] += option["sign"] * DEEP_DIVE_SIZE[q["size"]]
+    if not any(delta.values()):
+        return est
+    dims = {
+        d: DimensionEstimate(
+            value=round(min(1.0, max(0.0, est.dimensions[d].value + delta[d])), 2),
+            informative=est.dimensions[d].informative,
+        )
+        for d in DIMENSIONS
+    }
+    return Estimate(loved=est.loved, disliked=est.disliked, unknown=est.unknown, dimensions=dims)
+
+
+def settle(est: "Estimate", deep: list[dict[str, Any]], comparisons: list[dict[str, str]],
+           rows: list[dict[str, Any]]) -> "Estimate":
+    """Everything after the verdicts, in the order it is asked: deep dives,
+    then comparisons, which pull relative to the point the dives left."""
+    return apply_comparisons(apply_deep_dives(est, deep), comparisons, rows)

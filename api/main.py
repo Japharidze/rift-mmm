@@ -152,13 +152,26 @@ class Comparison(BaseModel):
     dimension: str
 
 
+class DeepAnswer(BaseModel):
+    question: str
+    option: str | None = None
+
+
+class DeepRequest(BaseModel):
+    loved: list[str] = Field(default_factory=list)
+    reasons: dict[str, str] = Field(default_factory=dict)
+    answered: list[DeepAnswer] = Field(default_factory=list)
+
+
 class ResultRequest(BaseModel):
     loved: list[str]
     disliked: list[str] = Field(default_factory=list)
     n: int = 5
-    # Stage 3. Empty on the provisional result, which is a complete answer on
-    # its own -- refinement is offered after it, never required before it.
+    # Asked before the reveal since 2026-09-30, so they arrive with the first
+    # result rather than refining it.
     comparisons: list[Comparison] = Field(default_factory=list)
+    # Deep-dive answers: {question, option}, option null when skipped.
+    deep_dives: list[DeepAnswer] = Field(default_factory=list)
     # Set on every re-post after the first result, so sharpening updates the
     # session it belongs to instead of recording another one.
     session_id: int | None = None
@@ -233,6 +246,15 @@ class Reason(BaseModel):
     label: str
 
 
+class DeepResponse(BaseModel):
+    # Ids and wording only: the axis and direction of each option stay on the
+    # server, or the page would say what each answer measures.
+    question: str | None = None
+    game: str | None = None
+    text: str | None = None
+    options: list[Reason] = Field(default_factory=list)
+
+
 class WhyResponse(BaseModel):
     # None when no follow-up would change the answer (quiz.why_next).
     game: Game | None = None
@@ -255,6 +277,7 @@ class SharpenRequest(BaseModel):
     # and the second question is chosen for a position nobody is at any more.
     comparisons: list[Comparison] = Field(default_factory=list)
     reasons: dict[str, str] = Field(default_factory=dict)
+    deep_dives: list[DeepAnswer] = Field(default_factory=list)
 
 
 class SharpenResponse(BaseModel):
@@ -385,9 +408,8 @@ def quiz_sharpen(req: SharpenRequest) -> SharpenResponse:
         est = quiz.estimate(req.loved, req.disliked, rows=rows, reasons=req.reasons)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    if req.comparisons:
-        est = quiz.apply_comparisons(
-            est, [c.model_dump() for c in req.comparisons], rows)
+    est = quiz.settle(est, [a.model_dump() for a in req.deep_dives],
+                      [c.model_dump() for c in req.comparisons], rows)
     found = quiz.sharpen(est, used=req.used)
     if found is None:
         return SharpenResponse()
@@ -401,6 +423,16 @@ def quiz_sharpen(req: SharpenRequest) -> SharpenResponse:
         question=("You liked both. Which more?" if both
                   else "Which would you go back to?"),
     )
+
+
+@api.post("/quiz/deep", response_model=DeepResponse)
+def quiz_deep(req: DeepRequest) -> DeepResponse:
+    """The next deep-dive question about a game loved for the gameplay, or none."""
+    q = quiz.deep_dive_next(req.loved, req.reasons, [a.model_dump() for a in req.answered])
+    if q is None:
+        return DeepResponse()
+    return DeepResponse(question=q["id"], game=q["name"], text=q["text"],
+                        options=[Reason(id=o["id"], label=o["text"]) for o in q["options"]])
 
 
 @api.post("/quiz/next", response_model=NextResponse)
@@ -420,9 +452,8 @@ def result(req: ResultRequest) -> Result:
         est = quiz.estimate(req.loved, req.disliked, rows=rows, reasons=req.reasons)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    if req.comparisons:
-        est = quiz.apply_comparisons(
-            est, [c.model_dump() for c in req.comparisons], rows)
+    est = quiz.settle(est, [a.model_dump() for a in req.deep_dives],
+                      [c.model_dump() for c in req.comparisons], rows)
 
     result = Result(
         point=list(est.point),
@@ -467,6 +498,7 @@ def result(req: ResultRequest) -> Result:
                 verdicts=req.verdicts or None,
                 reasons=req.reasons or None,
                 build=_build(rows),
+                deep_dives=[a.model_dump() for a in req.deep_dives] or None,
             )
             result.session_id = req.session_id if updated else db.insert_quiz_session(
                 conn,
@@ -483,6 +515,7 @@ def result(req: ResultRequest) -> Result:
                 reasons=req.reasons or None,
                 events=req.events or None,
                 build=_build(rows),
+                deep_dives=[a.model_dump() for a in req.deep_dives] or None,
             )
     except Exception:  # noqa: BLE001 - see comment above
         logging.exception("could not record panel session")

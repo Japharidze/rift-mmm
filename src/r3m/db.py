@@ -680,6 +680,7 @@ def insert_quiz_session(
     reasons: dict[str, str] | None = None,
     events: list[dict[str, Any]] | None = None,
     build: dict[str, Any] | None = None,
+    deep_dives: list[dict[str, Any]] | None = None,
 ) -> int:
     """Store one completed quiz and return its id.
 
@@ -694,9 +695,9 @@ def insert_quiz_session(
             insert into quiz_session (
                 served, loved, disliked, comparisons, point, dimensions,
                 champions, champion_prompt_version, game_prompt_version,
-                verdicts, reasons, events, build
+                verdicts, reasons, events, build, deep_dives
             )
-            values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             returning id
             """,
             (served, loved, disliked, Jsonb(comparisons), point,
@@ -705,7 +706,8 @@ def insert_quiz_session(
              Jsonb(verdicts) if verdicts is not None else None,
              Jsonb(reasons) if reasons is not None else None,
              Jsonb(events) if events is not None else None,
-             Jsonb(build) if build is not None else None),
+             Jsonb(build) if build is not None else None,
+             Jsonb(deep_dives) if deep_dives is not None else None),
         )
         session_id = cur.fetchone()[0]  # type: ignore[index]
     conn.commit()
@@ -727,6 +729,7 @@ def update_quiz_session(
     verdicts: dict[str, str] | None = None,
     reasons: dict[str, str] | None = None,
     build: dict[str, Any] | None = None,
+    deep_dives: list[dict[str, Any]] | None = None,
 ) -> bool:
     """Fold a sharpening answer into the session it belongs to -- or resolve a
     session stored without a result (migration 020): the player loved nothing,
@@ -753,6 +756,7 @@ def update_quiz_session(
                    verdicts = coalesce(%s, verdicts),
                    reasons = coalesce(%s, reasons),
                    build = coalesce(%s, build),
+                   deep_dives = coalesce(%s, deep_dives),
                    outcome = 'result'
              where id = %s and (outcome <> 'result' or (loved = %s and disliked = %s))
             """,
@@ -762,6 +766,7 @@ def update_quiz_session(
              Jsonb(verdicts) if verdicts is not None else None,
              Jsonb(reasons) if reasons is not None else None,
              Jsonb(build) if build is not None else None,
+             Jsonb(deep_dives) if deep_dives is not None else None,
              session_id, loved, disliked),
         )
         updated = cur.rowcount

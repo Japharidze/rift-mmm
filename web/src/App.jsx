@@ -41,7 +41,8 @@ const CONFIDENCE = {
   distant: "the nearest thing, not a fit",
 };
 
-// Matches quiz.SHARPEN_MAX. Past three this stops reading as a refinement of
+// Matches quiz.SHARPEN_MAX: comparisons asked before the reveal. Past three this
+// stops reading as narrowing it down and starts reading as another round. Was:
 // an answer already given and starts reading as a fourth round of questions.
 const SHARPEN_MAX = 3;
 
@@ -288,6 +289,9 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [comparisons, setComparisons] = useState([]);
   const [pair, setPair] = useState(null);
+  // Deep dives: the question on screen, and every one put so far.
+  const [deepQ, setDeepQ] = useState(null);
+  const [deepAnswers, setDeepAnswers] = useState([]);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   // Which champions the last comparison brought in. The cap deliberately keeps
@@ -346,7 +350,7 @@ export default function App() {
   // Each step below takes the answers as arguments rather than reading state:
   // they run inside one another's promise callbacks, where state is still the
   // value from before the answer that triggered them.
-  const showResult = useCallback((nextComparisons, v, rs, seen) => {
+  const showResult = useCallback((nextComparisons, v, rs, seen, deep = []) => {
     const { loved: l, disliked: d } = lists(v);
     setBusy(true);
     post("/quiz/result", {
@@ -357,6 +361,7 @@ export default function App() {
       served: seen,
       n: 5,
       comparisons: nextComparisons,
+      deep_dives: deep,
       session_id: sessionId.current,
       events: [...events.current, { t: Date.now() - started.current, type: "result" }],
     })
@@ -369,26 +374,51 @@ export default function App() {
         setFresh(before ? keys.filter(k => !before.includes(k)) : []);
         setResult(r);
         setStage("result");
-        // Stage 3 is an offer, so it is fetched alongside the result rather
-        // than gating it. No pair means no offer: the result already shown is
-        // a complete answer.
-        if (nextComparisons.length >= SHARPEN_MAX) return setPair(null);
-        return post("/quiz/sharpen", {
-          loved: l,
-          disliked: d,
-          reasons: rs,
-          comparisons: nextComparisons,
-          used: nextComparisons.flatMap(c => [c.winner, c.loser]),
-        }).then(p => {
-          if (p.dimension) log("pair", { games: p.pair.map(g => g.id), dimension: p.dimension });
-          setPair(p.dimension ? p : null);
-        });
+        window.scrollTo(0, 0);
       })
       // Every love was for something other than the gameplay: not an error,
       // a state with its own way forward.
       .catch(e => (/gameplay itself/.test(e.message) ? endWithout("no_gameplay_love", v, rs, seen) : fail(e)))
       .finally(() => setBusy(false));
   }, [fail, log, endWithout]);
+
+  // Before the reveal: the player narrowing it down. Up to SHARPEN_MAX pairs,
+  // each from games they recognised, each chosen for the axis that would
+  // change the answer; none left, or "can't choose", and the result shows.
+  const startCompare = useCallback((v, rs, seen, deep, comps) => {
+    const { loved: l, disliked: d } = lists(v);
+    if (comps.length >= SHARPEN_MAX) return showResult(comps, v, rs, seen, deep);
+    setBusy(true);
+    post("/quiz/sharpen", {
+      loved: l, disliked: d, reasons: rs, comparisons: comps, deep_dives: deep,
+      used: comps.flatMap(c => [c.winner, c.loser]),
+    })
+      .then(p => {
+        if (!p.dimension) { setPair(null); return showResult(comps, v, rs, seen, deep); }
+        log("pair", { games: p.pair.map(g => g.id), dimension: p.dimension });
+        setPair(p);
+        setStage("compare");
+        window.scrollTo(0, 0);
+      })
+      .catch(() => showResult(comps, v, rs, seen, deep))
+      .finally(() => setBusy(false));
+  }, [showResult, log]);
+
+  // Deep dives: how they played the games they loved for the gameplay.
+  const startDeep = useCallback((v, rs, seen, deep) => {
+    const { loved: l } = lists(v);
+    setBusy(true);
+    post("/quiz/deep", { loved: l, reasons: rs, answered: deep })
+      .then(q => {
+        if (!q.question) { setDeepQ(null); return startCompare(v, rs, seen, deep, []); }
+        log("deep_asked", { question: q.question });
+        setDeepQ(q);
+        setStage("deep");
+        window.scrollTo(0, 0);
+      })
+      .catch(() => startCompare(v, rs, seen, deep, []))
+      .finally(() => setBusy(false));
+  }, [startCompare, log]);
 
   // Stage 2: one card at a time, only for a dimension still unread.
   const fillNext = useCallback((nextFills, v, rs, seen) => {
@@ -399,11 +429,11 @@ export default function App() {
     post("/quiz/fill", { served: seen, loved: l, disliked: d, asked: nextFills.length, reasons: rs })
       .then(r => {
         if (r.item) { log("fill_shown", { game: r.item.id }); setItem(r.item); setStage("fill"); return; }
-        return showResult([], v, rs, seen);
+        return startDeep(v, rs, seen, []);
       })
       .catch(fail)
       .finally(() => setBusy(false));
-  }, [showResult, fail, log, endWithout]);
+  }, [startDeep, fail, log, endWithout]);
 
   // The follow-ups: one at a time, only where the answer changes the result.
   // Loves were already asked after their round, so these are mostly dislikes.
@@ -525,13 +555,30 @@ export default function App() {
       { winner: winner.id, loser: loser.id, dimension: pair.dimension }];
     setComparisons(next);
     setPair(null);
-    showResult(next, verdicts, reasons, seenAll);
-  }, [pair, comparisons, verdicts, reasons, seenAll, showResult]);
+    startCompare(verdicts, reasons, seenAll, deepAnswers, next);
+  }, [pair, comparisons, verdicts, reasons, seenAll, deepAnswers, startCompare, log]);
+
+  // "Can't choose": no more pairs, straight to the result.
+  const noChoice = useCallback(() => {
+    if (!pair) return;
+    log("comparison", { games: pair.pair.map(g => g.id), winner: null });
+    setPair(null);
+    showResult(comparisons, verdicts, reasons, seenAll, deepAnswers);
+  }, [pair, comparisons, verdicts, reasons, seenAll, deepAnswers, showResult, log]);
+
+  const answerDeep = useCallback(option => {
+    if (!deepQ) return;
+    log("deep", { question: deepQ.question, option });
+    const next = [...deepAnswers, { question: deepQ.question, option }];
+    setDeepAnswers(next);
+    setDeepQ(null);
+    startDeep(verdicts, reasons, seenAll, next);
+  }, [deepQ, deepAnswers, verdicts, reasons, seenAll, startDeep, log]);
 
   const restart = () => {
     setError(null); setVerdicts({}); setReasons({}); setWhy(null); setWhyAsked(0);
     setServed([]); setCards([]); setFills([]); setItem(null); setResult(null);
-    setComparisons([]); setPair(null); setFresh([]);
+    setComparisons([]); setPair(null); setFresh([]); setDeepQ(null); setDeepAnswers([]);
     setSkipped([]); setAsking([]); setRated(null); setOutcome(null);
     lastKeys.current = null; sessionId.current = null;
     events.current = []; started.current = Date.now();
@@ -542,7 +589,7 @@ export default function App() {
   // a follow-up or a comparison, backspace to take a fill answer back. Held in
   // a ref so the listener is installed once rather than rebound on every answer.
   const keyRef = useRef({});
-  keyRef.current = { stage, item, why, pair, answerFill, answerWhy, choose, undoFill, fills };
+  keyRef.current = { stage, item, why, pair, deepQ, answerFill, answerWhy, answerDeep, choose, undoFill, fills };
   useEffect(() => {
     const onKey = e => {
       const k = keyRef.current;
@@ -554,7 +601,10 @@ export default function App() {
       if (k.stage === "why" && k.why && n >= 0 && n < k.why.options.length) {
         k.answerWhy(k.why.options[n].id);
       }
-      if (k.stage === "result" && k.pair && (n === 0 || n === 1)) k.choose(n);
+      if (k.stage === "compare" && k.pair && (n === 0 || n === 1)) k.choose(n);
+      if (k.stage === "deep" && k.deepQ && n >= 0 && n < k.deepQ.options.length) {
+        k.answerDeep(k.deepQ.options[n].id);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -649,37 +699,11 @@ export default function App() {
         </tbody></table>
 
 
-        {/* Stage 3. Offered, never imposed: the list above is already the
-            answer, and someone who stops here loses nothing. */}
-        {pair && (
-          <div className="sharpen">
-            <h1>Sharpen it</h1>
-            <p className="gloss">
-              These two differ mostly on {pair.label.toLowerCase()} — {pair.gloss}.
-              {" "}{pair.question}
-            </p>
-            <div className="pair">
-              {pair.pair.map((g, i) => (
-                <button className="gcard" key={g.id}
-                        onClick={() => choose(i)} disabled={busy}>
-                  <Cover item={g} />
-                  <span className="key">{i + 1}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
         {allDistant && (
           <p className="note">
             Nothing lands close. Every League champion carries some of all three,
             so a taste at the edges has no real neighbour — treat these as the
             nearest thing rather than a fit.
-          </p>
-        )}
-
-        {comparisons.length > 0 && (
-          <p className="progress">
-            {comparisons.length} comparison{comparisons.length > 1 ? "s" : ""} folded in
           </p>
         )}
 
@@ -692,6 +716,43 @@ export default function App() {
         ))}
         </>}
         <button onClick={restart}>Start again</button>
+      </main>
+    );
+  }
+
+  // Before the reveal, so no axis is named: "these differ on execution" would
+  // tell the player what the answer measures.
+  if (stage === "compare" && pair) {
+    return (
+      <main>
+        <p className="progress">Narrowing it down · {comparisons.length + 1} of up to {SHARPEN_MAX}</p>
+        <h1>{pair.question}</h1>
+        <div className="pair">
+          {pair.pair.map((g, i) => (
+            <button className="gcard" key={g.id} onClick={() => choose(i)} disabled={busy}>
+              <Cover item={g} />
+              <span className="key">{i + 1}</span>
+            </button>
+          ))}
+        </div>
+        <button className="link" onClick={noChoice} disabled={busy}>Can't choose</button>
+      </main>
+    );
+  }
+
+  if (stage === "deep" && deepQ) {
+    return (
+      <main>
+        <p className="progress">About {deepQ.game}</p>
+        <h1>{deepQ.text}</h1>
+        <div className="reasons">
+          {deepQ.options.map((o, i) => (
+            <button key={o.id} onClick={() => answerDeep(o.id)} disabled={busy}>
+              {o.label} <span className="key">{i + 1}</span>
+            </button>
+          ))}
+        </div>
+        <button className="link" onClick={() => answerDeep(null)} disabled={busy}>Skip</button>
       </main>
     );
   }

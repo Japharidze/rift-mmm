@@ -1,0 +1,155 @@
+# Deep dives -- questions about how someone played a game they loved.
+# Approved by Sergi 2026-09-30 (docs/quiz-chain.md §3, §4). Deterministic: the
+# quiz serves exactly these, and never drafts at runtime.
+#
+# Asked only about a game the player loved for the gameplay (a love named for
+# the people, the world, nostalgia or what they had is not asked about), at
+# most two families per session, every answer in the replay log.
+#
+# Rules every question follows:
+#
+# - One axis per question, and the two options pull it in opposite
+#   directions by the same size. A coin-flip answerer ends where they started;
+#   the first draft pushed the "demanding" option up by more than the other
+#   pulled down, and six questions of that drift an average player upward on
+#   every axis -- the old "loved everything lands at 0.75" shape.
+# - Both options must be equally easy to choose. Symmetric sizes only cancel
+#   when neither answer reads like an admission ("Not much, just the next
+#   round" was rewritten for that).
+# - Short, concrete options, no glosses: an option that explains its own
+#   dimension tells the player what is being measured.
+# - Axes are the three dimensions, or the two splits decided in
+#   docs/quiz-chain.md §2 -- micro_split (+ precision / - execution) and
+#   meso_split (+ prediction / - deception). Never a fourth concept: tempo,
+#   aggression, risk and difficulty were each cut from a draft.
+#
+# Split answers are logged, not applied: matching does not use the splits yet.
+# Logged split answers plus Riot-id mains are how split matching gets tested
+# offline, on real players, before it touches a result.
+#
+# size: small = 0.04, medium = 0.08 on the axis (quiz.DEEP_DIVE_SIZE).
+
+hades:
+  name: Hades
+  games: [hades]
+  questions:
+    - id: hades-weapon
+      text: Which weapon did you keep coming back to?
+      axis: micro_split
+      size: medium
+      options:
+        - {id: ranged, text: "Bow or Rail", sign: 1}
+        - {id: melee, text: "Sword, Spear or Fists", sign: -1}
+    - id: hades-boons
+      text: How did you pick your boons?
+      axis: macro
+      size: medium
+      options:
+        - {id: planned, text: "I planned a build early", sign: 1}
+        - {id: moment, text: "Whatever looked best right then", sign: -1}
+
+elden-ring:
+  name: Elden Ring
+  games: [elden-ring]
+  questions:
+    - id: elden-bosses
+      text: How did you get past the hardest bosses?
+      axis: micro
+      size: medium
+      options:
+        - {id: learned, text: "Learned them until I could dodge it clean", sign: 1}
+        - {id: changed, text: "Changed my build, gear or summons", sign: -1}
+    - id: elden-pvp
+      text: Invasions and PvP?
+      axis: meso
+      size: medium
+      options:
+        - {id: sought, text: "I invaded or duelled on purpose", sign: 1}
+        - {id: avoided, text: "I avoided them or played offline", sign: -1}
+    - id: elden-build
+      text: Your build?
+      axis: macro
+      size: medium
+      options:
+        - {id: planned, text: "I planned it early", sign: 1}
+        - {id: found, text: "I used what I found", sign: -1}
+
+chess:
+  name: Chess
+  games: [chess, chess-blitz, chess-bullet]
+  questions:
+    - id: chess-time
+      text: Which time control do you play most?
+      axis: micro
+      size: medium
+      options:
+        - {id: fast, text: "Blitz or bullet", sign: 1}
+        - {id: slow, text: "Rapid or longer", sign: -1}
+    - id: chess-opponent
+      text: Who do you mostly play?
+      axis: meso
+      size: medium
+      options:
+        - {id: people, text: "People, online or in person", sign: 1}
+        - {id: puzzles, text: "Puzzles, bots or lessons", sign: -1}
+    - id: chess-mind
+      text: What are you mostly doing in a game?
+      axis: meso_split
+      size: medium
+      options:
+        - {id: stop, text: "Seeing their plan and stopping it", sign: 1}
+        - {id: traps, text: "Setting traps for them", sign: -1}
+
+cs2:
+  name: Counter-Strike 2
+  games: [cs2]
+  questions:
+    - id: cs2-gun
+      text: Which gun is yours?
+      axis: micro_split
+      size: medium
+      options:
+        - {id: awp, text: "The AWP", sign: 1}
+        - {id: rifles, text: "Rifles (AK, M4)", sign: -1}
+    - id: cs2-rounds
+      text: What wins you rounds?
+      axis: meso_split
+      size: medium
+      options:
+        - {id: angle, text: "Holding an angle", sign: 1}
+        - {id: lurk, text: "Lurking or faking a site", sign: -1}
+    - id: cs2-between
+      text: What do you think about between rounds?
+      axis: macro
+      size: medium
+      options:
+        - {id: buy, text: "The buy and the plan", sign: 1}
+        - {id: own, text: "My own game: aim and positioning", sign: -1}
+
+minecraft:
+  name: Minecraft
+  games: [minecraft, minecraft-creative, minecraft-hardcore, minecraft-skyblock, minecraft-bedwars]
+  questions:
+    - id: minecraft-mode
+      text: How do you mostly play?
+      axis: macro
+      size: medium
+      options:
+        - {id: survival, text: "Survival", sign: 1}
+        - {id: creative, text: "Creative", sign: -1}
+    - id: minecraft-pvp
+      text: PvP servers like Bedwars or SkyWars?
+      axis: meso
+      # Small on both sides: Bedwars is as much clicking and bridging as
+      # reading people, so this is a noisy meso item -- watch it in the logs.
+      size: small
+      options:
+        - {id: lots, text: "Yes, a lot", sign: 1}
+        - {id: own, text: "Mostly my own worlds", sign: -1}
+    - id: minecraft-build
+      text: What do you build?
+      axis: macro
+      size: medium
+      options:
+        - {id: machines, text: "Farms, redstone, automation", sign: 1}
+        - {id: looks, text: "Houses and things that look good", sign: -1}
