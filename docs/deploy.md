@@ -262,3 +262,20 @@ restore the dump).
 - Smoke sessions 29-31 and page visits 7-9 deleted. Production: 21 sessions
   (20 + Sergi's #28, which ran on the earlier love-reason rules -- its build
   record shows it), 1 page visit.
+
+## The reading -- live 2026-09-30 14:49 UTC
+
+`main` at `6c14be2`. No migration. Pre-deploy dump:
+`data/prod-pre-reading-2026-09-30.dump`. Rollback: redeploy `634b531`.
+
+- `bank/reading.yaml` (`reading-v1`, 25 sentences approved by Sergi), chosen
+  by `r3m.reading`, shown after the champion rating. "Not me" per sentence,
+  logged with its rule; the panel report shows the rate and flags sentences
+  shown 10+ times and rejected under 5% as suspect.
+- Champion reasons: at most one per champion, only where it fits better than
+  the next-best of the five by 0.05. On the 22 real results that leaves 20
+  with no champion reason at all -- the five sit within label noise of each
+  other for most players.
+- Session #28 stays in the data, out of the headline (`db.EXCLUDED_FROM_HEADLINE`).
+- Live smoke passed (reading, "not me" stored, build `reading-v1`); smoke
+  session 33 and page visit 11 deleted. Production: 22 sessions, 2 visits.
