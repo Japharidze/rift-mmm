@@ -474,8 +474,10 @@ def outcome_lines(outcomes: dict[str, dict[str, Any]]) -> list[str]:
 
 
 # The steps of the quiz in the order a player meets them (migration 022).
+# Two decks since 2026-09-30 (round-N / loves-N from the five-round build still
+# sort in their place).
 STEPS = ([s for i in range(1, 6) for s in (f"round-{i}", f"loves-{i}")]
-         + ["why", "fill", "deep", "compare", "nothing", "rating", "rated"])
+         + ["loves", "why", "fill", "deep", "compare", "nothing", "rating", "rated"])
 
 
 def dropoff_lines(serving: str, d: dict[str, Any]) -> list[str]:

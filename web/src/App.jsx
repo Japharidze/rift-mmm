@@ -279,7 +279,7 @@ function Readout({ dims }) {
 }
 
 // Mirrors quiz.MAX_ROUNDS: whether "show me more games" has anything to show.
-const MAX_ROUNDS = 5;
+const MAX_ROUNDS = 2;
 
 const lists = v => ({
   loved: Object.keys(v).filter(g => v[g] === "loved"),
@@ -381,6 +381,13 @@ export default function App() {
   // re-post so the API updates that row; without it each comparison answered
   // recorded one more session.
   const sessionId = useRef(null);
+  // Every card object shown, for the love-reasons screen after the last deck
+  // (it needs each card's ask_reason flag).
+  const shownCards = useRef([]);
+  // The love-reason labels, read by loadRound through a ref: as a dependency
+  // they would change loadRound's identity when they load, and the mount
+  // effect would load deck 1 twice.
+  const loveReasonsRef = useRef(null);
   // The raw answer log (migration 019): everything shown and answered, in
   // order, so panel round 2 can be replayed against any later estimator.
   const events = useRef([]);
@@ -401,7 +408,9 @@ export default function App() {
   useEffect(() => { post("/visit", {}).catch(() => {}); }, []);
 
   useEffect(() => {
-    get("/quiz/reasons").then(setLoveReasons).catch(() => setLoveReasons(null));
+    get("/quiz/reasons")
+      .then(r => { loveReasonsRef.current = r; setLoveReasons(r); })
+      .catch(() => setLoveReasons(null));
   }, []);
 
   const { loved, disliked } = useMemo(() => lists(verdicts), [verdicts]);
@@ -550,7 +559,23 @@ export default function App() {
         // The rounds are over. Leave the round screen now: its Next button
         // re-enabled while the next step was still loading, so a second tap
         // started the hand-off twice (found 2026-09-30 under latency).
-        if (!r.cards) { setStage("between"); return startWhy(v, rs, 0, seen, skip); }
+        if (!r.cards) {
+          // Both decks done. "What made it stick?" now, once, for every flagged
+          // love -- not after each deck: the decks are fixed, so splitting the
+          // questions between them bought nothing but screens.
+          const fresh = shownCards.current.filter(g =>
+            v[g.id] === "loved" && g.ask_reason && !rs[g.id] && !skip.includes(g.id));
+          if (fresh.length && loveReasonsRef.current) {
+            fresh.forEach(g => log("why_asked", { game: g.id, kind: "love" }));
+            setAsking(fresh);
+            setStage("loves");
+            window.scrollTo(0, 0);
+            return;
+          }
+          setStage("between");
+          return startWhy(v, rs, 0, seen, skip);
+        }
+        shownCards.current = [...shownCards.current, ...r.cards];
         log("round", { index, cards: r.cards.map(g => g.id) });
         setCards(r.cards);
         setRoundIndex(index);
@@ -567,7 +592,7 @@ export default function App() {
   // Where the session has got to: at the first answer, and at every step
   // after, so someone who gives up mid-quiz still counts (migration 022).
   const step = stage === "round" ? `round-${roundIndex + 1}`
-    : stage === "loves" ? `loves-${roundIndex + 1}`
+    : stage === "loves" ? "loves"
     : stage === "result" ? (rated ? "rated" : "rating")
     : stage;
   const answeredAny = Object.keys(verdicts).length > 0;
@@ -611,18 +636,8 @@ export default function App() {
   // about the gameplay can be measured (docs/quiz-chain.md §5, §8).
   const endRound = useCallback(() => {
     log("round_end", { index: roundIndex });
-    // Only games easy to love for something else (the server flags them);
-    // Hades or osu! need no question.
-    const fresh = cards.filter(g => verdicts[g.id] === "loved" && g.ask_reason && !reasons[g.id]);
-    if (fresh.length && loveReasons) {
-      fresh.forEach(g => log("why_asked", { game: g.id, kind: "love" }));
-      setAsking(fresh);
-      setStage("loves");
-      window.scrollTo(0, 0);
-      return;
-    }
     loadRound(roundIndex + 1, verdicts, reasons, served, skipped);
-  }, [cards, verdicts, reasons, served, skipped, roundIndex, loveReasons, loadRound, log]);
+  }, [verdicts, reasons, served, skipped, roundIndex, loadRound, log]);
 
   // Several reasons per love: ticked here, committed together on Next.
   const toggleLoveReason = (id, option) => {
@@ -645,8 +660,9 @@ export default function App() {
     setSkipped(skip);
     setTicks({});
     setAsking([]);
-    loadRound(roundIndex + 1, verdicts, rs, served, skip);
-  }, [asking, ticks, reasons, skipped, roundIndex, verdicts, served, loadRound, log]);
+    setStage("between");
+    startWhy(verdicts, rs, 0, served, skip);
+  }, [asking, ticks, reasons, skipped, verdicts, served, startWhy, log]);
 
   const answerWhy = useCallback(option => {
     if (!why) return;
@@ -732,6 +748,7 @@ export default function App() {
     setSkipped([]); setAsking([]); setTicks({}); setRated(null); setOutcome(null); setNotMe({});
     lastKeys.current = null; sessionId.current = null;
     events.current = []; started.current = Date.now(); stored.current = Promise.resolve();
+    shownCards.current = [];
     generation.current += 1;
     loadRound(0, {}, {}, []);
   };
@@ -1002,7 +1019,7 @@ export default function App() {
       <h1>Which of these have you played?</h1>
       <Readout dims={dims} />
       <p className="progress">
-        Round {roundIndex + 1} · tap a game you've played, then how it sat with
+        Part {roundIndex + 1} of {MAX_ROUNDS} · tap a game you've played, then how it sat with
         you: ♥ loved it · ~ fine · ✕ didn't like it
       </p>
       <div className="grid">

@@ -601,7 +601,7 @@ PANEL_ROUND_2_EXTRA = (
     "darts", "unturned", "mafia-party", "borderlands-2", "paladins", "wii-sports", "agar-io",
     "fortnite", "minecraft", "grand-theft-auto-v", "terraria", "rust",
 )
-PANEL_ROUND_2_ROUNDS = 5
+PANEL_ROUND_2_ROUNDS = 2   # decks: round 1's 28, then the 42 extra
 # Five of the 42 held for the best-known games, which spread order alone left
 # out: they sit mid-space, and the edges fill 42 slots first -- yet for a quiz
 # that runs on recognition, the games nearly everyone has played are the
@@ -758,22 +758,24 @@ def next_round(
 
 
 def _panel_round_2(index: int, rows: list[dict[str, Any]]) -> list[dict[str, Any]] | None:
-    """Round `index` of panel round 2: rounds 1-2 dealt exactly as round 1's
-    cards are under panel-round-1, rounds 3-5 the extra cards dealt the same
-    way -- round-robin over spread order, so each round mixes extremes and
-    mainstream. Every player sees all 70: no early stop, for the same reason as
-    panel-round-1."""
-    def dealt(pool: Any, ids: Any, count: int) -> list[list[dict[str, Any]]]:
-        # Spread order over the same pool panel-round-1 orders over, or the
-        # 28 would be dealt into different rounds than on the current build.
+    """Deck `index` of panel round 2: deck 1 is round 1's 28 cards in one grid,
+    as round 1 itself showed them; deck 2 the 42 extra cards. Each in spread
+    order. Every player sees all 70: no early stop, for the same reason as
+    panel-round-1.
+
+    Two decks, not five rounds of 14 (2026-09-30, Sergi): the cards are fixed,
+    so no round depended on earlier answers, and a grid is scanned rather than
+    answered -- the splits were cosmetic, and cost a screen each. The love
+    reasons that followed each round now come once, after both decks.
+    """
+    def deck(pool: Any, ids: Any) -> list[dict[str, Any]]:
+        # Spread order over the same pool panel-round-1 orders over.
         spread = spread_order([r for r in rows if r["game_id"] in pool], len(rows))
-        pile = [r for r in spread if r["game_id"] in ids]
-        return [pile[i::count][:ROUND] for i in range(count)]
+        return [r for r in spread if r["game_id"] in ids]
     extra = set(PANEL_ROUND_2_EXTRA)
-    rounds = (dealt(PANEL_ROUND_1_BANK, PANEL_ROUND_1_CARDS, 2)
-              + dealt(extra, extra, PANEL_ROUND_2_ROUNDS - 2))
-    rounds = [r for r in rounds if r]
-    return rounds[index] if index < len(rounds) else None
+    decks = [deck(PANEL_ROUND_1_BANK, PANEL_ROUND_1_CARDS), deck(extra, extra)]
+    decks = [d for d in decks if d]
+    return decks[index] if index < len(decks) else None
 
 
 # ---------------------------------------------------------------------------

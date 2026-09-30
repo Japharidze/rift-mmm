@@ -244,24 +244,21 @@ def test_panel_serving_shows_every_player_all_of_round_ones_cards(monkeypatch):
     assert len(first) + len(second) == len(quiz.PANEL_ROUND_1_CARDS)
 
 
-def test_panel_round_2_keeps_round_ones_rounds_and_adds_three_more(monkeypatch):
+def test_panel_round_2_is_two_decks_round_ones_28_then_the_42(monkeypatch):
     rows = [{"game_id": g, "name": g, "micro": (i * 37 % 100) / 100, "meso": (i * 53 % 100) / 100,
              "macro": (i * 71 % 100) / 100, "in_bank": True, "tier": "deck", "parent_id": None,
              "bias": None, "steam_appid": 1}
             for i, g in enumerate(sorted(quiz.PANEL_ROUND_1_BANK | set(quiz.PANEL_ROUND_2_EXTRA)))]
     kw = dict(played=[], loved=[], disliked=[], reasons={}, rows=rows)
-    monkeypatch.setattr(quiz, "SERVING", "panel-round-1")
-    before = [[r["game_id"] for r in quiz.next_round(i, **kw)] for i in range(2)]
     monkeypatch.setattr(quiz, "SERVING", "panel-round-2")
-    after = [[r["game_id"] for r in quiz.next_round(i, **kw)] for i in range(5)]
-    assert after[:2] == before, "rounds 1-2 must be exactly what the current build deals"
-    assert quiz.next_round(5, **kw) is None
-    shown = [g for r in after for g in r]
-    assert len(shown) == len(set(shown)) == 70
-    assert set(shown[28:]) == set(quiz.PANEL_ROUND_2_EXTRA)
+    decks = [[r["game_id"] for r in quiz.next_round(i, **kw)] for i in range(2)]
+    assert quiz.next_round(2, **kw) is None
+    # Deck 1 is exactly round 1's grid: its 28 cards, in one grid, as round 1 showed them.
+    assert set(decks[0]) == quiz.PANEL_ROUND_1_CARDS and len(decks[0]) == 28
+    assert set(decks[1]) == set(quiz.PANEL_ROUND_2_EXTRA) and len(decks[1]) == 42
     # Never stops early, however much was recognised.
-    everything = dict(kw, played=shown[:40], loved=shown[:12])
-    assert quiz.next_round(4, **everything)
+    everything = dict(kw, played=decks[0][:20], loved=decks[0][:10])
+    assert quiz.next_round(1, **everything)
 
 
 def test_the_frozen_extra_cards_hold_their_rules():
