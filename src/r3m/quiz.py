@@ -640,7 +640,12 @@ def next_round(
     rounds = [r for r in rounds if r]
     if index >= len(rounds):
         return None
-    if index > 0 and len(played) >= ENOUGH_RECOGNISED and loved:
+    # Panel round 2 shows every player all of round 1's cards: the point of
+    # serving them is a card set identical across players and to round 1, and
+    # a stop that depends on this build's estimator would make the replay log
+    # depend on it too. Stopping early there cut the quiz to 14 of 28 cards for
+    # nearly everyone once NEEDED fell to 0.5 (2026-09-30, first live session).
+    if SERVING != "panel-round-1" and index > 0 and len(played) >= ENOUGH_RECOGNISED and loved:
         try:
             est = estimate(loved, disliked, rows=rows, reasons=reasons)
         except ValueError:

@@ -226,3 +226,18 @@ def test_panel_fill_draws_only_from_round_ones_bank(monkeypatch):
     ids = {r["game_id"] for r in quiz.servable(_panel_rows())}
     assert ids == set(quiz.PANEL_ROUND_1_BANK)
     assert "to-the-moon" not in ids
+
+
+def test_panel_serving_shows_every_player_all_of_round_ones_cards(monkeypatch):
+    # A player who recognised plenty and is read on every dimension still gets
+    # round 2: panel round 2 compares players on one fixed card set.
+    monkeypatch.setattr(quiz, "SERVING", "panel-round-1")
+    rows = [{"game_id": g, "name": g, "micro": (i * 37 % 100) / 100, "meso": (i * 53 % 100) / 100,
+             "macro": (i * 71 % 100) / 100, "in_bank": True, "tier": "deck", "parent_id": None,
+             "bias": None, "steam_appid": 1}
+            for i, g in enumerate(quiz.PANEL_ROUND_1_CARDS)]
+    first = quiz.next_round(0, played=[], loved=[], disliked=[], reasons={}, rows=rows)
+    ids = [r["game_id"] for r in first]
+    second = quiz.next_round(1, played=ids, loved=ids[:6], disliked=[], reasons={}, rows=rows)
+    assert second, "stopped after round 1"
+    assert len(first) + len(second) == len(quiz.PANEL_ROUND_1_CARDS)
