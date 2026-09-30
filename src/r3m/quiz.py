@@ -542,11 +542,10 @@ PANEL_ROUND_1_BANK = PANEL_ROUND_1_CARDS | frozenset({
 # fall from ~24% to ~4%, unread dimensions from 1.27 to 0.47 of 3, at about
 # 2.8 minutes of rounds.
 #
-# Chosen by panel_round_2_extra() and frozen here, like round 1's cards: a
-# list that changed with the data would make sessions incomparable. Well-known
-# deck games (recognition prior >= ROUND_ONE_FLOOR) outside round 1's 28, in
-# spread order. Sixteen come from bank/renown.yaml tiers, so this is
-# regenerated once after Sergi's review of that file, then never again.
+# FROZEN 2026-09-30, after Sergi's review of bank/renown.yaml: never
+# regenerate it, or sessions stop being comparable. Chosen by
+# panel_round_2_extra(): the five reserved games plus 37 well-known deck games
+# (recognition prior >= ROUND_ONE_FLOOR) outside round 1's 28, in spread order.
 PANEL_ROUND_2_EXTRA = (
     "people-playground", "rainbow-six", "sid-meiers-civilization-vi", "rock-paper-scissors",
     "sekiro-shadows-die-twice", "peak", "poker", "foosball", "beamng-drive",
@@ -555,22 +554,39 @@ PANEL_ROUND_2_EXTRA = (
     "titanfall-2", "osu", "lethal-company", "arma-3", "doki-doki-literature-club",
     "mount-blade-ii-bannerlord", "dont-starve-together", "undertale", "charades", "palworld",
     "darts", "unturned", "mafia-party", "borderlands-2", "paladins", "wii-sports", "agar-io",
-    "portal-2", "wordle", "pubg-battlegrounds", "catan", "battlefield-2042",
+    "fortnite", "minecraft", "grand-theft-auto-v", "terraria", "rust",
 )
 PANEL_ROUND_2_ROUNDS = 5
+# Five of the 42 held for the best-known games, which spread order alone left
+# out: they sit mid-space, and the edges fill 42 slots first -- yet for a quiz
+# that runs on recognition, the games nearly everyone has played are the
+# anchors. Not Tetris (round 1 has Tetris 99, one Tetris per quiz), not the
+# pen-and-paper classics (they say little about taste), never League or TFT
+# (NEVER_SERVED). Sergi, 2026-09-30.
+PANEL_ROUND_2_RESERVED = ("fortnite", "minecraft", "grand-theft-auto-v", "terraria", "rust")
 
 
 def panel_round_2_extra(rows: list[dict[str, Any]], n: int = 42) -> list[str]:
-    """How PANEL_ROUND_2_EXTRA is chosen -- to regenerate it, not to serve."""
+    """How PANEL_ROUND_2_EXTRA is chosen -- to regenerate it, not to serve:
+    the reserved games, then spread order over the rest of the well-known."""
     pool = [r for r in servable_bank(rows) if r["game_id"] not in PANEL_ROUND_1_CARDS
+            and r["game_id"] not in PANEL_ROUND_2_RESERVED
             and recognition_prior(r) >= ROUND_ONE_FLOOR]
-    return [r["game_id"] for r in spread_order(pool, n)]
+    spread = [r["game_id"] for r in spread_order(pool, n - len(PANEL_ROUND_2_RESERVED))]
+    return spread + list(PANEL_ROUND_2_RESERVED)
+
+
+# Never a card, in any stage or mode: the quiz is for League newcomers, and
+# "have you played League?" asks the one thing they are here to find out --
+# the same for TFT, League's own spin-off. Decided 2026-09-30; until then the
+# fill stage could serve both, since it draws from the whole deck.
+NEVER_SERVED = frozenset({"league-of-legends", "tft"})
 
 
 def servable(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Games that may appear as a card, under the current SERVING mode."""
     if SERVING == "panel-round-1":
-        return [r for r in rows if r["game_id"] in PANEL_ROUND_1_BANK]
+        return [r for r in rows if r["game_id"] in PANEL_ROUND_1_BANK - NEVER_SERVED]
     return servable_bank(rows)
 
 
@@ -588,7 +604,7 @@ def servable_bank(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     labelled = {r["game_id"] for r in rows}
     return [
         r for r in rows
-        if r.get("in_bank", True) and (
+        if r["game_id"] not in NEVER_SERVED and r.get("in_bank", True) and (
             r.get("tier", "deck") == "deck"
             or (r.get("parent_id") and r["parent_id"] not in labelled)
         )
@@ -656,6 +672,10 @@ def next_round(
     # a fair sample for a player who stops after it.
     spread = grid(rows, n=len(rows))
     if SERVING == "panel-round-1":
+        # Ordered over round 1's full 43-game bank, as the live build did:
+        # dropping League and TFT from the order (NEVER_SERVED) would deal
+        # the same 28 cards into different rounds. Neither is one of the 28.
+        spread = spread_order([r for r in rows if r["game_id"] in PANEL_ROUND_1_BANK], len(rows))
         # Round 1's grid, dealt into rounds, never-tapped cards in their place:
         # changing which cards show would confound the test of the mechanics.
         main = [r for r in spread if r["game_id"] in PANEL_ROUND_1_CARDS]

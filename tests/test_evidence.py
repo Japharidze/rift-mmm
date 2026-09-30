@@ -224,7 +224,8 @@ def test_panel_rounds_are_exactly_round_ones_28_cards(monkeypatch):
 def test_panel_fill_draws_only_from_round_ones_bank(monkeypatch):
     monkeypatch.setattr(quiz, "SERVING", "panel-round-1")
     ids = {r["game_id"] for r in quiz.servable(_panel_rows())}
-    assert ids == set(quiz.PANEL_ROUND_1_BANK)
+    # League and TFT were in round 1's bank; they are never served now.
+    assert ids == set(quiz.PANEL_ROUND_1_BANK) - quiz.NEVER_SERVED
     assert "to-the-moon" not in ids
 
 
@@ -261,3 +262,22 @@ def test_panel_round_2_keeps_round_ones_rounds_and_adds_three_more(monkeypatch):
     # Never stops early, however much was recognised.
     everything = dict(kw, played=shown[:40], loved=shown[:12])
     assert quiz.next_round(4, **everything)
+
+
+def test_the_frozen_extra_cards_hold_their_rules():
+    extra = quiz.PANEL_ROUND_2_EXTRA
+    assert len(extra) == len(set(extra)) == 42
+    assert not set(extra) & quiz.PANEL_ROUND_1_CARDS
+    assert set(quiz.PANEL_ROUND_2_RESERVED) <= set(extra)
+    assert not set(extra) & quiz.NEVER_SERVED
+    assert "tetris" not in extra          # round 1 has Tetris 99: one Tetris per quiz
+
+
+def test_league_and_tft_are_never_served_in_any_mode_or_stage(monkeypatch):
+    rows = [{"game_id": g, "name": g, "micro": 0.9, "meso": 0.9, "macro": 0.9, "in_bank": True,
+             "tier": "deck", "parent_id": None, "bias": None, "steam_appid": 1}
+            for g in ("league-of-legends", "tft", "cs2")]
+    for mode in ("panel-round-1", "panel-round-2", "bank", "selector"):
+        monkeypatch.setattr(quiz, "SERVING", mode)
+        assert {r["game_id"] for r in quiz.servable(rows)} <= {"cs2"}
+    assert {r["game_id"] for r in quiz.servable_bank(rows)} == {"cs2"}
