@@ -485,8 +485,13 @@ def dropoff_lines(serving: str, d: dict[str, Any]) -> list[str]:
     o = d["outcomes"]
     done = o.get("result", 0)
     abandoned = sum(d["abandoned_at"].values())
-    lines = [f"DROP-OFF, {serving} (partial sessions are here only, never in the headline):",
-             f"  started {d['started']}; reached a result {done}"
+    lines = [f"DROP-OFF, {serving} (partial sessions are here only, never in the headline):"]
+    if d.get("visits") is not None:
+        opened = d["visits"]
+        lines.append(f"  funnel: page opened {opened} -> started {d['started']} -> reached a result {done}"
+                     + (f" ({100 * d['started'] / opened:.0f}% of opens answered a card)" if opened else "")
+                     + "; opens count page loads, so reloads too")
+    lines += [f"  started {d['started']}; reached a result {done}"
              + (f" ({100 * done / d['started']:.0f}% completion)" if d["started"] else "")
              + f"; loved nothing {o.get('loved_nothing', 0)}; no love for the gameplay "
              f"{o.get('no_gameplay_love', 0)}; abandoned {abandoned}; still going {d['still_going']}"]

@@ -183,10 +183,11 @@ def test_the_report_counts_outcomes_per_round_and_always_carries_the_round_cavea
 
 
 def test_dropoff_is_its_own_block_with_completion_and_where_people_stopped():
-    d = {"started": 10, "outcomes": {"result": 6, "loved_nothing": 1, "in_progress": 3},
+    d = {"visits": 25, "started": 10, "outcomes": {"result": 6, "loved_nothing": 1, "in_progress": 3},
          "abandoned_at": {"round-4": 2, "deep": 1}, "still_going": 0, "rated": 5}
     text = panel.report([], None, {"panel-round-2": d})
     assert "DROP-OFF, panel-round-2" in text and "never in the headline" in text
     assert "reached a result 6 (60% completion)" in text and "abandoned 3" in text
     assert "abandoned at: round-4 2, deep 1" in text      # in the order players meet them
     assert "rated the champions: 5 of 6" in text
+    assert "page opened 25 -> started 10 -> reached a result 6 (40% of opens answered a card)" in text

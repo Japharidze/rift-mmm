@@ -319,6 +319,10 @@ export default function App() {
   // cannot hand its row id to the new one.
   const generation = useRef(0);
 
+  // The top of the funnel (migration 023): once per page load, nothing about
+  // the visitor. "Start again" is not a new visit.
+  useEffect(() => { post("/visit", {}).catch(() => {}); }, []);
+
   useEffect(() => {
     get("/quiz/reasons").then(setLoveReasons).catch(() => setLoveReasons(null));
   }, []);

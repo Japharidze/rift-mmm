@@ -840,6 +840,12 @@ def record_progress(
     return int(new_id)
 
 
+def record_visit(conn: psycopg.Connection, serving: str) -> None:
+    """One page load (migration 023). Nothing about the visitor is stored."""
+    conn.execute("insert into page_visit (serving) values (%s)", (serving,))
+    conn.commit()
+
+
 # Past this, a session still in progress counts as abandoned in the report.
 ABANDONED_AFTER = "1 hour"
 
@@ -857,8 +863,10 @@ def session_dropoff(conn: psycopg.Connection, serving: str) -> dict[str, Any]:
         """,
         (serving,),
     ).fetchall()
-    out: dict[str, Any] = {"started": len(rows), "outcomes": {}, "abandoned_at": {},
-                           "still_going": 0, "rated": 0}
+    visits = (conn.execute("select count(*) from page_visit where serving = %s", (serving,)).fetchone()[0]
+              if has_table(conn, "page_visit") else None)
+    out: dict[str, Any] = {"visits": visits, "started": len(rows), "outcomes": {},
+                           "abandoned_at": {}, "still_going": 0, "rated": 0}
     for outcome, step, rated, abandoned in rows:
         out["outcomes"][outcome] = out["outcomes"].get(outcome, 0) + 1
         if outcome == "in_progress":
@@ -1072,6 +1080,10 @@ def has_column(conn: psycopg.Connection, table: str, column: str) -> bool:
             (table, column),
         )
         return cur.fetchone() is not None
+
+
+def has_table(conn: psycopg.Connection, table: str) -> bool:
+    return conn.execute("select to_regclass(%s) is not null", (f"public.{table}",)).fetchone()[0]
 
 
 def canonical_runs(conn: psycopg.Connection) -> list[dict[str, Any]]:

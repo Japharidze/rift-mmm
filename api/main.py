@@ -538,6 +538,19 @@ def result(req: ResultRequest) -> Result:
     return result
 
 
+@api.post("/visit")
+def visit() -> dict[str, bool]:
+    """The page was opened (migration 023): the top of the funnel. Nothing
+    about the visitor is stored, and a failure costs them nothing."""
+    try:
+        with db.connect() as conn:
+            db.record_visit(conn, quiz.SERVING)
+        return {"stored": True}
+    except Exception:  # noqa: BLE001 - see /quiz/result
+        logging.exception("could not record visit")
+        return {"stored": False}
+
+
 @api.post("/quiz/progress")
 def progress(req: ProgressRequest) -> dict[str, int | None]:
     """Record the step a session has reached. Like /quiz/result, a failure to
