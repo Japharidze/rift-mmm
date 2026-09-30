@@ -176,3 +176,8 @@ result and storing a Riot id with its region. No errors.
   holds Riot ids) -- the rollback above uses it.
 - Live smoke session (id 20) checked -- build stored runs 24 / 23 and commit
   `e2633e8` -- then deleted. Production held 19 sessions before and after.
+- **Fix deployed 2026-09-30 01:27:36 UTC** (`b87827a`): until then the early
+  stop ended the quiz after round 1's first 14 cards for nearly everyone
+  (found on the first live session, Sergi's own, id 21). Only that session
+  saw the short version, and it was deleted; every kept round-2 session has
+  all 28 cards.
