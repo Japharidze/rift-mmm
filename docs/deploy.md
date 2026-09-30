@@ -86,8 +86,16 @@ fix when it matters is a shared passphrase in the URL, not accounts.
 Work lands on `dev` and production follows `main`, so a merge is when all of
 it reaches the live database at once. In order:
 
-1. **Dump production first.** `quiz_session` holds the panel, which cannot be
-   asked for twice: `DATABASE_URL="<the public url>" uv run r3m dump`.
+1. **Dump production first -- in full, schema and data.** `quiz_session`
+   holds the panel, which cannot be asked for twice, and this dump is also the
+   rollback. `r3m dump` alone is not enough for that: it is data-only by design
+   (schema comes from migrations), and migrations do not run backwards.
+
+       pg_dump "<the public url>" -Fc --no-owner --no-acl -f data/prod-pre-launch-<date>.dump
+       DATABASE_URL="<the public url>" uv run r3m dump
+
+   Into `data/`, which git ignores: it carries the panel's Riot ids, and
+   `dumps/` gets committed. Local `pg_dump` must be 18.x like the server.
 2. **Merge and let it deploy.** The container runs `r3m migrate` on start and
    applies everything `dev` added (012-019 as of 2026-09-30; 019 adds the
    round-2 replay columns -- events, build, feels_right): 012 drops
@@ -116,7 +124,39 @@ it reaches the live database at once. In order:
    flags the validated Opus 5 runs (9 + 10, 17) as served on production, as it
    does locally: checked 2026-09-29, production's runs 9, 10 and 17 are the same
    runs as local (prompt, model and start time identical).
-5. **Optionally store the panel's mains:**
+5. **Smoke it:** one quiz through the live site, checking that the row has
+   `events`, `build` (with production's new run ids) and `feels_right`.
+6. **Optionally store the panel's mains:**
    `DATABASE_URL="<the public url>" uv run r3m panel-check --write`, with a
    fresh Riot development key. Reads `data/panel-mains.json` first, so it
    costs no Riot calls for players already fetched.
+
+## Rolling back the round-2 launch
+
+Recorded before launch, 2026-09-30: production runs **`main` at `5600575`**
+(`docs(deploy): restore takes --file, ...`), schema at migration 011. Rollback
+is the pre-launch dump plus that commit, in this order -- the order matters,
+because the new container runs `r3m migrate` on every start and would re-apply
+012-020 onto a restored database:
+
+1. **Redeploy the old build first.** In Railway, redeploy the deployment built
+   from `5600575` (or point `main` back at it and let it deploy). Until step 2
+   it runs against the migrated schema: results still store, but a Riot-id
+   submission fails, because 012 dropped the `riot_region` column it writes.
+2. **Restore the pre-launch dump over an emptied schema:**
+
+       psql "<the public url>" -c "drop schema public cascade; create schema public;"
+       pg_restore --no-owner --no-acl -d "<the public url>" data/prod-pre-launch-<date>.dump
+
+3. **Check:** `schema_migrations` ends at `011_panel`, `quiz_session` has its
+   pre-launch count, and a Riot id submits.
+
+Sessions recorded between launch and rollback are lost unless exported first:
+`psql "<the public url>" -c "\copy (select * from quiz_session where build is not null) to 'data/round2-before-rollback.csv' csv header"`.
+
+**Rehearsed 2026-09-30** on a full copy of production restored locally: the
+launch sequence (migrate 012-020, bank-import, labels-import twice -- the second
+skipped -- canonical refusing a mixed set then serving the new runs, a browser
+smoke of both the result and the loved-nothing flows, a dry-run panel-check),
+then this rollback -- schema back at 011, 19 sessions, and `5600575` serving a
+result and storing a Riot id with its region. No errors.

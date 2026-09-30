@@ -448,7 +448,7 @@ def _headline(name: str, v: VariantResult) -> list[str]:
 
 # Printed on every report: the two panel rounds differ in more than one thing.
 ROUND_CAVEAT = [
-    "CAVEAT: round 2 serves round 1's cards but Opus 5.5 labels (runs 28, 29) and new",
+    "CAVEAT: round 2 serves round 1's cards but Opus 5.5 labels (see build.game_runs) and new",
     "  evidence rules, so round-1-vs-round-2 differences mix label, rule and player changes.",
     "  Compare builds on the same answers instead: round 1's answers can be re-scored under",
     "  the new labels and rules, and round 2's raw answer log (quiz_session.events) under",
