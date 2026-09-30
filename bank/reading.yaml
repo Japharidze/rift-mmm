@@ -1,0 +1,94 @@
+# The reading -- what the result says about the player, in their language.
+# Approved by Sergi 2026-09-30 (docs/quiz-chain.md §6.1). Deterministic: these
+# sentences, chosen by the rules in r3m.reading, never drafted at runtime.
+#
+# Shown after "do these champions feel right?", so it cannot bias the rating or
+# the headline. Every sentence has a "not me" tap: a sentence nobody rejects is
+# flagged as too vague to disagree with, not counted as a success.
+#
+# Rules every sentence follows:
+#
+# - Falsifiable: it must be wrong for some other player. No Barnum phrasing.
+# - The three dimensions and the two splits only: nothing about tempo,
+#   aggression, caution, difficulty or any fourth concept.
+# - Personal detail only from the player's own answers: {games} is the loves
+#   that moved that dimension, {champion} the champion being explained.
+# - A low coordinate is an absence, not a statement (the Factorio lesson): low
+#   sentences describe the games the player loved, never what they avoid.
+# - Splits are logged-only in matching, so their sentences are observations,
+#   never a reason a champion was chosen -- and only the strong version exists:
+#   one answer read back ("you went for the AWP") interprets nothing, and
+#   "not me" on it would test nothing.
+#
+# Thresholds (distance of a read dimension from the middle, 0.5):
+#   moderate from 0.10 -- one CLOSE band, ~4x the label test-retest noise
+#   strong   from 0.20 -- two bands, about the champion cloud's p10/p90
+# On the 22 real results (2026-09-30) that gives 1.6 dimension sentences per
+# player, 9% with none; 0.12 / 0.22 is the fallback if "not me" rates say the
+# moderate claims are too weak. The estimates cluster near the middle (meso
+# within 0.15 for 20 of 21), which is why readings are short; a relative reading
+# ("more than most players") is a later option.
+
+version: reading-v1
+# Champion reasons: at most one per champion -- the dimension where it fits the
+# player better than the other four shown, by champion_margin -- and none when
+# it stands out on nothing (r3m.reading.champion_reasons).
+
+thresholds:
+  moderate: 0.10
+  strong: 0.20
+  # A split sentence needs its parent dimension at least this high.
+  split_parent: 0.60
+  # A champion reason needs the champion on the player's side, within this.
+  champion_gap: 0.15
+  # ...and the champion closer to the player on that dimension than the
+  # next-best of the five shown by at least this much. A reason all five share
+  # is a sentence about the player wearing a champion's name (20 of 22 real
+  # results showed identical reasons under the first rule); a win by 0.01 is
+  # inside label noise (~0.05 between neighbouring champions), so "not me" on
+  # it would mean nothing.
+  champion_margin: 0.05
+
+dimensions:
+  micro:
+    high-strong: "Mechanics are the point for you: you go for games where aim and timing decide it, like {games}."
+    high-moderate: "You enjoy games that ask something of your hands (aim, timing, clean inputs), like {games}."
+    low-moderate: "Fast hands aren't what draws you in: the games you loved, like {games}, don't hinge on aim or timing."
+    low-strong: "The games that hold you, like {games}, don't lean on aim or timing."
+  meso:
+    high-strong: "You play the opponent, not just the game: outthinking another person is what you're there for, as in {games}."
+    high-moderate: "You like having a real opponent to read and outguess, as in {games}."
+    low-moderate: "Reading other players isn't the draw: {games} are more about you and the game than about outguessing someone."
+    low-strong: "Your favourites, like {games}, have little or no opponent to outthink."
+  macro:
+    high-strong: "You like a plan: games where decisions pay off much later, like {games}, are where you're at home."
+    high-moderate: "You enjoy thinking ahead (where to be, what to build toward), as in {games}."
+    low-moderate: "Long-term planning isn't the draw: the games you loved, like {games}, are about the moment more than the plan."
+    low-strong: "Your favourites, like {games}, have little to plan beyond what's in front of you."
+
+# Strong only: two or more deep-dive answers on the split, all agreeing.
+splits:
+  micro_split:
+    parent: micro
+    "+": "When it comes to your hands, you're a precision player: in {games} you picked the aimed option each time."
+    "-": "When it comes to your hands, you react rather than aim: in {games} you picked the up-close, reacting option each time."
+  meso_split:
+    parent: meso
+    "+": "You win by reading them first: in {games} you chose to see their plan coming and stop it."
+    "-": "You win by being where they don't expect: in {games} you chose the trap, the lurk, the fake."
+
+unread:
+  micro: "We couldn't tell how you feel about aim and timing: none of your answers leaned either way."
+  meso: "We couldn't tell how you feel about reading opponents: none of your answers leaned either way."
+  macro: "We couldn't tell how you feel about planning ahead: none of your answers leaned either way."
+
+champions:
+  micro:
+    high: "{champion} fits because it rewards clean mechanics, the part you enjoy in {games}."
+    low: "{champion} fits because it doesn't hinge on fast hands, closer to what you liked in {games}."
+  meso:
+    high: "{champion} fits because its fights are won by outguessing the other player, as in {games}."
+    low: "{champion} fits because it wins without much mind-gaming, closer to {games}."
+  macro:
+    high: "{champion} fits because it pays off a plan across the whole game, like {games}."
+    low: "{champion} fits because it's about the fight in front of you, not a long plan, like {games}."

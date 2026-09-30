@@ -169,6 +169,19 @@ const DEBUG = new URLSearchParams(window.location.search).has("debug");
 const f2 = x => (x === null || x === undefined ? "-" : Number(x).toFixed(2));
 const reasonText = r => (r === null || r === undefined ? "-" : Array.isArray(r) ? r.join("+") : r);
 
+// One sentence of the reading, with its "not me" toggle. Once tapped the
+// sentence is struck through and the button offers to take it back.
+function SentenceLine({ s, off, onToggle, small }) {
+  return (
+    <div className={`sentence${small ? " small" : ""}${off ? " off" : ""}`}>
+      <span className="text">{s.text}</span>
+      <button className="link notme" onClick={onToggle} aria-pressed={!!off}>
+        {off ? "undo" : "not me"}
+      </button>
+    </div>
+  );
+}
+
 function DebugView({ d }) {
   if (!d) return null;
   const dims = ["micro", "meso", "macro"];
@@ -558,8 +571,7 @@ export default function App() {
     : stage === "result" ? (rated ? "rated" : "rating")
     : stage;
   const answeredAny = Object.keys(verdicts).length > 0;
-  useEffect(() => {
-    if (!answeredAny) return;   // nothing is stored before the first answer
+  const saveProgress = () => {
     const { loved: l, disliked: d } = lists(verdicts);
     const body = {
       step, served: seenAll, loved: l, disliked: d, verdicts: answered(verdicts),
@@ -570,9 +582,24 @@ export default function App() {
       .then(() => post("/quiz/progress", { ...body, session_id: sessionId.current }))
       .then(r => { if (r?.session_id && mine === generation.current) sessionId.current = r.session_id; })
       .catch(() => {});
+  };
+  useEffect(() => {
+    if (!answeredAny) return;   // nothing is stored before the first answer
+    saveProgress();
     // Only on a step change or the first answer: not on every tap.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, answeredAny]);
+
+  // "Not me" on a sentence of the reading or a champion reason: a toggle,
+  // logged with the sentence id and the rule that chose it, and saved at once
+  // -- it comes after the result, when no step change would carry it.
+  const [notMe, setNotMe] = useState({});
+  const toggleNotMe = s => {
+    const on = !notMe[s.id];
+    log("not_me", { sentence: s.id, on, rule: s.rule });
+    setNotMe(n => ({ ...n, [s.id]: on }));
+    saveProgress();
+  };
 
   const play = id => { log("verdict", { game: id, verdict: "played" }); setVerdicts(v => ({ ...v, [id]: null })); };
   const unplay = id => { log("verdict", { game: id, verdict: "not_played" }); setVerdicts(v => { const n = { ...v }; delete n[id]; return n; }); };
@@ -633,6 +660,14 @@ export default function App() {
 
   const rate = value => {
     log("feels_right", { value });
+    // The reading appears now, after the rating: log what is about to be shown,
+    // so each sentence's "not me" rate has a denominator.
+    if (result) {
+      log("reading_shown", { sentences: [
+        ...(result.reading || []).map(s => s.id),
+        ...result.champions.flatMap(c => (c.reasons || []).map(s => s.id)),
+      ] });
+    }
     setRated(value);
     if (value !== "skipped" && sessionId.current) {
       post("/panel/details", { session_id: sessionId.current, feels_right: value }).catch(() => {});
@@ -694,7 +729,7 @@ export default function App() {
     setError(null); setVerdicts({}); setReasons({}); setWhy(null); setWhyAsked(0);
     setServed([]); setCards([]); setFills([]); setItem(null); setResult(null);
     setComparisons([]); setPair(null); setFresh([]); setDeepQ(null); setDeepAnswers([]);
-    setSkipped([]); setAsking([]); setTicks({}); setRated(null); setOutcome(null);
+    setSkipped([]); setAsking([]); setTicks({}); setRated(null); setOutcome(null); setNotMe({});
     lastKeys.current = null; sessionId.current = null;
     events.current = []; started.current = Date.now(); stored.current = Promise.resolve();
     generation.current += 1;
@@ -779,7 +814,9 @@ export default function App() {
             {fresh.includes(c.champion_id + c.role) && (
               <span className="fresh">moved in</span>
             )}
-            {rated && c.because && <div className="gloss">{c.because}</div>}
+            {rated && (c.reasons || []).map(s => (
+              <SentenceLine key={s.id} s={s} off={notMe[s.id]} onToggle={() => toggleNotMe(s)} small />
+            ))}
           </div>
         ))}
 
@@ -801,18 +838,12 @@ export default function App() {
         <Panel sessionId={result.session_id} />
 
         <h1>How you play</h1>
-        <table><tbody>
-          {Object.entries(result.dimensions).map(([dim, d]) => (
-            <tr key={dim}>
-              <td>
-                <strong>{d.label}</strong>
-                <div className="gloss">{d.gloss}</div>
-              </td>
-              <td className="r">{d.read ? d.value.toFixed(2) : "—"}</td>
-              <td className="r">{d.read ? "" : "not enough to tell"}</td>
-            </tr>
-          ))}
-        </tbody></table>
+        {(result.reading || []).length === 0 && (
+          <p className="gloss">Your answers didn't lean clearly enough in any direction to say more.</p>
+        )}
+        {(result.reading || []).map(s => (
+          <SentenceLine key={s.id} s={s} off={notMe[s.id]} onToggle={() => toggleNotMe(s)} />
+        ))}
 
 
         {allDistant && (

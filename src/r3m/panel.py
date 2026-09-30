@@ -503,8 +503,43 @@ def dropoff_lines(serving: str, d: dict[str, Any]) -> list[str]:
     return lines
 
 
+# A sentence shown at least this often and almost never rejected is flagged:
+# nobody disagreeing is a sign it is too vague to disagree with (Barnum), not
+# that it is right.
+SUSPECT_MIN_SHOWN = 10
+SUSPECT_RATE = 0.05
+
+
+def _sentence_group(sid: str) -> str:
+    """The dimension a sentence reads: micro / meso / macro (splits under their
+    parent), from its id."""
+    stem = sid.removeprefix("champ-")
+    return stem.split("_")[0].split("-")[0]
+
+
+def reading_lines(feedback: dict[str, dict[str, int]]) -> list[str]:
+    """"Not me" per sentence and per dimension (bank/reading.yaml)."""
+    if not feedback:
+        return ["READING: no reading shown yet."]
+    lines = ["READING, 'not me' rate (sessions that rejected it / sessions it was shown in):",
+             f"  flagged SUSPECT when shown >= {SUSPECT_MIN_SHOWN} times and rejected under "
+             f"{100 * SUSPECT_RATE:.0f}%: too vague to disagree with, not a success."]
+    groups: dict[str, list[int]] = {}
+    for sid in sorted(feedback):
+        f = feedback[sid]
+        rate = f["not_me"] / f["shown"] if f["shown"] else 0.0
+        flag = "  SUSPECT" if f["shown"] >= SUSPECT_MIN_SHOWN and rate < SUSPECT_RATE else ""
+        lines.append(f"  {sid:24} {f['not_me']:3} / {f['shown']:3}  {100 * rate:4.0f}%{flag}")
+        g = groups.setdefault(_sentence_group(sid), [0, 0])
+        g[0] += f["not_me"]; g[1] += f["shown"]
+    lines.append("  by dimension: " + ", ".join(
+        f"{g} {n}/{s} ({100 * n / s:.0f}%)" for g, (n, s) in sorted(groups.items()) if s))
+    return lines
+
+
 def report(checks: list[SessionCheck], outcomes: dict[str, dict[str, Any]] | None = None,
-           dropoff: dict[str, dict[str, Any]] | None = None) -> str:
+           dropoff: dict[str, dict[str, Any]] | None = None,
+           feedback: dict[str, dict[str, int]] | None = None) -> str:
     usable = [c for c in checks if not c.error and c.placed_games]
     n = len(usable)
     names = list(usable[0].by_variant) if usable else []
@@ -514,6 +549,8 @@ def report(checks: list[SessionCheck], outcomes: dict[str, dict[str, Any]] | Non
         lines += outcome_lines(outcomes)
     for serving, d in (dropoff or {}).items():
         lines += dropoff_lines(serving, d)
+    if feedback is not None:
+        lines += reading_lines(feedback)
     if n < MIN_VERDICT_N:
         lines += [
             f"SANITY CHECK ONLY (n={n} < {MIN_VERDICT_N}). Per-player numbers show whether the",

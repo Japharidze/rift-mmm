@@ -809,12 +809,16 @@ def record_progress(
                        disliked = case when outcome = 'in_progress' then %s else disliked end,
                        verdicts = case when outcome = 'in_progress' then %s else verdicts end,
                        reasons = case when outcome = 'in_progress' then %s else reasons end,
-                       events = case when outcome = 'in_progress' then %s else events end,
+                       -- The log is append-only, so a longer one always
+                       -- wins, result or not: "not me" taps come after it.
+                       events = case when outcome = 'in_progress'
+                                       or jsonb_array_length(%s) >= coalesce(jsonb_array_length(events), 0)
+                                     then %s else events end,
                        deep_dives = case when outcome = 'in_progress' then %s else deep_dives end,
                        comparisons = case when outcome = 'in_progress' then %s else comparisons end
                  where id = %s
                 """,
-                (step, served, loved, disliked, Jsonb(verdicts), Jsonb(reasons), Jsonb(events),
+                (step, served, loved, disliked, Jsonb(verdicts), Jsonb(reasons), Jsonb(events), Jsonb(events),
                  Jsonb(deep_dives), Jsonb(comparisons), session_id),
             )
             found = cur.rowcount
@@ -1020,6 +1024,38 @@ def champion_popularity(conn: psycopg.Connection) -> dict[str, int]:
     return {champion: n for champion, n in rows}
 
 
+# Sessions kept in the data but never in the headline: the builder's own test
+# runs, whose answers were given by someone who knows what the quiz measures.
+# #28: Sergi's first run of the upgraded build, 2026-09-30, with his Riot id.
+EXCLUDED_FROM_HEADLINE = (28,)
+
+
+def reading_feedback(conn: psycopg.Connection, serving: str) -> dict[str, dict[str, int]]:
+    """Per sentence id: in how many sessions it was shown, and in how many it
+    was marked "not me" (last state of the toggle). From the event log."""
+    rows = conn.execute(
+        """
+        select id, events from quiz_session
+        where build ->> 'serving' = %s and events is not null
+        """,
+        (serving,),
+    ).fetchall()
+    out: dict[str, dict[str, int]] = {}
+    for _, events in rows:
+        shown: set[str] = set()
+        rejected: dict[str, bool] = {}
+        for e in events:
+            if e.get("type") == "reading_shown":
+                shown.update(e.get("sentences", []))
+            elif e.get("type") == "not_me":
+                rejected[e.get("sentence")] = bool(e.get("on"))
+        for sid in shown:
+            s = out.setdefault(sid, {"shown": 0, "not_me": 0})
+            s["shown"] += 1
+            s["not_me"] += bool(rejected.get(sid))
+    return out
+
+
 def panel_sessions_to_check(
     conn: psycopg.Connection, *, include_checked: bool = False
 ) -> list[dict[str, Any]]:
@@ -1040,9 +1076,11 @@ def panel_sessions_to_check(
               -- Round 2 sessions on the 28-card build stay in the data but out of
               -- the headline (Sergi, 2026-09-30): only round 1 and panel-round-2.
               and coalesce(to_jsonb(quiz_session) -> 'build' ->> 'serving', '') <> 'panel-round-1'
+              and id <> all(%s)
                   {"" if include_checked else "and checked_at is null"}
             order by created_at
-            """
+            """,
+            (list(EXCLUDED_FROM_HEADLINE),),
         )
         return [
             {"id": r[0], "riot_id": r[1],

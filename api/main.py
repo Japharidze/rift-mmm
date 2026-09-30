@@ -21,7 +21,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from r3m import db, quiz
+from r3m import db, quiz, reading
 from r3m.config import ROOT
 
 app = FastAPI(title="r3m", version="0.1.0")
@@ -83,6 +83,7 @@ def _build(games: list[dict[str, Any]]) -> dict[str, Any]:
                      "dislike_margin": quiz.DISLIKE_MARGIN, "low_corner": quiz.LOW_CORNER,
                      "unconfirmed": quiz.UNCONFIRMED,
                      "comparison_pull": quiz.COMPARISON_PULL, "deep_dive_cap": quiz.DEEP_DIVE_CAP},
+        "reading": reading.version(),
     }
 
 
@@ -139,15 +140,23 @@ class Dimension(BaseModel):
     gloss: str
 
 
+class Sentence(BaseModel):
+    """One sentence of the reading (bank/reading.yaml), with the rule that
+    chose it -- the "not me" tap logs both."""
+    id: str
+    text: str
+    rule: dict[str, Any]
+
+
 class Match(BaseModel):
     champion_id: str
     name: str
     role: str
     distance: float
     confidence: str
-    # None when no dimension is both decided and shared — an absent reason
-    # beats a manufactured one.
-    because: str | None = None
+    # Up to two reasons this champion fits (r3m.reading.champion_reasons);
+    # empty when nothing qualifies -- an absent reason beats a manufactured one.
+    reasons: list[Sentence] = Field(default_factory=list)
 
 
 class Comparison(BaseModel):
@@ -338,6 +347,8 @@ class Result(BaseModel):
     # and offering a way to close it is a frozen decision (CLAUDE.md): never
     # impute the middle.
     unread: dict[str, list[Game]]
+    # The reading (r3m.reading), shown after the champion rating.
+    reading: list[Sentence] = Field(default_factory=list)
     # ?debug=1 only (quiz.debug_view): how this result was reached. Never stored.
     debug: dict[str, Any] | None = None
 
@@ -477,8 +488,18 @@ def result(req: ResultRequest) -> Result:
         est = quiz.estimate(req.loved, req.disliked, rows=rows, reasons=req.reasons)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    est = quiz.settle(est, [a.model_dump() for a in req.deep_dives],
-                      [c.model_dump() for c in req.comparisons], rows)
+    # What moved each dimension, for the reading's {games}: the same estimate,
+    # traced (quiz.estimate's trace hook).
+    trace: list[dict[str, Any]] = []
+    quiz.estimate(req.loved, req.disliked, rows=rows, reasons=req.reasons, trace=trace)
+    verdicts_est = est
+    deep = [a.model_dump() for a in req.deep_dives]
+    est = quiz.settle(est, deep, [c.model_dump() for c in req.comparisons], rows)
+    matches = quiz.champions_for(est, n=req.n)
+    # Reasons are chosen across the whole list: each champion's is where it
+    # fits better than the others shown.
+    reasons = reading.champion_reasons(est.point, verdicts_est, trace,
+                                       [(m.name, m.point) for m in matches], rows)
 
     result = Result(
         point=list(est.point),
@@ -486,9 +507,10 @@ def result(req: ResultRequest) -> Result:
         champions=[
             Match(champion_id=m.champion_id, name=m.name, role=m.role,
                   distance=round(m.distance, 3), confidence=m.confidence,
-                  because=quiz.explain(est, m))
-            for m in quiz.champions_for(est, n=req.n)
+                  reasons=[Sentence(**s) for s in why])
+            for m, why in zip(matches, reasons)
         ],
+        reading=[Sentence(**s) for s in reading.read_player(est.point, verdicts_est, trace, deep, rows)],
         unknown=est.unknown,
         unread={
             d: [

@@ -189,3 +189,10 @@ button.link { border: none; padding: 0; text-decoration: underline;
 .debug { margin: 2rem 0; font-size: .8rem; }
 .debug h2 { font-size: .9rem; margin: 1.2rem 0 .4rem; }
 .debug td { padding: .2rem .4rem .2rem 0; }
+
+/* The reading: one sentence per line, "not me" beside it. */
+.sentence { display: flex; gap: .75rem; align-items: baseline; justify-content: space-between;
+  padding: .45rem 0; border-bottom: 1px solid var(--line); }
+.sentence.small { font-size: .85rem; color: var(--dim); border-bottom: none; padding: .2rem 0; }
+.sentence.off .text { text-decoration: line-through; color: var(--dim); }
+.sentence .notme { flex: none; font-size: .8rem; }
