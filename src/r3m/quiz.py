@@ -517,7 +517,7 @@ def spread_order(pool: list[dict[str, Any]], n: int) -> list[dict[str, Any]]:
 #
 # "bank": the whole labelled deck (servable_bank below), for when a selector
 # chooses cards by recognition as well as spread.
-SERVING = "panel-round-1"
+SERVING = "panel-round-2"
 # Reconstructed 2026-09-29 as the 43-game bank minus the 15 it never showed,
 # and verified against production: every game tapped in round 1 is one of these
 # 28 or one of the two fill cards it served (osu, tekken).
@@ -534,6 +534,37 @@ PANEL_ROUND_1_BANK = PANEL_ROUND_1_CARDS | frozenset({
     "mario-kart", "osu", "overwatch", "poly-bridge", "rainbow-six", "smash-bros",
     "street-fighter", "tekken", "tetris", "tft", "valorant",
 })
+
+
+# Panel round 2 on the upgraded build (2026-09-30): round 1's 28 cards as
+# rounds 1-2, exactly as before, then these 42 as rounds 3-5 -- 70 fixed cards,
+# the same for everyone. Simulated against 28: sessions ending with no result
+# fall from ~24% to ~4%, unread dimensions from 1.27 to 0.47 of 3, at about
+# 2.8 minutes of rounds.
+#
+# Chosen by panel_round_2_extra() and frozen here, like round 1's cards: a
+# list that changed with the data would make sessions incomparable. Well-known
+# deck games (recognition prior >= ROUND_ONE_FLOOR) outside round 1's 28, in
+# spread order. Sixteen come from bank/renown.yaml tiers, so this is
+# regenerated once after Sergi's review of that file, then never again.
+PANEL_ROUND_2_EXTRA = (
+    "people-playground", "rainbow-six", "sid-meiers-civilization-vi", "rock-paper-scissors",
+    "sekiro-shadows-die-twice", "peak", "poker", "foosball", "beamng-drive",
+    "scp-secret-laboratory", "uno", "yu-gi-oh", "bloons-td-6", "new-world-aeternum", "sudoku",
+    "baldurs-gate-3", "8-ball-pool", "team-fortress-2", "battleship", "euro-truck-simulator-2",
+    "titanfall-2", "osu", "lethal-company", "arma-3", "doki-doki-literature-club",
+    "mount-blade-ii-bannerlord", "dont-starve-together", "undertale", "charades", "palworld",
+    "darts", "unturned", "mafia-party", "borderlands-2", "paladins", "wii-sports", "agar-io",
+    "portal-2", "wordle", "pubg-battlegrounds", "catan", "battlefield-2042",
+)
+PANEL_ROUND_2_ROUNDS = 5
+
+
+def panel_round_2_extra(rows: list[dict[str, Any]], n: int = 42) -> list[str]:
+    """How PANEL_ROUND_2_EXTRA is chosen -- to regenerate it, not to serve."""
+    pool = [r for r in servable_bank(rows) if r["game_id"] not in PANEL_ROUND_1_CARDS
+            and recognition_prior(r) >= ROUND_ONE_FLOOR]
+    return [r["game_id"] for r in spread_order(pool, n)]
 
 
 def servable(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -608,6 +639,8 @@ def next_round(
     recognised and every dimension is read -- so someone who has played a lot
     answers one round, someone who recognises little sees two or three.
     """
+    if SERVING == "panel-round-2":
+        return _panel_round_2(index, rows)
     if SERVING == "selector":
         if champions is None:
             with db.connect() as conn:
@@ -657,6 +690,25 @@ def next_round(
         if est is not None and not est.unread:
             return None
     return rounds[index]
+
+
+def _panel_round_2(index: int, rows: list[dict[str, Any]]) -> list[dict[str, Any]] | None:
+    """Round `index` of panel round 2: rounds 1-2 dealt exactly as round 1's
+    cards are under panel-round-1, rounds 3-5 the extra cards dealt the same
+    way -- round-robin over spread order, so each round mixes extremes and
+    mainstream. Every player sees all 70: no early stop, for the same reason as
+    panel-round-1."""
+    def dealt(pool: Any, ids: Any, count: int) -> list[list[dict[str, Any]]]:
+        # Spread order over the same pool panel-round-1 orders over, or the
+        # 28 would be dealt into different rounds than on the current build.
+        spread = spread_order([r for r in rows if r["game_id"] in pool], len(rows))
+        pile = [r for r in spread if r["game_id"] in ids]
+        return [pile[i::count][:ROUND] for i in range(count)]
+    extra = set(PANEL_ROUND_2_EXTRA)
+    rounds = (dealt(PANEL_ROUND_1_BANK, PANEL_ROUND_1_CARDS, 2)
+              + dealt(extra, extra, PANEL_ROUND_2_ROUNDS - 2))
+    rounds = [r for r in rounds if r]
+    return rounds[index] if index < len(rounds) else None
 
 
 # ---------------------------------------------------------------------------

@@ -204,7 +204,7 @@ function Readout({ dims }) {
 }
 
 // Mirrors quiz.MAX_ROUNDS: whether "show me more games" has anything to show.
-const MAX_ROUNDS = 3;
+const MAX_ROUNDS = 5;
 
 const lists = v => ({
   loved: Object.keys(v).filter(g => v[g] === "loved"),
