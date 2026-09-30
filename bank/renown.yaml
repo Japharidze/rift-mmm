@@ -1,4 +1,4 @@
-# Renown of the hand-picked games -- DRAFT, awaiting review (2026-09-29).
+# Renown of the hand-picked games -- drafted 2026-09-29, reviewed by Sergi 2026-09-30.
 #
 # The recognition prior for the games Steam cannot rank (bank/hand.yaml): has a
 # typical player in the segment -- 14-30, EUNE, plays on PC, new to League --
@@ -12,9 +12,12 @@
 # theirs from lifetime reach instead (migration 018). Both are priors: panel tap
 # rates correct them wherever the panel has shown the card.
 #
-# Judged for EUNE on purpose: Durak, Mafia and nine men's morris are schoolyard
-# staples east of Berlin; Nintendo titles are less owned there than in the west.
-# Deep entries are not rated: they are never first-screen cards.
+# Judged for EUNE on purpose. The draft rated Durak and nine men's morris as
+# regional staples and Tarkov as wide; the review moved all three to niche for
+# a PC player aged 14-30. Mafia stays wide (Werewolf/Mafia is international).
+# Nintendo titles stay wide: less owned in EUNE, though Mario Kart, Pokemon and
+# Wii Sports sit at the top of it. Deep entries are not rated: they are never
+# first-screen cards.
 
 universal:
   # video
@@ -24,7 +27,6 @@ universal:
   tetris: "Played in some form by nearly everyone."
   candy-crush: "On nearly every phone at some point."
   solitaire: "Bundled with Windows for decades."
-  minesweeper: "Bundled with Windows for decades."
   # classic
   chess: "Everyone has played it, if only at school."
   rock-paper-scissors: "Universal."
@@ -34,8 +36,7 @@ universal:
   checkers: "Universal."
   jenga: "Universal at parties."
   table-tennis: "Ping pong at school, camps, offices."
-  durak: "The default card game in Eastern Europe."
-  sudoku: "Newspapers and phones."
+  charades: "Moved from wide to universal in Sergi's review, 2026-09-30."
 
 wide:
   # video
@@ -52,7 +53,6 @@ wide:
   genshin-impact: "Very large free audience."
   starcraft-2: "The older band's RTS."
   warcraft-3: "The older band; DotA's origin."
-  escape-from-tarkov: "Large, especially in Eastern Europe."
   geoguessr: "Streamers made it widely played."
   wordle: "The 2022 daily habit."
   agar-io: "The 2015 browser wave."
@@ -69,7 +69,6 @@ wide:
   scrabble: "Known, played by a minority."
   darts: "Pubs and basements."
   foosball: "Bars, schools, offices."
-  charades: "Party staple."
   8-ball-pool: "Bars, and a big phone game."
   catan: "The best-known modern board game."
   risk: "A family board-game classic."
@@ -80,7 +79,8 @@ wide:
   yu-gi-oh: "The age band's playground card game."
   pokemon-tcg: "The age band's playground card game."
   backgammon: "Common in the Balkans and Greece."
-  nine-mens-morris: "Mlynek / Moara: an EUNE schoolyard staple."
+  minesweeper: "Moved from universal to wide in Sergi's review, 2026-09-30."
+  sudoku: "Moved from universal to wide in Sergi's review, 2026-09-30."
 
 niche:
   # video
@@ -97,3 +97,6 @@ niche:
   magic-the-gathering: "A dedicated minority."
   go: "Rare in Europe."
   stratego: "An older, smaller classic."
+  durak: "Moved from universal to niche in Sergi's review, 2026-09-30."
+  nine-mens-morris: "Moved from wide to niche in Sergi's review, 2026-09-30."
+  escape-from-tarkov: "Moved from wide to niche in Sergi's review, 2026-09-30."
