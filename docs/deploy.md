@@ -279,3 +279,14 @@ restore the dump).
 - Session #28 stays in the data, out of the headline (`db.EXCLUDED_FROM_HEADLINE`).
 - Live smoke passed (reading, "not me" stored, build `reading-v1`); smoke
   session 33 and page visit 11 deleted. Production: 22 sessions, 2 visits.
+
+## Two decks -- live 2026-09-30 14:57 UTC
+
+`main` at `7489c22`. No migration. Pre-deploy dump:
+`data/prod-pre-decks-2026-09-30.dump`. Rollback: redeploy `6c14be2`.
+Panel round 2 is two decks -- round 1's 28 cards in one grid (as round 1
+showed them), then the 42 extra -- with "what made it stick?" once, after both.
+The five rounds of 14 were cosmetic: the cards are fixed, so no round depended
+on earlier answers. Sessions #28 and #32 ran on five rounds; their events show
+it. Live smoke passed (decks of 28 and 42, one reasons screen); smoke session
+34 and page visit 12 deleted. Production: 22 sessions, 2 visits.
