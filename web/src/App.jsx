@@ -195,9 +195,14 @@ function DebugView({ d }) {
           ["final (after comparisons)", d.points.final]].map(([k, p]) => (
           <tr key={k}><td>{k}</td>{p.map((v, i) => <td key={i} className="r">{f2(v)}</td>)}</tr>
         ))}
-        <tr><td>evidence read (needs 0.5)</td>{dims.map(x => (
+        <tr><td>evidence (read from 1.0)</td>{dims.map(x => (
           <td key={x} className="r">{f2(d.read[x].informative)}{d.read[x].read ? "" : " unread"}</td>))}</tr>
+        <tr><td>uncertainty (±, per dimension)</td>{dims.map(x => (
+          <td key={x} className="r">{f2(d.uncertainty.per_dimension[x])}</td>))}</tr>
       </tbody></table>
+      <p>How well the point is known: ±{f2(d.uncertainty.point)} (a real match needs ±{f2(d.uncertainty.confident_below)} or less,
+        {" "}{d.uncertainty.floor.recognised}+ games recognised and {d.uncertainty.floor.loves}+ counting loves;
+        {" "}this quiz: {d.uncertainty.recognised} recognised, {d.uncertainty.counting_loves} loves).</p>
       <h2>Evidence: what each game voted for, and its share of the dimension</h2>
       <table><tbody>
         <tr><td>game</td><td>reason</td>{dims.map(x => <td key={x} className="r">{x}</td>)}</tr>
@@ -227,10 +232,11 @@ function DebugView({ d }) {
       </>}
       <h2>Champions: distance, and how far each sits from you (champion − you)</h2>
       <table><tbody>
-        <tr><td>champion</td><td className="r">dist</td>{dims.map(x => <td key={x} className="r">{x}</td>)}</tr>
+        <tr><td>champion</td><td className="r">dist</td><td>label (by distance alone)</td>{dims.map(x => <td key={x} className="r">{x}</td>)}</tr>
         {d.champions.map((c, i) => (
           <tr key={i}><td>{i + 1}. {c.name} <span className="gloss">{c.role}</span></td>
             <td className="r">{f2(c.distance)}</td>
+            <td>{c.confidence}{c.confidence !== c.by_distance_alone ? ` (${c.by_distance_alone})` : ""}</td>
             {dims.map(x => <td key={x} className="r">{c.gap[x] > 0 ? "+" : ""}{f2(c.gap[x])}</td>)}</tr>
         ))}
       </tbody></table>

@@ -82,7 +82,11 @@ def _build(games: list[dict[str, Any]]) -> dict[str, Any]:
                      "needed": quiz.NEEDED, "dislike_weight": quiz.DISLIKE_WEIGHT,
                      "dislike_margin": quiz.DISLIKE_MARGIN, "low_corner": quiz.LOW_CORNER,
                      "unconfirmed": quiz.UNCONFIRMED,
-                     "comparison_pull": quiz.COMPARISON_PULL, "deep_dive_cap": quiz.DEEP_DIVE_CAP},
+                     "comparison_pull": quiz.COMPARISON_PULL, "deep_dive_cap": quiz.DEEP_DIVE_CAP,
+                     "confidence": {"rule": "close needs distance <= CLOSE, uncertainty <= confident_below, floor",
+                                    "sigma": quiz.EVIDENCE_SIGMA,
+                                    "confident_below": quiz.CONFIDENT_UNCERTAINTY,
+                                    "floor": [quiz.CONFIDENT_RECOGNISED, quiz.CONFIDENT_LOVES]}},
         "reading": reading.version(),
     }
 
@@ -496,6 +500,10 @@ def result(req: ResultRequest) -> Result:
     deep = [a.model_dump() for a in req.deep_dives]
     est = quiz.settle(est, deep, [c.model_dump() for c in req.comparisons], rows)
     matches = quiz.champions_for(est, n=req.n)
+    # How much was answered: every verdict given (loved, fine, disliked); older
+    # clients send no verdicts, so their picks stand in.
+    recognised = len([g for g, v in req.verdicts.items() if v]) or len(req.loved) + len(req.disliked)
+    loves = quiz.counting_loves(verdicts_est, req.reasons)
     # Reasons are chosen across the whole list: each champion's is where it
     # fits better than the others shown.
     reasons = reading.champion_reasons(est.point, verdicts_est, trace,
@@ -506,7 +514,8 @@ def result(req: ResultRequest) -> Result:
         dimensions=_dimensions(est),
         champions=[
             Match(champion_id=m.champion_id, name=m.name, role=m.role,
-                  distance=round(m.distance, 3), confidence=m.confidence,
+                  distance=round(m.distance, 3),
+                  confidence=quiz.confidence(m.distance, verdicts_est, recognised, loves),
                   reasons=[Sentence(**s) for s in why])
             for m, why in zip(matches, reasons)
         ],
@@ -525,7 +534,7 @@ def result(req: ResultRequest) -> Result:
     if req.debug:
         result.debug = quiz.debug_view(
             req.loved, req.disliked, req.reasons, [a.model_dump() for a in req.deep_dives],
-            [c.model_dump() for c in req.comparisons], rows, _champions())
+            [c.model_dump() for c in req.comparisons], rows, _champions(), recognised=recognised)
 
     # Recorded once the result exists; the session row itself starts at the first
     # answer (migration 022).

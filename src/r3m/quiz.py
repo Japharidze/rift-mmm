@@ -55,12 +55,17 @@ LOW_CORNER = 0.35
 # units `opportunity` returns: each game hands over at most one unit, split
 # across the three dimensions.
 #
-# PROVISIONAL. 0.5 since the one-unit rule (2026-09-29), from 1.0 when a game
-# could hand over up to a unit on *each* dimension. Chosen inside the window
-# the two estimator tests leave -- Sergi's builders session must leave meso
-# unread (it accumulates 0.44), the relaxed player must read micro (0.59) --
-# which means the threshold is set by the same fixtures that check it. Nothing
-# independent calibrates it yet; panel round 2 should.
+# 1.0 since 2026-09-30, calibrated rather than fitted: a dimension is read
+# once its uncertainty (EVIDENCE_SIGMA / sqrt(evidence)) is at most 0.25 --
+# enough to say which half of the scale the player sits in, no more. At the
+# provisional 0.5 it was 0.35, and two or three games marked every dimension
+# read (Sergi, from a live session with two games and a comparison). Measured
+# consequence: on the 23 real results, 10 now leave a dimension unread; on
+# synthetic players with the 70 cards, 36%, which the fill stage and the unread
+# line then report rather than impute.
+#
+# Was 0.5 (2026-09-29 to 30), set inside the window two estimator tests left --
+# the threshold fitted to the fixtures that checked it.
 #
 # The fill-stage rates below are history. Re-measured 2026-09-29 on the Opus
 # 5.5 labels, loving random picks: the fill stage runs for 2% of five-pick
@@ -78,7 +83,25 @@ LOW_CORNER = 0.35
 # random picks from the grid, the fill stage now runs for 84% of five-pick
 # sessions and 32% of eight-pick ones, and someone who tapped twelve games has
 # genuinely been read and skips it.
-NEEDED = 0.5
+NEEDED = 1.0
+# How much the games a player loves disagree on a dimension, per unit of
+# evidence: the pooled weighted spread of loved games' values around each
+# player's estimate, over the 23 real results (2026-09-30: micro 0.26, meso
+# 0.25, macro 0.22). A dimension's uncertainty is EVIDENCE_SIGMA / sqrt(its
+# evidence) -- the standard error of the weighted mean the estimate is. Deep
+# dives and comparisons move the point but add no evidence units, so they do
+# not shrink it: conservative on purpose.
+EVIDENCE_SIGMA = 0.25
+# "A real match" needs the champion close AND the point known: RMS
+# uncertainty per dimension at most this (about three units of evidence on
+# each dimension), and the quiz-level floor below. Otherwise the label is
+# capped at "in the neighbourhood". Thin evidence lands in the dense middle of
+# the champion cloud, so distance alone called 84 of 115 real labels a real
+# match.
+CONFIDENT_UNCERTAINTY = 0.15
+# ...and at least this much was answered at all, whatever the arithmetic says.
+CONFIDENT_RECOGNISED = 8
+CONFIDENT_LOVES = 3
 # Dislike is real evidence, but noisier than delight.
 DISLIKE_WEIGHT = 0.5
 # How far under a disliked game's demand the dislike places the player.
@@ -1324,6 +1347,51 @@ def settle(est: "Estimate", deep: list[dict[str, Any]], comparisons: list[dict[s
 
 
 # ---------------------------------------------------------------------------
+# How well the point is known, and what that allows a label to claim.
+# ---------------------------------------------------------------------------
+
+def uncertainty(est: "Estimate") -> dict[str, float | None]:
+    """Per dimension, the standard error of the estimate: EVIDENCE_SIGMA over
+    the square root of its evidence. None where there is no evidence at all."""
+    out: dict[str, float | None] = {}
+    for d in DIMENSIONS:
+        w = est.dimensions[d].informative
+        out[d] = round(EVIDENCE_SIGMA / math.sqrt(w), 3) if w > 0 else None
+    return out
+
+
+def point_uncertainty(est: "Estimate") -> float | None:
+    """RMS of the per-dimension uncertainties; None if any dimension has none."""
+    se = uncertainty(est)
+    if any(v is None for v in se.values()):
+        return None
+    return round(math.sqrt(sum(v * v for v in se.values()) / len(se)), 3)
+
+
+def counting_loves(est: "Estimate", reasons: Reasons) -> int:
+    return sum(1 for r in est.loved if love_weight(r, reasons.get(r["game_id"])) > 0)
+
+
+def confidence(distance: float, est: "Estimate", recognised: int, loves: int) -> str:
+    """The label a match may carry: "close" (a real match) only when the
+    champion is close AND the point is known -- uncertainty at most
+    CONFIDENT_UNCERTAINTY -- AND the quiz-level floor was met. Otherwise at
+    most "fair". Distance alone decides "distant".
+
+    Until 2026-09-30 the label read distance alone, and thin evidence lands in
+    the dense middle of the champion cloud: two or three games and one
+    comparison showed "a real match" (Sergi, live).
+    """
+    if distance > scoring.FAIR:
+        return "distant"
+    known = point_uncertainty(est)
+    if (distance <= scoring.CLOSE and known is not None and known <= CONFIDENT_UNCERTAINTY
+            and recognised >= CONFIDENT_RECOGNISED and loves >= CONFIDENT_LOVES):
+        return "close"
+    return "fair"
+
+
+# ---------------------------------------------------------------------------
 # Debug view (?debug=1): how a result was reached. Never shown to players.
 # ---------------------------------------------------------------------------
 
@@ -1336,6 +1404,7 @@ def debug_view(
     rows: list[dict[str, Any]],
     champions: list[dict[str, Any]],
     n_champions: int = 10,
+    recognised: int | None = None,
 ) -> dict[str, Any]:
     """Which games pushed which dimension, what each follow-up moved, and why
     each champion ranks where it does -- to judge a "partly" by component.
@@ -1382,7 +1451,13 @@ def debug_view(
     final = settle(est, deep, comparisons, rows).point
 
     ranked = scoring.neighbourhood(final, n=n_champions, rows=champions)
+    recognised = recognised if recognised is not None else len(loved) + len(disliked)
+    loves = counting_loves(est, reasons)
     return {
+        "uncertainty": {"per_dimension": uncertainty(est), "point": point_uncertainty(est),
+                        "confident_below": CONFIDENT_UNCERTAINTY, "recognised": recognised,
+                        "counting_loves": loves,
+                        "floor": {"recognised": CONFIDENT_RECOGNISED, "loves": CONFIDENT_LOVES}},
         "points": {"verdicts": list(est.point), "after_deep_dives": list(after_deep.point),
                    "final": list(final)},
         "read": {d: {"informative": est.dimensions[d].informative, "read": est.dimensions[d].read}
@@ -1391,7 +1466,8 @@ def debug_view(
         "deep_dives": dives,
         "comparisons": steps,
         "champions": [{"name": m.name, "role": m.role, "distance": r2(m.distance),
-                       "confidence": m.confidence,
+                       "confidence": confidence(m.distance, est, recognised, loves),
+                       "by_distance_alone": m.confidence,
                        "gap": {d: r2(m.point[i] - final[i]) for i, d in enumerate(DIMENSIONS)}}
                       for m in ranked],
     }

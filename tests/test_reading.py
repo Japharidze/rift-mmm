@@ -69,7 +69,10 @@ def test_an_unread_dimension_gets_its_unread_line_and_never_a_claim():
         assert not any(s["rule"].get("dimension") == d and s["rule"]["kind"] == "dimension" for s in out)
 
 
-def test_a_low_sentence_names_only_loves_that_sit_low():
+def test_a_low_sentence_names_only_loves_that_sit_low(monkeypatch):
+    # About which games are named, not when a dimension counts as read: the
+    # old threshold keeps this player's micro read.
+    monkeypatch.setattr(quiz, "NEEDED", 0.5)
     est, trace = estimate(["stardew-valley", "animal-crossing", "factorio", "rocket-league"])
     s = next(s for s in read((0.2, 0.5, 0.5), est, trace) if s["id"] == "micro-low-strong")
     assert "Rocket League" not in s["text"] and s["rule"]["games"]

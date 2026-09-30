@@ -64,7 +64,14 @@ def test_low_corner_is_read_not_unread():
     is Animal Crossing's actual information content, and it must not be
     confused with having had no opportunity to answer.
     """
-    e = est(["animal-crossing", "cookie-clicker", "candy-crush"])
+    # Six loves, not three: at NEEDED 1.0 (2026-09-30) three games are the thin
+    # evidence that must not read every dimension -- for any player, relaxed
+    # or not. Six low-demand loves do, and read low.
+    extra = [{"game_id": g, "name": g, "mode": None, "in_bank": True, "micro": a, "meso": b, "macro": c}
+             for g, a, b, c in (("solitaire", 0.04, 0.12, 0.18), ("tic-tac-toe", 0.0, 0.07, 0.15),
+                                ("minesweeper", 0.30, 0.10, 0.25))]
+    e = quiz.estimate(["animal-crossing", "cookie-clicker", "candy-crush",
+                       "solitaire", "tic-tac-toe", "minesweeper"], [], rows=ROWS + extra)
     for d in ("micro", "meso", "macro"):
         assert e.dimensions[d].read, f"{d} unread for a player who told us plenty"
     assert e.dimensions["micro"].value < 0.35

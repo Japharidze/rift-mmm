@@ -170,8 +170,8 @@ def test_rounds_are_the_same_for_everyone_and_start_with_round_one():
 def test_rounds_stop_early_once_enough_is_recognised_and_read(monkeypatch):
     monkeypatch.setattr(quiz, "ROUND", 3)
     monkeypatch.setattr(quiz, "ENOUGH_RECOGNISED", 3)
-    # cs2 + osu read micro, chess + factorio read macro, together they read meso
-    played = ["cs2", "osu", "chess", "factorio"]
+    # Enough loves to read all three at NEEDED 1.0 (2026-09-30): four no longer are.
+    played = ["cs2", "osu", "chess", "factorio", "among-us", "rps", "chess-blitz", "unrated"]
     assert quiz.next_round(1, played=played, loved=played, disliked=[], reasons={}, rows=ROWS) is None
     # recognising little keeps the rounds coming
     assert quiz.next_round(1, played=["cs2"], loved=["cs2"], disliked=[], reasons={}, rows=ROWS)
