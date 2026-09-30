@@ -290,3 +290,25 @@ The five rounds of 14 were cosmetic: the cards are fixed, so no round depended
 on earlier answers. Sessions #28 and #32 ran on five rounds; their events show
 it. Live smoke passed (decks of 28 and 42, one reasons screen); smoke session
 34 and page visit 12 deleted. Production: 22 sessions, 2 visits.
+
+## Match labels read how well the point is known -- live 2026-09-30 15:12 UTC
+
+`main` at `219ee6e`. No migration. Pre-deploy dump:
+`data/prod-pre-confidence-2026-09-30.dump`. Rollback: redeploy `7489c22`.
+
+- "A real match" needs the champion within 0.10, the point's uncertainty
+  (0.25 / sqrt(evidence) per dimension, RMS) at most 0.15, and 8 recognised
+  games with 3 counting loves; otherwise "in the neighbourhood" at most.
+  Recorded in each session's build (`evidence.confidence`).
+- NEEDED 1.0: a dimension is read at uncertainty 0.25 or less. More unread
+  lines and up to 4 fill cards; watch quiz length in the testers' timings, 0.75
+  is the fallback.
+- On the 23 real results: "a real match" 84 of 115 labels -> 0. Simulation on
+  the 70-card build: ~20% of players earn it.
+- The round 2 headline ranks champions by distance and is unaffected. But
+  "feels right?" is asked with the labels on screen, so ratings from sessions
+  that saw a green "real match" are not directly comparable with later ones;
+  the build record separates them.
+- Live smoke passed (two loves: all "in the neighbourhood", uncertainty 0.31;
+  nine loves: all "in the neighbourhood"). Smoke sessions 36-37 and page visits
+  14-15 deleted. Production: 23 sessions.
