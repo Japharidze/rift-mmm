@@ -230,3 +230,16 @@ an old card and change a verdict. Three smoke sessions stopped at it
 production held 20 sessions and no visits after. Fixed on dev (`c31945f`,
 frontend only): a loading screen between steps, verified with 0.8 s of
 injected latency on every call.
+
+**Fix live 2026-09-30 11:14:19 UTC** (`main` at `c6a41b8`). Live smoke then
+passed end to end: 70 cards, 5 deep-dive answers, 3 comparisons, a rated
+result, build `panel-round-2` with runs 24 / 23 and commit `c6a41b8`. Both smoke
+sessions (26, 27) and their page visits deleted; production at 20 sessions and
+no visits. **Rollback target is now `9e681b9`** for the fix alone, or `b87827a`
+with the pre-upgrade dump for the whole upgrade.
+
+**Accidental-tap check on the morning's round-2 session.** The old builds had
+the same stale-grid gap, so the one round-2 session with an event log (#22, the
+28-card build) was checked for verdicts within 1 s of a follow-up closing, or
+on a card from a round already ended without "go back": none of its 28 verdict
+events qualified. Round 1 has no event log and cannot be checked.
