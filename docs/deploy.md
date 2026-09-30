@@ -243,3 +243,22 @@ the same stale-grid gap, so the one round-2 session with an event log (#22, the
 28-card build) was checked for verdicts within 1 s of a follow-up closing, or
 on a card from a round already ended without "go back": none of its 28 verdict
 events qualified. Round 1 has no event log and cannot be checked.
+
+## Love reasons, debug view, deep-dive cap -- live 2026-09-30 14:01 UTC
+
+`main` at `634b531` (`5f07d05` at 13:55, plus a fix at 14:01). No migration;
+`bank-import` for the reviewed bias ratings (40 high / 27 medium / 20 low).
+Pre-deploy dump: `data/prod-pre-reasons-2026-09-30.dump`. Rollback: redeploy
+`c6a41b8`, then re-run `bank-import` from that commit's `bank/bias.yaml` (or
+restore the dump).
+
+- "What made it stick?" only for `high` games, several reasons allowed; "how
+  it plays" ticked counts in full. Unasked medium loves count in full (was
+  0.75); a skipped high love counts 0.7 (was 0.4). Deep dives capped at 0.10
+  per dimension in total. `?debug=1` shows how a result was reached.
+- The live smoke caught the follow-up after the rounds still asking about
+  medium loves (its own old high+medium list); fixed in `634b531` to the same
+  rule as the round screen, and confirmed live.
+- Smoke sessions 29-31 and page visits 7-9 deleted. Production: 21 sessions
+  (20 + Sergi's #28, which ran on the earlier love-reason rules -- its build
+  record shows it), 1 page visit.
