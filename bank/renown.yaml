@@ -1,8 +1,9 @@
 # Renown of the hand-picked games -- drafted 2026-09-29, reviewed by Sergi 2026-09-30.
 #
 # The recognition prior for the games Steam cannot rank (bank/hand.yaml): has a
-# typical player in the segment -- 14-30, EUNE, plays on PC, new to League --
-# ever PLAYED it? Played, not heard of: the card asks "played it?".
+# typical player in the segment -- 14-30, plays on PC, new to League, anywhere:
+# the product is international -- ever PLAYED it? Played, not heard of: the
+# card asks "played it?".
 #
 #   universal  most have
 #   wide       a sizeable minority
@@ -12,12 +13,14 @@
 # theirs from lifetime reach instead (migration 018). Both are priors: panel tap
 # rates correct them wherever the panel has shown the card.
 #
-# Judged for EUNE on purpose. The draft rated Durak and nine men's morris as
-# regional staples and Tarkov as wide; the review moved all three to niche for
-# a PC player aged 14-30. Mafia stays wide (Werewolf/Mafia is international).
-# Nintendo titles stay wide: less owned in EUNE, though Mario Kart, Pokemon and
-# Wii Sports sit at the top of it. Deep entries are not rated: they are never
-# first-screen cards.
+# The draft was judged for EUNE, which is only the test panel. The review moved
+# the regional picks (Durak, nine men's morris, Tarkov) to niche; Mafia stays
+# wide (Werewolf/Mafia is international). Reasons below that still argue from
+# EUNE are marked [EUNE draft]. The panel being EUNE-only biases panel tap
+# rates the same way -- accepted for testing, and worth remembering when those
+# rates correct these priors.
+#
+# Deep entries are not rated: they are never first-screen cards.
 
 universal:
   # video
@@ -45,8 +48,8 @@ wide:
   wow: "A generation's MMO; the older band especially."
   hearthstone: "Free, on PC and phone, for a decade."
   osu: "Huge in its niche, known well beyond it."
-  smash-bros: "Nintendo, so less owned in EUNE."
-  mario-kart: "Nintendo, so less owned in EUNE; played at friends' though."
+  smash-bros: "[EUNE draft] Nintendo, so less owned in EUNE."
+  mario-kart: "[EUNE draft] Nintendo, so less owned in EUNE; played at friends' though."
   mario-64: "Nintendo classic, the older band."
   animal-crossing: "Nintendo; big in 2020."
   pokemon: "Nintendo handhelds; most of the age band touched one."
@@ -63,7 +66,7 @@ wide:
   # classic
   poker: "Played casually by many, seriously by few."
   blackjack: "Casino classic, played casually."
-  dominoes: "Common in EUNE households."
+  dominoes: "[EUNE draft] Common in EUNE households."
   connect-4: "Childhood board game."
   battleship: "Childhood game, on paper or in a box."
   scrabble: "Known, played by a minority."
@@ -73,12 +76,12 @@ wide:
   catan: "The best-known modern board game."
   risk: "A family board-game classic."
   cluedo: "A family board-game classic."
-  mafia-party: "Schools and camps, especially in Eastern Europe."
+  mafia-party: "[EUNE draft] Schools and camps, especially in Eastern Europe."
   exploding-kittens: "Very popular modern party card game."
   dobble: "Common family game."
   yu-gi-oh: "The age band's playground card game."
   pokemon-tcg: "The age band's playground card game."
-  backgammon: "Common in the Balkans and Greece."
+  backgammon: "[EUNE draft] Common in the Balkans and Greece."
   minesweeper: "Moved from universal to wide in Sergi's review, 2026-09-30."
   sudoku: "Moved from universal to wide in Sergi's review, 2026-09-30."
 
