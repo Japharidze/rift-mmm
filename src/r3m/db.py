@@ -944,12 +944,15 @@ def update_unresolved_session(
 
 def session_outcomes(conn: psycopg.Connection) -> dict[str, dict[str, Any]]:
     """How sessions ended, per panel round: round 1 predates the build column
-    (migration 019), round 2 carries it. For the panel report, beside unread
+    (migration 019), round 2 carries it, split by serving mode. For the panel report, beside unread
     dimensions -- a player the quiz could not read at all is its most common
     predicted failure, and absent from the Riot-id comparison by construction."""
     rows = conn.execute(
         """
-        select case when build is null then 'round 1' else 'round 2' end,
+        -- Round 2 split by serving mode: the short-lived 28-card build
+        -- (panel-round-1) is kept apart from the upgraded one (panel-round-2).
+        select case when build is null then 'round 1'
+                    else 'round 2, ' || coalesce(build ->> 'serving', '?') end,
                outcome,
                riot_id is not null,
                (select count(*) from jsonb_each(coalesce(dimensions, '{}'::jsonb)) d
@@ -1034,6 +1037,9 @@ def panel_sessions_to_check(
                    to_jsonb(quiz_session) -> 'actual_mains'
             from quiz_session
             where riot_id is not null and point is not null and outcome = 'result'
+              -- Round 2 sessions on the 28-card build stay in the data but out of
+              -- the headline (Sergi, 2026-09-30): only round 1 and panel-round-2.
+              and coalesce(to_jsonb(quiz_session) -> 'build' ->> 'serving', '') <> 'panel-round-1'
                   {"" if include_checked else "and checked_at is null"}
             order by created_at
             """
