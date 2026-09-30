@@ -182,7 +182,7 @@ result and storing a Riot id with its region. No errors.
   saw the short version, and it was deleted; every kept round-2 session has
   all 28 cards.
 
-## Round 2 upgrade -- rehearsed 2026-09-30, awaiting the go
+## Round 2 upgrade -- live 2026-09-30 11:00:34 UTC
 
 The upgraded build (`panel-round-2`: 70 fixed cards in 5 rounds, deep dives,
 comparisons before the reveal, drop-off and visit logging) replaces the
@@ -215,3 +215,18 @@ page opens counted; the dry-run panel report showed outcomes split by serving
 mode and the drop-off funnel. Then the rollback: schema back at 020, 20
 sessions, `b87827a` serving 14-card rounds and storing a result, a Riot id
 and a rating with no errors.
+
+**Launched 2026-09-30.** `main` pushed to `9e681b9` at 11:00:04 UTC; migrations
+021-023 applied at **11:00:34 UTC** (the upgrade's start: `panel-round-2`
+sessions begin here); new API answering at 11:00:44. bank-import applied the
+reviewed tiers; runs 23 and 24 still served. Pre-upgrade dump:
+`data/prod-pre-upgrade-2026-09-30.dump`.
+
+The live smoke found a bug the rehearsal could not: between steps, a stage
+briefly had nothing to show and the page fell back to the last round's card
+grid. On local latency it was invisible; on the live site a tap could land on
+an old card and change a verdict. Three smoke sessions stopped at it
+(in progress at deep / why), and were deleted with their three page visits;
+production held 20 sessions and no visits after. Fixed on dev (`c31945f`,
+frontend only): a loading screen between steps, verified with 0.8 s of
+injected latency on every call.
