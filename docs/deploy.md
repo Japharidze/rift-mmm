@@ -160,3 +160,19 @@ skipped -- canonical refusing a mixed set then serving the new runs, a browser
 smoke of both the result and the loved-nothing flows, a dry-run panel-check),
 then this rollback -- schema back at 011, 19 sessions, and `5600575` serving a
 result and storing a Riot id with its region. No errors.
+
+## Round 2 launched -- 2026-09-30
+
+- **Launch time: 2026-09-30 00:36:23 UTC** -- migrations 012-020 applied on
+  production (`schema_migrations.applied_at`); `main` pushed at 00:35:37 to
+  `e2633e8`, new API answering at 00:36:26. Round 1 is every session created
+  before that instant, round 2 every one after -- the same split as
+  `build is null` / `build is not null`.
+- **Served from 00:38:52 UTC:** champions `label_run` 23 (v3), games 24
+  (games-v2), both `claude-opus-5-5` at high effort -- production's ids for
+  local runs 28 and 29. Between 00:36:23 and 00:38:52 the new code served the
+  old Opus 5 labels (9 + 10, 17); no session was recorded in that window.
+- Pre-launch full dump: `data/prod-pre-launch-2026-09-30.dump` (gitignored,
+  holds Riot ids) -- the rollback above uses it.
+- Live smoke session (id 20) checked -- build stored runs 24 / 23 and commit
+  `e2633e8` -- then deleted. Production held 19 sessions before and after.

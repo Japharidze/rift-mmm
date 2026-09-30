@@ -157,8 +157,11 @@ champion rows and the whole 326-game bank were relabelled on Opus 5.5 at high
 effort (label_run 28, 29), one regime for both sides -- see `docs/sub-traits.md`,
 Labelling model. Served labels are an explicit canonical run set per database
 (`r3m canonical`, migration 017), never "the latest run"; production still
-serves the validated Opus 5 set (9 + 10, 17) until the merge brings the new runs
-over with `labels-import` (`docs/deploy.md`). The Gate 1 and Gate 2 numbers
+served the validated Opus 5 set (9 + 10, 17) until the round-2 launch brought
+the new runs over with `labels-import`; since 2026-09-30 it serves them as
+`label_run` 23 and 24 (`docs/deploy.md`). **Panel round 2 launched 2026-09-30
+00:36:23 UTC**: sessions before that instant are round 1, after it round 2
+(also `build is not null`). The Gate 1 and Gate 2 numbers
 below were measured on the Opus 5 labels.
 
 The game bank is built from files (`bank/`, `r3m bank-import`): 300 deck
