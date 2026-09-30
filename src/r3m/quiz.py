@@ -38,6 +38,9 @@ from r3m import db, scoring
 from r3m.config import ROOT
 
 DIMENSIONS = ("micro", "meso", "macro")
+# A game's answered reason: one for a dislike; for a love, the reasons ticked
+# (a plain string in sessions stored before 2026-09-30).
+Reasons = dict[str, "str | list[str]"]
 
 # How far from the middle a game sits before an answer about it says anything.
 #
@@ -112,12 +115,32 @@ WHY_QUESTION = {"love": "What made it stick?", "dislike": "What put you off?"}
 # be about the gameplay, and these follow that. Unrated games get no discount --
 # no prior is better than an invented one.
 UNCONFIRMED = {"low": 1.0, "medium": 0.75, "high": 0.4}
+# Which loves get "what made it stick?" after their round: only the games
+# easiest to love for something else (bank/bias.yaml). Asking every love made a
+# twelve-question screen in the first upgraded session (2026-09-30); Hades or
+# osu! need no question. Medium and unasked loves keep UNCONFIRMED.
+ASK_REASON_LEVELS = ("high",)
 
 
-def love_weight(row: dict[str, Any], reason: str | None) -> float:
-    if reason == "gameplay":
+def asks_love_reason(row: dict[str, Any]) -> bool:
+    return row.get("bias") in ASK_REASON_LEVELS
+
+
+def love_weight(row: dict[str, Any], reason: str | list[str] | None) -> float:
+    """How much a love counts, from its reasons.
+
+    Several reasons may be ticked (2026-09-30). "How it plays" counts the love
+    in full whenever it is among them: loving Elden Ring for its world does not
+    mean the combat did not hold you, and the single-choice version forced a
+    pick and threw the love away. Gameplay is removed only when it is absent --
+    other reasons ticked, and not that one. Nothing answered falls back to the
+    game's bias prior. A plain string is one reason, as sessions before this
+    change stored them.
+    """
+    given = {reason} if isinstance(reason, str) else set(reason or ())
+    if "gameplay" in given:
         return 1.0
-    if reason in LOVE_REASONS:
+    if given & set(LOVE_REASONS):
         return 0.0
     return UNCONFIRMED.get(row.get("bias"), 1.0)
 
@@ -245,11 +268,17 @@ def estimate(
     loved: list[str],
     disliked: list[str] | None = None,
     rows: list[dict[str, Any]] | None = None,
-    reasons: dict[str, str] | None = None,
+    reasons: Reasons | None = None,
     scale: dict[str, float] | None = None,
+    trace: list[dict[str, Any]] | None = None,
 ) -> Estimate:
     """`scale` multiplies individual loves' weight -- the hook a robust
-    estimator re-weights through (r3m.simulate). Nothing in serving passes it."""
+    estimator re-weights through (r3m.simulate). Nothing in serving passes it.
+
+    `trace`, when given, receives every contribution as it is added -- game,
+    dimension, weight, the value it votes for -- and every dislike the loves
+    explained away: the debug view's evidence table, recorded on this same
+    path so it cannot drift from what the estimate actually did."""
     if rows is None:
         with db.connect() as conn:
             rows = db.game_points(conn)
@@ -287,6 +316,10 @@ def estimate(
             w = love_w[r["game_id"]] * opportunity(r, d)
             total[d] += w * r[d]
             weight[d] += w
+            if trace is not None and w:
+                trace.append({"game": r["game_id"], "kind": "love", "dimension": d,
+                              "weight": w, "value": r[d], "love_weight": love_w[r["game_id"]],
+                              "reason": reasons.get(r["game_id"])})
     # Where the loves alone put the player. Dislikes are read against this,
     # not against a running value, so answer order cannot matter.
     current = {d: total[d] / weight[d] for d in DIMENSIONS if weight[d]}
@@ -294,11 +327,17 @@ def estimate(
     for r in disliked_rows:
         target = dislike_target(r, current)
         if target is None:
+            if trace is not None:
+                trace.append({"game": r["game_id"], "kind": "dislike", "explained": True,
+                              "reason": reasons.get(r["game_id"])})
             continue
         d, value = target
         w = DISLIKE_WEIGHT * dislike_weight(reasons.get(r["game_id"])) * opportunity(r, d)
         total[d] += w * value
         weight[d] += w
+        if trace is not None:
+            trace.append({"game": r["game_id"], "kind": "dislike", "dimension": d,
+                          "weight": w, "value": value, "reason": reasons.get(r["game_id"])})
 
     dims = {}
     for d in DIMENSIONS:
@@ -641,7 +680,7 @@ def next_round(
     played: list[str],
     loved: list[str],
     disliked: list[str],
-    reasons: dict[str, str],
+    reasons: Reasons,
     rows: list[dict[str, Any]],
     shown: list[str] | None = None,
     champions: list[dict[str, Any]] | None = None,
@@ -815,7 +854,7 @@ def information(
     row: dict[str, Any],
     loved: list[str],
     disliked: list[str],
-    reasons: dict[str, str],
+    reasons: Reasons,
     rows: list[dict[str, Any]],
     champions: list[dict[str, Any]],
     now: set[str] | None,
@@ -855,7 +894,7 @@ def select_round(
     played: list[str],
     loved: list[str],
     disliked: list[str],
-    reasons: dict[str, str],
+    reasons: Reasons,
     rows: list[dict[str, Any]],
     champions: list[dict[str, Any]],
 ) -> list[dict[str, Any]] | None:
@@ -911,7 +950,7 @@ WHY_MAX = 3
 WHY_IMPACT = 1
 
 
-def _top(loved: list[str], disliked: list[str], reasons: dict[str, str],
+def _top(loved: list[str], disliked: list[str], reasons: Reasons,
          rows: list[dict[str, Any]], champions: list[dict[str, Any]]) -> set[str] | None:
     try:
         est = estimate(loved, disliked, rows=rows, reasons=reasons)
@@ -923,7 +962,7 @@ def _top(loved: list[str], disliked: list[str], reasons: dict[str, str],
 def why_next(
     loved: list[str],
     disliked: list[str],
-    reasons: dict[str, str],
+    reasons: Reasons,
     rows: list[dict[str, Any]],
     champions: list[dict[str, Any]],
     *,
@@ -979,7 +1018,7 @@ def fill_item(
     disliked: list[str],
     rows: list[dict[str, Any]],
     asked: int = 0,
-    reasons: dict[str, str] | None = None,
+    reasons: Reasons | None = None,
 ) -> dict[str, Any] | None:
     """Stage 2: one more card, or None when there is nothing left to read.
 
@@ -1204,7 +1243,7 @@ def _question(qid: str) -> tuple[str, dict[str, Any]] | None:
 
 def deep_dive_next(
     loved: list[str],
-    reasons: dict[str, str],
+    reasons: Reasons,
     answered: list[dict[str, Any]],
 ) -> dict[str, Any] | None:
     """The next deep-dive question, or None.
@@ -1219,7 +1258,9 @@ def deep_dive_next(
     asked = {a["question"] for a in answered}
     families: list[str] = []
     for g in loved:
-        if reasons.get(g) not in (None, "gameplay"):
+        given = reasons.get(g)
+        given = {given} if isinstance(given, str) else set(given or ())
+        if given and "gameplay" not in given:   # loved only for something else
             continue
         for family, f in deep_dives().items():
             if g in f["games"] and family not in families:
@@ -1261,3 +1302,77 @@ def settle(est: "Estimate", deep: list[dict[str, Any]], comparisons: list[dict[s
     """Everything after the verdicts, in the order it is asked: deep dives,
     then comparisons, which pull relative to the point the dives left."""
     return apply_comparisons(apply_deep_dives(est, deep), comparisons, rows)
+
+
+# ---------------------------------------------------------------------------
+# Debug view (?debug=1): how a result was reached. Never shown to players.
+# ---------------------------------------------------------------------------
+
+def debug_view(
+    loved: list[str],
+    disliked: list[str],
+    reasons: Reasons,
+    deep: list[dict[str, Any]],
+    comparisons: list[dict[str, str]],
+    rows: list[dict[str, Any]],
+    champions: list[dict[str, Any]],
+    n_champions: int = 10,
+) -> dict[str, Any]:
+    """Which games pushed which dimension, what each follow-up moved, and why
+    each champion ranks where it does -- to judge a "partly" by component.
+    Recomputed on the same functions the result uses, never re-derived."""
+    by_id = {r["game_id"]: r for r in rows}
+    trace: list[dict[str, Any]] = []
+    est = estimate(loved, disliked, rows=rows, reasons=reasons, trace=trace)
+    r2 = lambda x: round(x, 3)
+
+    # Evidence: each game's share of each dimension's total weight.
+    weight = {d: sum(t["weight"] for t in trace if t.get("dimension") == d) for d in DIMENSIONS}
+    games: dict[str, dict[str, Any]] = {}
+    for t in trace:
+        g = games.setdefault(t["game"], {"game": t["game"], "name": by_id[t["game"]]["name"],
+                                         "kind": t["kind"], "reason": t.get("reason"),
+                                         "love_weight": t.get("love_weight"),
+                                         "explained": t.get("explained", False), "dims": {}})
+        if "dimension" in t:
+            d = t["dimension"]
+            g["dims"][d] = {"votes": r2(t["value"]), "share": r2(t["weight"] / weight[d]) if weight[d] else 0}
+
+    # Follow-ups, in the order they apply.
+    after_deep = apply_deep_dives(est, deep)
+    dives = []
+    for a in deep:
+        found = _question(a.get("question", ""))
+        if not found:
+            continue
+        _, q = found
+        opt = next((o for o in q["options"] if o["id"] == a.get("option")), None)
+        dives.append({"question": q["text"], "answer": opt["text"] if opt else None, "axis": q["axis"],
+                      "move": (None if opt is None or q["axis"] in SPLITS
+                               else r2(opt["sign"] * DEEP_DIVE_SIZE[q["size"]])),
+                      "logged_only": q["axis"] in SPLITS})
+    steps, prev = [], after_deep.point
+    for k in range(1, len(comparisons) + 1):
+        now = apply_comparisons(after_deep, comparisons[:k], rows).point
+        c = comparisons[k - 1]
+        steps.append({"winner": by_id.get(c["winner"], {}).get("name", c["winner"]),
+                      "loser": by_id.get(c["loser"], {}).get("name", c["loser"]),
+                      "dimension": c.get("dimension"),
+                      "move": [r2(b - a) for a, b in zip(prev, now)]})
+        prev = now
+    final = settle(est, deep, comparisons, rows).point
+
+    ranked = scoring.neighbourhood(final, n=n_champions, rows=champions)
+    return {
+        "points": {"verdicts": list(est.point), "after_deep_dives": list(after_deep.point),
+                   "final": list(final)},
+        "read": {d: {"informative": est.dimensions[d].informative, "read": est.dimensions[d].read}
+                 for d in DIMENSIONS},
+        "evidence": sorted(games.values(), key=lambda g: (g["kind"], g["name"])),
+        "deep_dives": dives,
+        "comparisons": steps,
+        "champions": [{"name": m.name, "role": m.role, "distance": r2(m.distance),
+                       "confidence": m.confidence,
+                       "gap": {d: r2(m.point[i] - final[i]) for i, d in enumerate(DIMENSIONS)}}
+                      for m in ranked],
+    }

@@ -184,3 +184,8 @@ button.link { border: none; padding: 0; text-decoration: underline;
 .reasons.inline button.on { border-color: var(--pick); box-shadow: inset 0 0 0 1px var(--pick); }
 .reasons.inline button.off { color: var(--dim); }
 .rating { margin: 1.5rem 0; }
+
+/* ?debug=1 only. */
+.debug { margin: 2rem 0; font-size: .8rem; }
+.debug h2 { font-size: .9rem; margin: 1.2rem 0 .4rem; }
+.debug td { padding: .2rem .4rem .2rem 0; }

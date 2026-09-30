@@ -163,6 +163,68 @@ function Panel({ sessionId }) {
   );
 }
 
+// ?debug=1: the developer view (quiz.debug_view) under the result. Not a
+// secret, just never linked: players get the product, the builder gets the why.
+const DEBUG = new URLSearchParams(window.location.search).has("debug");
+const f2 = x => (x === null || x === undefined ? "-" : Number(x).toFixed(2));
+const reasonText = r => (r === null || r === undefined ? "-" : Array.isArray(r) ? r.join("+") : r);
+
+function DebugView({ d }) {
+  if (!d) return null;
+  const dims = ["micro", "meso", "macro"];
+  return (
+    <details className="debug" open>
+      <summary>Debug: how this result was reached</summary>
+      <h2>Point</h2>
+      <table><tbody>
+        <tr><td></td>{dims.map(x => <td key={x} className="r">{x}</td>)}</tr>
+        {[["from verdicts", d.points.verdicts], ["after deep dives", d.points.after_deep_dives],
+          ["final (after comparisons)", d.points.final]].map(([k, p]) => (
+          <tr key={k}><td>{k}</td>{p.map((v, i) => <td key={i} className="r">{f2(v)}</td>)}</tr>
+        ))}
+        <tr><td>evidence read (needs 0.5)</td>{dims.map(x => (
+          <td key={x} className="r">{f2(d.read[x].informative)}{d.read[x].read ? "" : " unread"}</td>))}</tr>
+      </tbody></table>
+      <h2>Evidence: what each game voted for, and its share of the dimension</h2>
+      <table><tbody>
+        <tr><td>game</td><td>reason</td>{dims.map(x => <td key={x} className="r">{x}</td>)}</tr>
+        {d.evidence.map(g => (
+          <tr key={g.game + g.kind}>
+            <td>{g.kind === "love" ? "♥" : "✕"} {g.name}{g.love_weight !== null && g.love_weight !== undefined && g.love_weight < 1 ? ` (×${f2(g.love_weight)})` : ""}</td>
+            <td>{g.explained ? "explained by loves: no effect" : reasonText(g.reason)}</td>
+            {dims.map(x => (
+              <td key={x} className="r">{g.dims[x] ? `${f2(g.dims[x].votes)} · ${Math.round(g.dims[x].share * 100)}%` : ""}</td>
+            ))}
+          </tr>
+        ))}
+      </tbody></table>
+      {d.deep_dives.length > 0 && <>
+        <h2>Deep dives</h2>
+        <table><tbody>{d.deep_dives.map((q, i) => (
+          <tr key={i}><td>{q.question}</td><td>{q.answer || "skipped"}</td>
+            <td className="r">{q.logged_only ? `${q.axis}: logged only` : q.move === null ? "-" : `${q.axis} ${q.move > 0 ? "+" : ""}${f2(q.move)}`}</td></tr>
+        ))}</tbody></table>
+      </>}
+      {d.comparisons.length > 0 && <>
+        <h2>Comparisons</h2>
+        <table><tbody>{d.comparisons.map((c, i) => (
+          <tr key={i}><td>{c.winner} over {c.loser}</td><td>{c.dimension}</td>
+            <td className="r">{c.move.map(f2).join(" / ")}</td></tr>
+        ))}</tbody></table>
+      </>}
+      <h2>Champions: distance, and how far each sits from you (champion − you)</h2>
+      <table><tbody>
+        <tr><td>champion</td><td className="r">dist</td>{dims.map(x => <td key={x} className="r">{x}</td>)}</tr>
+        {d.champions.map((c, i) => (
+          <tr key={i}><td>{i + 1}. {c.name} <span className="gloss">{c.role}</span></td>
+            <td className="r">{f2(c.distance)}</td>
+            {dims.map(x => <td key={x} className="r">{c.gap[x] > 0 ? "+" : ""}{f2(c.gap[x])}</td>)}</tr>
+        ))}
+      </tbody></table>
+    </details>
+  );
+}
+
 function Readout({ dims }) {
   if (!dims) return <div className="readout" />;
   const any = Object.values(dims).some(d => d.informative > 0);
@@ -274,6 +336,8 @@ export default function App() {
   const [skipped, setSkipped] = useState([]);
   // The loves of the round just finished, while "what made these stick?" is up.
   const [asking, setAsking] = useState([]);
+  // The reasons ticked on that screen, per game, until Next commits them.
+  const [ticks, setTicks] = useState({});
   const [loveReasons, setLoveReasons] = useState(null);
   // "Do these champions feel right?" -- answered, or skipped, before the
   // reading of the player appears (CLAUDE.md, frozen).
@@ -374,6 +438,7 @@ export default function App() {
       n: 5,
       comparisons: nextComparisons,
       deep_dives: deep,
+      debug: DEBUG,
       session_id: sessionId.current,
       events: [...events.current, { t: Date.now() - started.current, type: "result" }],
     }))
@@ -469,7 +534,10 @@ export default function App() {
     setBusy(true);
     post("/quiz/round", { index, played: p, loved: l, disliked: d, reasons: rs, served: seen })
       .then(r => {
-        if (!r.cards) return startWhy(v, rs, 0, seen, skip);
+        // The rounds are over. Leave the round screen now: its Next button
+        // re-enabled while the next step was still loading, so a second tap
+        // started the hand-off twice (found 2026-09-30 under latency).
+        if (!r.cards) { setStage("between"); return startWhy(v, rs, 0, seen, skip); }
         log("round", { index, cards: r.cards.map(g => g.id) });
         setCards(r.cards);
         setRoundIndex(index);
@@ -516,7 +584,9 @@ export default function App() {
   // about the gameplay can be measured (docs/quiz-chain.md §5, §8).
   const endRound = useCallback(() => {
     log("round_end", { index: roundIndex });
-    const fresh = cards.filter(g => verdicts[g.id] === "loved" && !reasons[g.id]);
+    // Only games easy to love for something else (the server flags them);
+    // Hades or osu! need no question.
+    const fresh = cards.filter(g => verdicts[g.id] === "loved" && g.ask_reason && !reasons[g.id]);
     if (fresh.length && loveReasons) {
       fresh.forEach(g => log("why_asked", { game: g.id, kind: "love" }));
       setAsking(fresh);
@@ -527,19 +597,29 @@ export default function App() {
     loadRound(roundIndex + 1, verdicts, reasons, served, skipped);
   }, [cards, verdicts, reasons, served, skipped, roundIndex, loveReasons, loadRound, log]);
 
-  const pickLoveReason = (id, option) => {
-    log("why", { game: id, kind: "love", reason: option });
-    setReasons(rs => ({ ...rs, [id]: option }));
+  // Several reasons per love: ticked here, committed together on Next.
+  const toggleLoveReason = (id, option) => {
+    setTicks(t => {
+      const now = t[id] || [];
+      return { ...t, [id]: now.includes(option) ? now.filter(o => o !== option) : [...now, option] };
+    });
   };
 
   const doneLoves = useCallback(() => {
-    const left = asking.filter(g => !reasons[g.id]).map(g => g.id);
-    left.forEach(g => log("why", { game: g, kind: "love", reason: null }));
+    const rs = { ...reasons };
+    const left = [];
+    asking.forEach(g => {
+      const picked = ticks[g.id] || [];
+      log("why", { game: g.id, kind: "love", reasons: picked.length ? picked : null });
+      if (picked.length) rs[g.id] = picked; else left.push(g.id);
+    });
     const skip = [...skipped, ...left];
+    setReasons(rs);
     setSkipped(skip);
+    setTicks({});
     setAsking([]);
-    loadRound(roundIndex + 1, verdicts, reasons, served, skip);
-  }, [asking, reasons, skipped, roundIndex, verdicts, served, loadRound, log]);
+    loadRound(roundIndex + 1, verdicts, rs, served, skip);
+  }, [asking, ticks, reasons, skipped, roundIndex, verdicts, served, loadRound, log]);
 
   const answerWhy = useCallback(option => {
     if (!why) return;
@@ -614,7 +694,7 @@ export default function App() {
     setError(null); setVerdicts({}); setReasons({}); setWhy(null); setWhyAsked(0);
     setServed([]); setCards([]); setFills([]); setItem(null); setResult(null);
     setComparisons([]); setPair(null); setFresh([]); setDeepQ(null); setDeepAnswers([]);
-    setSkipped([]); setAsking([]); setRated(null); setOutcome(null);
+    setSkipped([]); setAsking([]); setTicks({}); setRated(null); setOutcome(null);
     lastKeys.current = null; sessionId.current = null;
     events.current = []; started.current = Date.now(); stored.current = Promise.resolve();
     generation.current += 1;
@@ -751,6 +831,7 @@ export default function App() {
           </p>
         ))}
         </>}
+        <DebugView d={result.debug} />
         <button onClick={restart}>Start again</button>
       </main>
     );
@@ -797,15 +878,16 @@ export default function App() {
     return (
       <main className="wide">
         <h1>{loveReasons.question}</h1>
-        <p className="progress">One tap each — or skip any you'd rather not say.</p>
+        <p className="progress">Tick all that apply — or leave one blank to skip it.</p>
         {asking.map(g => (
           <div className="love-why" key={g.id}>
             <div className="love-name"><strong>{g.name}</strong></div>
             <div className="reasons inline">
               {loveReasons.options.map(o => (
                 <button key={o.id}
-                        className={reasons[g.id] === o.id ? "on" : reasons[g.id] ? "off" : ""}
-                        onClick={() => pickLoveReason(g.id, o.id)}>
+                        className={(ticks[g.id] || []).includes(o.id) ? "on" : ""}
+                        aria-pressed={(ticks[g.id] || []).includes(o.id)}
+                        onClick={() => toggleLoveReason(g.id, o.id)}>
                   {o.label}
                 </button>
               ))}

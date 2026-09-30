@@ -78,7 +78,8 @@ def _build(games: list[dict[str, Any]]) -> dict[str, Any]:
         "serving": quiz.SERVING,
         "game_runs": sorted({r["label_run_id"] for r in games if r.get("label_run_id")}),
         "champion_runs": sorted({r["label_run_id"] for r in _champions() if r.get("label_run_id")}),
-        "evidence": {"needed": quiz.NEEDED, "dislike_weight": quiz.DISLIKE_WEIGHT,
+        "evidence": {"love_reasons": {"asked": list(quiz.ASK_REASON_LEVELS), "multi": True},
+                     "needed": quiz.NEEDED, "dislike_weight": quiz.DISLIKE_WEIGHT,
                      "dislike_margin": quiz.DISLIKE_MARGIN, "low_corner": quiz.LOW_CORNER,
                      "unconfirmed": quiz.UNCONFIRMED},
     }
@@ -99,6 +100,9 @@ class Game(BaseModel):
     # without art as a typographic card, not as a broken one.
     cover_url: str | None = None
     year: int | None = None
+    # Whether a love of this game gets "what made it stick?" (quiz.asks_love_reason).
+    # A flag, not the bias level: the rule stays on the server.
+    ask_reason: bool = False
 
 
 def _to_game(g: dict[str, Any]) -> Game:
@@ -109,6 +113,7 @@ def _to_game(g: dict[str, Any]) -> Game:
         mode=g["mode"],
         cover_url=STEAM_COVER.format(appid=appid) if appid else None,
         year=g.get("release_year"),
+        ask_reason=quiz.asks_love_reason(g),
     )
 
 
@@ -159,7 +164,7 @@ class DeepAnswer(BaseModel):
 
 class DeepRequest(BaseModel):
     loved: list[str] = Field(default_factory=list)
-    reasons: dict[str, str] = Field(default_factory=dict)
+    reasons: dict[str, str | list[str]] = Field(default_factory=dict)
     answered: list[DeepAnswer] = Field(default_factory=list)
 
 
@@ -172,13 +177,15 @@ class ResultRequest(BaseModel):
     comparisons: list[Comparison] = Field(default_factory=list)
     # Deep-dive answers: {question, option}, option null when skipped.
     deep_dives: list[DeepAnswer] = Field(default_factory=list)
+    # The developer view, requested by the page when opened with ?debug=1.
+    debug: bool = False
     # Set on every re-post after the first result, so sharpening updates the
     # session it belongs to instead of recording another one.
     session_id: int | None = None
     # Slice 1 (docs/quiz-chain.md §3): every recognised game's verdict, the
     # one-tap reasons, and every card shown. Optional so older clients work.
     verdicts: dict[str, str] = Field(default_factory=dict)
-    reasons: dict[str, str] = Field(default_factory=dict)
+    reasons: dict[str, str | list[str]] = Field(default_factory=dict)
     served: list[str] = Field(default_factory=list)
     # Panel round 2: the raw answer log, so round 2 can be replayed against
     # any later estimator (migration 019). Stored as sent.
@@ -194,7 +201,7 @@ class ProgressRequest(BaseModel):
     loved: list[str] = Field(default_factory=list)
     disliked: list[str] = Field(default_factory=list)
     verdicts: dict[str, str] = Field(default_factory=dict)
-    reasons: dict[str, str] = Field(default_factory=dict)
+    reasons: dict[str, str | list[str]] = Field(default_factory=dict)
     events: list[dict[str, Any]] = Field(default_factory=list)
     deep_dives: list[DeepAnswer] = Field(default_factory=list)
     comparisons: list[Comparison] = Field(default_factory=list)
@@ -207,7 +214,7 @@ class UnresolvedRequest(BaseModel):
     loved: list[str] = Field(default_factory=list)
     disliked: list[str] = Field(default_factory=list)
     verdicts: dict[str, str] = Field(default_factory=dict)
-    reasons: dict[str, str] = Field(default_factory=dict)
+    reasons: dict[str, str | list[str]] = Field(default_factory=dict)
     events: list[dict[str, Any]] = Field(default_factory=list)
     # Set when the same player ends without a result a second time.
     session_id: int | None = None
@@ -218,13 +225,13 @@ class FillRequest(BaseModel):
     loved: list[str] = Field(default_factory=list)
     disliked: list[str] = Field(default_factory=list)
     asked: int = 0
-    reasons: dict[str, str] = Field(default_factory=dict)
+    reasons: dict[str, str | list[str]] = Field(default_factory=dict)
 
 
 class EstimateRequest(BaseModel):
     loved: list[str] = Field(default_factory=list)
     disliked: list[str] = Field(default_factory=list)
-    reasons: dict[str, str] = Field(default_factory=dict)
+    reasons: dict[str, str | list[str]] = Field(default_factory=dict)
 
 
 class RoundRequest(BaseModel):
@@ -234,7 +241,7 @@ class RoundRequest(BaseModel):
     played: list[str] = Field(default_factory=list)
     loved: list[str] = Field(default_factory=list)
     disliked: list[str] = Field(default_factory=list)
-    reasons: dict[str, str] = Field(default_factory=dict)
+    reasons: dict[str, str | list[str]] = Field(default_factory=dict)
     # Every card shown so far. The fixed rounds ignore it; the card selector
     # needs it so it never repeats a card and knows what this player recognised
     # out of what they saw.
@@ -250,7 +257,7 @@ class RoundResponse(BaseModel):
 class WhyRequest(BaseModel):
     loved: list[str] = Field(default_factory=list)
     disliked: list[str] = Field(default_factory=list)
-    reasons: dict[str, str] = Field(default_factory=dict)
+    reasons: dict[str, str | list[str]] = Field(default_factory=dict)
     asked: int = 0
     # Games already asked about and skipped: never asked twice.
     skip: list[str] = Field(default_factory=list)
@@ -291,7 +298,7 @@ class SharpenRequest(BaseModel):
     # reports where they are after it -- the two then disagree about the point,
     # and the second question is chosen for a position nobody is at any more.
     comparisons: list[Comparison] = Field(default_factory=list)
-    reasons: dict[str, str] = Field(default_factory=dict)
+    reasons: dict[str, str | list[str]] = Field(default_factory=dict)
     deep_dives: list[DeepAnswer] = Field(default_factory=list)
 
 
@@ -330,6 +337,8 @@ class Result(BaseModel):
     # and offering a way to close it is a frozen decision (CLAUDE.md): never
     # impute the middle.
     unread: dict[str, list[Game]]
+    # ?debug=1 only (quiz.debug_view): how this result was reached. Never stored.
+    debug: dict[str, Any] | None = None
 
 
 @api.get("/games", response_model=list[Game])
@@ -490,8 +499,13 @@ def result(req: ResultRequest) -> Result:
             for d in est.unread
         },
     )
+    if req.debug:
+        result.debug = quiz.debug_view(
+            req.loved, req.disliked, req.reasons, [a.model_dump() for a in req.deep_dives],
+            [c.model_dump() for c in req.comparisons], rows, _champions())
 
-    # Recorded once the result exists, so an abandoned session stores nothing.
+    # Recorded once the result exists; the session row itself starts at the first
+    # answer (migration 022).
     # A failure here must not cost the tester their result: the panel is a
     # measurement we are taking, not something they asked for.
     try:

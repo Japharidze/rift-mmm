@@ -40,6 +40,9 @@ def test_only_a_game_loved_for_the_gameplay_is_asked_about():
     assert quiz.deep_dive_next(["hades"], {"hades": "gameplay"}, [])["family"] == "hades"
     # No reason given counts as gameplay, as it does in the estimate.
     assert quiz.deep_dive_next(["hades"], {}, [])["family"] == "hades"
+    # Several reasons: asked whenever "how it plays" is among them.
+    assert quiz.deep_dive_next(["hades"], {"hades": ["world", "gameplay"]}, [])["family"] == "hades"
+    assert quiz.deep_dive_next(["hades"], {"hades": ["world", "people"]}, []) is None
     # A variant belongs to its family.
     assert quiz.deep_dive_next(["chess-blitz"], {}, [])["family"] == "chess"
 

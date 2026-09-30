@@ -281,3 +281,21 @@ def test_league_and_tft_are_never_served_in_any_mode_or_stage(monkeypatch):
         monkeypatch.setattr(quiz, "SERVING", mode)
         assert {r["game_id"] for r in quiz.servable(rows)} <= {"cs2"}
     assert {r["game_id"] for r in quiz.servable_bank(rows)} == {"cs2"}
+
+
+# -- several reasons per love (2026-09-30) -----------------------------------------------
+
+def test_how_it_plays_counts_in_full_whenever_it_is_ticked():
+    row = {"bias": "high"}
+    assert quiz.love_weight(row, ["world", "gameplay"]) == 1.0
+    assert quiz.love_weight(row, ["world", "people"]) == 0.0        # gameplay genuinely absent
+    assert quiz.love_weight(row, []) == quiz.UNCONFIRMED["high"]     # asked, nothing ticked
+    assert quiz.love_weight(row, None) == quiz.UNCONFIRMED["high"]
+    assert quiz.love_weight(row, "world") == 0.0                     # the old single answer reads the same
+
+
+def test_only_games_easiest_to_love_for_something_else_are_asked():
+    assert quiz.asks_love_reason({"bias": "high"})
+    assert not quiz.asks_love_reason({"bias": "medium"})   # Hades
+    assert not quiz.asks_love_reason({"bias": "low"})      # osu!
+    assert not quiz.asks_love_reason({})
