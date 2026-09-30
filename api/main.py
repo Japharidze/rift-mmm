@@ -172,6 +172,19 @@ class ResultRequest(BaseModel):
     events: list[dict[str, Any]] = Field(default_factory=list)
 
 
+class UnresolvedRequest(BaseModel):
+    """A quiz that reached its end without a result (migration 020)."""
+    outcome: Literal["loved_nothing", "no_gameplay_love"]
+    served: list[str] = Field(default_factory=list)
+    loved: list[str] = Field(default_factory=list)
+    disliked: list[str] = Field(default_factory=list)
+    verdicts: dict[str, str] = Field(default_factory=dict)
+    reasons: dict[str, str] = Field(default_factory=dict)
+    events: list[dict[str, Any]] = Field(default_factory=list)
+    # Set when the same player ends without a result a second time.
+    session_id: int | None = None
+
+
 class FillRequest(BaseModel):
     served: list[str] = Field(default_factory=list)
     loved: list[str] = Field(default_factory=list)
@@ -450,6 +463,10 @@ def result(req: ResultRequest) -> Result:
                 dimensions=dimensions,
                 champions=champions,
                 events=req.events or None,
+                served=req.served or None,
+                verdicts=req.verdicts or None,
+                reasons=req.reasons or None,
+                build=_build(rows),
             )
             result.session_id = req.session_id if updated else db.insert_quiz_session(
                 conn,
@@ -471,6 +488,29 @@ def result(req: ResultRequest) -> Result:
         logging.exception("could not record panel session")
 
     return result
+
+
+@api.post("/quiz/unresolved")
+def unresolved(req: UnresolvedRequest) -> dict[str, int | None]:
+    """Record a session that ended with nothing to match on. Like /quiz/result,
+    a failure to store costs the player nothing."""
+    try:
+        rows = _games()
+        with db.connect() as conn:
+            if req.session_id is not None and db.update_unresolved_session(
+                    conn, session_id=req.session_id, outcome=req.outcome, served=req.served,
+                    loved=req.loved, disliked=req.disliked, verdicts=req.verdicts,
+                    reasons=req.reasons, events=req.events):
+                return {"session_id": req.session_id}
+            return {"session_id": db.insert_unresolved_session(
+                conn, outcome=req.outcome, served=req.served, loved=req.loved,
+                disliked=req.disliked, verdicts=req.verdicts, reasons=req.reasons,
+                events=req.events, build=_build(rows),
+                champion_prompt_version=_champion_version(),
+                game_prompt_version=rows[0]["prompt_version"] if rows else "unknown")}
+    except Exception:  # noqa: BLE001 - see /quiz/result
+        logging.exception("could not record unresolved session")
+        return {"session_id": None}
 
 
 @api.post("/panel/details")

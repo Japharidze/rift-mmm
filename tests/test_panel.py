@@ -169,3 +169,14 @@ def test_popularity_orders_by_games_and_chance_moves_with_the_number_of_mains():
 def test_mains_merge_roles_and_skip_unlabelled_champions():
     mains = [("Karthus", "mid", 3), ("Karthus", "jungle", 4), ("Nobody", "top", 9), ("Ahri", "mid", 5)]
     assert panel.top_mains(mains, {"Karthus", "Ahri"}) == [("Karthus", 7), ("Ahri", 5)]
+
+
+def test_the_report_counts_outcomes_per_round_and_always_carries_the_round_caveat():
+    outcomes = {"round 2": {"sessions": 10, "riot_id": 4,
+                            "outcomes": {"result": 8, "loved_nothing": 2},
+                            "unread": {0: 6, 1: 2}, "recovered": 1}}
+    text = panel.report([], outcomes)
+    assert "Opus 5.5 labels" in text and "re-scored" in text
+    assert "round 2: 10 sessions, 4 with a Riot id; loved nothing 2, result 8" in text
+    assert "1 unread: 2" in text and "after first loving nothing: 1" in text
+    assert "CAVEAT" in panel.report([])

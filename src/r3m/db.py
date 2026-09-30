@@ -723,8 +723,15 @@ def update_quiz_session(
     dimensions: dict[str, Any],
     champions: list[dict[str, Any]],
     events: list[dict[str, Any]] | None = None,
+    served: list[str] | None = None,
+    verdicts: dict[str, str] | None = None,
+    reasons: dict[str, str] | None = None,
+    build: dict[str, Any] | None = None,
 ) -> bool:
-    """Fold a sharpening answer into the session it belongs to.
+    """Fold a sharpening answer into the session it belongs to -- or resolve a
+    session stored without a result (migration 020): the player loved nothing,
+    went back, and picked again. Only then may the picks differ; the row
+    becomes a result and its events keep the history.
 
     Every comparison re-posts the result, and each re-post used to insert: one
     tester answering three pairs became four rows, and the panel counted result
@@ -740,16 +747,119 @@ def update_quiz_session(
             """
             update quiz_session
                set comparisons = %s, point = %s, dimensions = %s, champions = %s,
-                   events = coalesce(%s, events)
-             where id = %s and loved = %s and disliked = %s
+                   events = coalesce(%s, events),
+                   loved = %s, disliked = %s,
+                   served = coalesce(%s, served),
+                   verdicts = coalesce(%s, verdicts),
+                   reasons = coalesce(%s, reasons),
+                   build = coalesce(%s, build),
+                   outcome = 'result'
+             where id = %s and (outcome <> 'result' or (loved = %s and disliked = %s))
             """,
             (Jsonb(comparisons), point, Jsonb(dimensions), Jsonb(champions),
              Jsonb(events) if events is not None else None,
+             loved, disliked, served,
+             Jsonb(verdicts) if verdicts is not None else None,
+             Jsonb(reasons) if reasons is not None else None,
+             Jsonb(build) if build is not None else None,
              session_id, loved, disliked),
         )
         updated = cur.rowcount
     conn.commit()
     return updated > 0
+
+
+def insert_unresolved_session(
+    conn: psycopg.Connection,
+    *,
+    outcome: str,
+    served: list[str],
+    loved: list[str],
+    disliked: list[str],
+    verdicts: dict[str, str],
+    reasons: dict[str, str],
+    events: list[dict[str, Any]],
+    build: dict[str, Any],
+    champion_prompt_version: str,
+    game_prompt_version: str,
+) -> int:
+    """Store a session that ended without a result (migration 020): no point,
+    no champions, only what was shown and said, and how it ended."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            insert into quiz_session (
+                outcome, served, loved, disliked, comparisons, verdicts, reasons,
+                events, build, champion_prompt_version, game_prompt_version
+            )
+            values (%s, %s, %s, %s, '[]', %s, %s, %s, %s, %s, %s)
+            returning id
+            """,
+            (outcome, served, loved, disliked, Jsonb(verdicts), Jsonb(reasons),
+             Jsonb(events), Jsonb(build), champion_prompt_version, game_prompt_version),
+        )
+        session_id = cur.fetchone()[0]  # type: ignore[index]
+    conn.commit()
+    return int(session_id)
+
+
+def update_unresolved_session(
+    conn: psycopg.Connection,
+    *,
+    session_id: int,
+    outcome: str,
+    served: list[str],
+    loved: list[str],
+    disliked: list[str],
+    verdicts: dict[str, str],
+    reasons: dict[str, str],
+    events: list[dict[str, Any]],
+) -> bool:
+    """The same player ending without a result again. Never touches a session
+    that has a result: False, and the caller stores a fresh row."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            update quiz_session
+               set outcome = %s, served = %s, loved = %s, disliked = %s,
+                   verdicts = %s, reasons = %s, events = %s
+             where id = %s and point is null
+            """,
+            (outcome, served, loved, disliked, Jsonb(verdicts), Jsonb(reasons),
+             Jsonb(events), session_id),
+        )
+        updated = cur.rowcount
+    conn.commit()
+    return updated > 0
+
+
+def session_outcomes(conn: psycopg.Connection) -> dict[str, dict[str, Any]]:
+    """How sessions ended, per panel round: round 1 predates the build column
+    (migration 019), round 2 carries it. For the panel report, beside unread
+    dimensions -- a player the quiz could not read at all is its most common
+    predicted failure, and absent from the Riot-id comparison by construction."""
+    rows = conn.execute(
+        """
+        select case when build is null then 'round 1' else 'round 2' end,
+               outcome,
+               riot_id is not null,
+               (select count(*) from jsonb_each(coalesce(dimensions, '{}'::jsonb)) d
+                 where not coalesce((d.value ->> 'read')::boolean, false)),
+               coalesce(events, '[]'::jsonb) @> '[{"type": "outcome"}]'
+        from quiz_session
+        """
+    ).fetchall()
+    out: dict[str, dict[str, Any]] = {}
+    for rnd, outcome, riot, unread, had_none in rows:
+        r = out.setdefault(rnd, {"sessions": 0, "riot_id": 0, "outcomes": {}, "unread": {},
+                                 "recovered": 0})
+        r["sessions"] += 1
+        r["riot_id"] += bool(riot)
+        r["outcomes"][outcome] = r["outcomes"].get(outcome, 0) + 1
+        if outcome == "result":
+            r["unread"][int(unread)] = r["unread"].get(int(unread), 0) + 1
+            r["recovered"] += bool(had_none)
+    return out
 
 
 def attach_panel_details(
@@ -814,7 +924,8 @@ def panel_sessions_to_check(
                    -- adds the column: absent reads as null, not an error
                    to_jsonb(quiz_session) -> 'actual_mains'
             from quiz_session
-            where riot_id is not null {"" if include_checked else "and checked_at is null"}
+            where riot_id is not null and point is not null
+                  {"" if include_checked else "and checked_at is null"}
             order by created_at
             """
         )

@@ -446,11 +446,41 @@ def _headline(name: str, v: VariantResult) -> list[str]:
     return out
 
 
-def report(checks: list[SessionCheck]) -> str:
+# Printed on every report: the two panel rounds differ in more than one thing.
+ROUND_CAVEAT = [
+    "CAVEAT: round 2 serves round 1's cards but Opus 5.5 labels (runs 28, 29) and new",
+    "  evidence rules, so round-1-vs-round-2 differences mix label, rule and player changes.",
+    "  Compare builds on the same answers instead: round 1's answers can be re-scored under",
+    "  the new labels and rules, and round 2's raw answer log (quiz_session.events) under",
+    "  any later build. The per-player numbers below already recompute every quiz point",
+    "  under this database's served labels and the current rules, whatever built it.",
+]
+
+
+def outcome_lines(outcomes: dict[str, dict[str, Any]]) -> list[str]:
+    """How every session ended, per round -- not only the ones with a Riot id: a
+    player the quiz could not read never reaches the Riot-id comparison."""
+    lines = ["OUTCOMES, all sessions (not only those with a Riot id):"]
+    for rnd in sorted(outcomes):
+        o = outcomes[rnd]
+        ends = ", ".join(f"{k.replace('_', ' ')} {v}" for k, v in sorted(o["outcomes"].items()))
+        unread = ", ".join(f"{k} unread: {v}" for k, v in sorted(o["unread"].items()))
+        lines.append(f"  {rnd}: {o['sessions']} sessions, {o['riot_id']} with a Riot id; {ends}")
+        if unread:
+            lines.append(f"    results by dimensions left unread -- {unread}")
+        if o["recovered"]:
+            lines.append(f"    reached a result after first loving nothing: {o['recovered']}")
+    return lines
+
+
+def report(checks: list[SessionCheck], outcomes: dict[str, dict[str, Any]] | None = None) -> str:
     usable = [c for c in checks if not c.error and c.placed_games]
     n = len(usable)
     names = list(usable[0].by_variant) if usable else []
     lines = [f"Panel comparison pass: {len(checks)} session(s) with a Riot id, {n} usable."]
+    lines += ROUND_CAVEAT
+    if outcomes:
+        lines += outcome_lines(outcomes)
     if n < MIN_VERDICT_N:
         lines += [
             f"SANITY CHECK ONLY (n={n} < {MIN_VERDICT_N}). Per-player numbers show whether the",

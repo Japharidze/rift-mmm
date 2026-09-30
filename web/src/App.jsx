@@ -277,6 +277,8 @@ export default function App() {
   // "Do these champions feel right?" -- answered, or skipped, before the
   // reading of the player appears (CLAUDE.md, frozen).
   const [rated, setRated] = useState(null);
+  // How a quiz ended without a result: "loved_nothing" or "no_gameplay_love".
+  const [outcome, setOutcome] = useState(null);
   const [dims, setDims] = useState(null);
 
   // Stage 2 only. Also the undo stack, which is why it holds names.
@@ -326,6 +328,21 @@ export default function App() {
       .catch(fail);
   }, [loved, disliked, reasons, fail]);
 
+  // Nothing to match on. Not a dead end: stored as its own outcome
+  // (migration 020) and answered with a way back, never with a guess.
+  const endWithout = useCallback((kind, v, rs, seen) => {
+    const { loved: l, disliked: d } = lists(v);
+    log("outcome", { outcome: kind });
+    setOutcome(kind);
+    setStage("nothing");
+    post("/quiz/unresolved", {
+      outcome: kind, served: seen, loved: l, disliked: d, verdicts: answered(v),
+      reasons: rs, events: events.current, session_id: sessionId.current,
+    })
+      .then(r => { sessionId.current = r.session_id ?? sessionId.current; })
+      .catch(() => {});
+  }, [log]);
+
   // Each step below takes the answers as arguments rather than reading state:
   // they run inside one another's promise callbacks, where state is still the
   // value from before the answer that triggered them.
@@ -369,14 +386,14 @@ export default function App() {
       })
       // Every love was for something other than the gameplay: not an error,
       // a state with its own way forward.
-      .catch(e => (/gameplay itself/.test(e.message) ? setStage("nosignal") : fail(e)))
+      .catch(e => (/gameplay itself/.test(e.message) ? endWithout("no_gameplay_love", v, rs, seen) : fail(e)))
       .finally(() => setBusy(false));
-  }, [fail, log]);
+  }, [fail, log, endWithout]);
 
   // Stage 2: one card at a time, only for a dimension still unread.
   const fillNext = useCallback((nextFills, v, rs, seen) => {
     const { loved: l, disliked: d } = lists(v);
-    if (!l.length) { setResult({ empty: true }); setStage("result"); return; }
+    if (!l.length) { endWithout("loved_nothing", v, rs, seen); return; }
     setItem(null);
     setBusy(true);
     post("/quiz/fill", { served: seen, loved: l, disliked: d, asked: nextFills.length, reasons: rs })
@@ -386,7 +403,7 @@ export default function App() {
       })
       .catch(fail)
       .finally(() => setBusy(false));
-  }, [showResult, fail, log]);
+  }, [showResult, fail, log, endWithout]);
 
   // The follow-ups: one at a time, only where the answer changes the result.
   // Loves were already asked after their round, so these are mostly dislikes.
@@ -515,7 +532,7 @@ export default function App() {
     setError(null); setVerdicts({}); setReasons({}); setWhy(null); setWhyAsked(0);
     setServed([]); setCards([]); setFills([]); setItem(null); setResult(null);
     setComparisons([]); setPair(null); setFresh([]);
-    setSkipped([]); setAsking([]); setRated(null);
+    setSkipped([]); setAsking([]); setRated(null); setOutcome(null);
     lastKeys.current = null; sessionId.current = null;
     events.current = []; started.current = Date.now();
     loadRound(0, {}, {}, []);
@@ -554,13 +571,23 @@ export default function App() {
     );
   }
 
-  if (stage === "nosignal") {
+  if (stage === "nothing") {
     return (
       <main>
-        <h1>Nothing to match yet</h1>
-        <p>Every game you loved, you loved for something other than how it
-        plays — the people, the world, the memories. Those are real reasons,
-        but no champion can give them to you, so there is nothing to match on.</p>
+        <h1>Not enough to go on yet</h1>
+        {outcome === "no_gameplay_love" ? (
+          <p>Every game you loved, you loved for something other than how it
+          plays — the people, the world, the memories. Those are real reasons,
+          but no champion can give them to you, so there is nothing to match on.</p>
+        ) : (
+          <p>A match needs at least one game you loved. "Fine" says you know a
+          game, not what you enjoy — so if one of them really held you, go back
+          and mark it, or see more games.</p>
+        )}
+        <button onClick={() => { log("back", { index: roundIndex }); setStage("round"); window.scrollTo(0, 0); }}
+                disabled={busy || !cards.length}>
+          Go back to my answers
+        </button>
         {roundIndex + 1 < MAX_ROUNDS && (
           <button onClick={() => loadRound(roundIndex + 1, verdicts, reasons, seenAll, skipped)}
                   disabled={busy}>
@@ -573,16 +600,6 @@ export default function App() {
   }
 
   if (stage === "result" && result) {
-    if (result.empty) {
-      return (
-        <main>
-          <h1>Find a champion that fits how you play</h1>
-          <p>Nothing you enjoyed, so there's no signal to go on. Say what held
-          you, not just what you've touched.</p>
-          <button onClick={restart}>Start again</button>
-        </main>
-      );
-    }
     const allDistant = result.champions.every(c => c.confidence === "distant");
     return (
       <main>

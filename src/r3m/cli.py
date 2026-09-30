@@ -359,7 +359,9 @@ def _panel_check(args: argparse.Namespace) -> int:
         finally:
             panel.save_cache(cache)  # whatever was fetched survives a failure mid-run
         print()
-        print(panel.report(checks))
+        outcomes = (db.session_outcomes(conn)
+                    if db.has_column(conn, "quiz_session", "outcome") else None)
+        print(panel.report(checks, outcomes))
         if args.write:
             written = 0
             for c in checks:
