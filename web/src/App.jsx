@@ -312,6 +312,13 @@ export default function App() {
     events.current.push({ t: Date.now() - started.current, type, ...data });
   }, []);
 
+  // Progress writes (migration 022), one after another: the first creates the
+  // row, and a second sent before its id came back would create another.
+  const stored = useRef(Promise.resolve());
+  // Bumped by "start again", so a write still in flight for the old quiz
+  // cannot hand its row id to the new one.
+  const generation = useRef(0);
+
   useEffect(() => {
     get("/quiz/reasons").then(setLoveReasons).catch(() => setLoveReasons(null));
   }, []);
@@ -339,10 +346,10 @@ export default function App() {
     log("outcome", { outcome: kind });
     setOutcome(kind);
     setStage("nothing");
-    post("/quiz/unresolved", {
+    stored.current = stored.current.then(() => post("/quiz/unresolved", {
       outcome: kind, served: seen, loved: l, disliked: d, verdicts: answered(v),
       reasons: rs, events: events.current, session_id: sessionId.current,
-    })
+    }))
       .then(r => { sessionId.current = r.session_id ?? sessionId.current; })
       .catch(() => {});
   }, [log]);
@@ -353,7 +360,8 @@ export default function App() {
   const showResult = useCallback((nextComparisons, v, rs, seen, deep = []) => {
     const { loved: l, disliked: d } = lists(v);
     setBusy(true);
-    post("/quiz/result", {
+    // After any progress write still in flight, so it carries the row's id.
+    stored.current.then(() => post("/quiz/result", {
       loved: l,
       disliked: d,
       reasons: rs,
@@ -364,7 +372,7 @@ export default function App() {
       deep_dives: deep,
       session_id: sessionId.current,
       events: [...events.current, { t: Date.now() - started.current, type: "result" }],
-    })
+    }))
       .then(r => {
         sessionId.current = r.session_id ?? null;
         log("result", { point: r.point, champions: r.champions.map(c => [c.champion_id, c.role]) });
@@ -470,6 +478,29 @@ export default function App() {
   }, [startWhy, fail, log]);
 
   useEffect(() => { loadRound(0, {}, {}, []); }, [loadRound]);
+
+  // Where the session has got to: at the first answer, and at every step
+  // after, so someone who gives up mid-quiz still counts (migration 022).
+  const step = stage === "round" ? `round-${roundIndex + 1}`
+    : stage === "loves" ? `loves-${roundIndex + 1}`
+    : stage === "result" ? (rated ? "rated" : "rating")
+    : stage;
+  const answeredAny = Object.keys(verdicts).length > 0;
+  useEffect(() => {
+    if (!answeredAny) return;   // nothing is stored before the first answer
+    const { loved: l, disliked: d } = lists(verdicts);
+    const body = {
+      step, served: seenAll, loved: l, disliked: d, verdicts: answered(verdicts),
+      reasons, events: events.current, deep_dives: deepAnswers, comparisons,
+    };
+    const mine = generation.current;
+    stored.current = stored.current
+      .then(() => post("/quiz/progress", { ...body, session_id: sessionId.current }))
+      .then(r => { if (r?.session_id && mine === generation.current) sessionId.current = r.session_id; })
+      .catch(() => {});
+    // Only on a step change or the first answer: not on every tap.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, answeredAny]);
 
   const play = id => { log("verdict", { game: id, verdict: "played" }); setVerdicts(v => ({ ...v, [id]: null })); };
   const unplay = id => { log("verdict", { game: id, verdict: "not_played" }); setVerdicts(v => { const n = { ...v }; delete n[id]; return n; }); };
@@ -581,7 +612,8 @@ export default function App() {
     setComparisons([]); setPair(null); setFresh([]); setDeepQ(null); setDeepAnswers([]);
     setSkipped([]); setAsking([]); setRated(null); setOutcome(null);
     lastKeys.current = null; sessionId.current = null;
-    events.current = []; started.current = Date.now();
+    events.current = []; started.current = Date.now(); stored.current = Promise.resolve();
+    generation.current += 1;
     loadRound(0, {}, {}, []);
   };
 

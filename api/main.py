@@ -185,6 +185,21 @@ class ResultRequest(BaseModel):
     events: list[dict[str, Any]] = Field(default_factory=list)
 
 
+class ProgressRequest(BaseModel):
+    """Where a quiz has got to (migration 022): sent at the first answer and at
+    every step after, so an abandoned session is still counted."""
+    session_id: int | None = None
+    step: str
+    served: list[str] = Field(default_factory=list)
+    loved: list[str] = Field(default_factory=list)
+    disliked: list[str] = Field(default_factory=list)
+    verdicts: dict[str, str] = Field(default_factory=dict)
+    reasons: dict[str, str] = Field(default_factory=dict)
+    events: list[dict[str, Any]] = Field(default_factory=list)
+    deep_dives: list[DeepAnswer] = Field(default_factory=list)
+    comparisons: list[Comparison] = Field(default_factory=list)
+
+
 class UnresolvedRequest(BaseModel):
     """A quiz that reached its end without a result (migration 020)."""
     outcome: Literal["loved_nothing", "no_gameplay_love"]
@@ -521,6 +536,26 @@ def result(req: ResultRequest) -> Result:
         logging.exception("could not record panel session")
 
     return result
+
+
+@api.post("/quiz/progress")
+def progress(req: ProgressRequest) -> dict[str, int | None]:
+    """Record the step a session has reached. Like /quiz/result, a failure to
+    store costs the player nothing."""
+    try:
+        rows = _games()
+        with db.connect() as conn:
+            return {"session_id": db.record_progress(
+                conn, session_id=req.session_id, step=req.step, served=req.served,
+                loved=req.loved, disliked=req.disliked, verdicts=req.verdicts,
+                reasons=req.reasons, events=req.events,
+                deep_dives=[a.model_dump() for a in req.deep_dives],
+                comparisons=[c.model_dump() for c in req.comparisons], build=_build(rows),
+                champion_prompt_version=_champion_version(),
+                game_prompt_version=rows[0]["prompt_version"] if rows else "unknown")}
+    except Exception:  # noqa: BLE001 - see /quiz/result
+        logging.exception("could not record progress")
+        return {"session_id": req.session_id}
 
 
 @api.post("/quiz/unresolved")

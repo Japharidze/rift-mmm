@@ -337,8 +337,14 @@ def _panel_check(args: argparse.Namespace) -> int:
                   "Nothing fetched, nothing written.")
             return 1
         sessions = db.panel_sessions_to_check(conn, include_checked=args.all)
+        outcomes = (db.session_outcomes(conn)
+                    if db.has_column(conn, "quiz_session", "outcome") else None)
+        dropoff = ({"panel-round-2": db.session_dropoff(conn, "panel-round-2")}
+                   if db.has_column(conn, "quiz_session", "last_step") else None)
         if not sessions:
-            print("no sessions with a Riot id to check")
+            # Completion and drop-off still matter with no Riot id to check.
+            print("no sessions with a Riot id to check\n")
+            print(panel.report([], outcomes, dropoff))
             return 0
         variant_list = panel.variants(conn)
         popularity = db.champion_popularity(conn)
@@ -359,9 +365,7 @@ def _panel_check(args: argparse.Namespace) -> int:
         finally:
             panel.save_cache(cache)  # whatever was fetched survives a failure mid-run
         print()
-        outcomes = (db.session_outcomes(conn)
-                    if db.has_column(conn, "quiz_session", "outcome") else None)
-        print(panel.report(checks, outcomes))
+        print(panel.report(checks, outcomes, dropoff))
         if args.write:
             written = 0
             for c in checks:

@@ -473,7 +473,33 @@ def outcome_lines(outcomes: dict[str, dict[str, Any]]) -> list[str]:
     return lines
 
 
-def report(checks: list[SessionCheck], outcomes: dict[str, dict[str, Any]] | None = None) -> str:
+# The steps of the quiz in the order a player meets them (migration 022).
+STEPS = ([s for i in range(1, 6) for s in (f"round-{i}", f"loves-{i}")]
+         + ["why", "fill", "deep", "compare", "nothing", "rating", "rated"])
+
+
+def dropoff_lines(serving: str, d: dict[str, Any]) -> list[str]:
+    """Completion and where people stop, for one serving mode. Its own block:
+    partial sessions never enter the headline, which counts completed sessions
+    with a Riot id only."""
+    o = d["outcomes"]
+    done = o.get("result", 0)
+    abandoned = sum(d["abandoned_at"].values())
+    lines = [f"DROP-OFF, {serving} (partial sessions are here only, never in the headline):",
+             f"  started {d['started']}; reached a result {done}"
+             + (f" ({100 * done / d['started']:.0f}% completion)" if d["started"] else "")
+             + f"; loved nothing {o.get('loved_nothing', 0)}; no love for the gameplay "
+             f"{o.get('no_gameplay_love', 0)}; abandoned {abandoned}; still going {d['still_going']}"]
+    if abandoned:
+        order = [s for s in STEPS if s in d["abandoned_at"]] + sorted(set(d["abandoned_at"]) - set(STEPS))
+        lines.append("  abandoned at: " + ", ".join(f"{s} {d['abandoned_at'][s]}" for s in order))
+    if done:
+        lines.append(f"  rated the champions: {d['rated']} of {done}")
+    return lines
+
+
+def report(checks: list[SessionCheck], outcomes: dict[str, dict[str, Any]] | None = None,
+           dropoff: dict[str, dict[str, Any]] | None = None) -> str:
     usable = [c for c in checks if not c.error and c.placed_games]
     n = len(usable)
     names = list(usable[0].by_variant) if usable else []
@@ -481,6 +507,8 @@ def report(checks: list[SessionCheck], outcomes: dict[str, dict[str, Any]] | Non
     lines += ROUND_CAVEAT
     if outcomes:
         lines += outcome_lines(outcomes)
+    for serving, d in (dropoff or {}).items():
+        lines += dropoff_lines(serving, d)
     if n < MIN_VERDICT_N:
         lines += [
             f"SANITY CHECK ONLY (n={n} < {MIN_VERDICT_N}). Per-player numbers show whether the",

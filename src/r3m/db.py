@@ -757,7 +757,7 @@ def update_quiz_session(
                    reasons = coalesce(%s, reasons),
                    build = coalesce(%s, build),
                    deep_dives = coalesce(%s, deep_dives),
-                   outcome = 'result'
+                   outcome = 'result', updated_at = now()
              where id = %s and (outcome <> 'result' or (loved = %s and disliked = %s))
             """,
             (Jsonb(comparisons), point, Jsonb(dimensions), Jsonb(champions),
@@ -772,6 +772,102 @@ def update_quiz_session(
         updated = cur.rowcount
     conn.commit()
     return updated > 0
+
+
+def record_progress(
+    conn: psycopg.Connection,
+    *,
+    session_id: int | None,
+    step: str,
+    served: list[str],
+    loved: list[str],
+    disliked: list[str],
+    verdicts: dict[str, str],
+    reasons: dict[str, str],
+    events: list[dict[str, Any]],
+    deep_dives: list[dict[str, Any]],
+    comparisons: list[dict[str, Any]],
+    build: dict[str, Any],
+    champion_prompt_version: str,
+    game_prompt_version: str,
+) -> int:
+    """Store where a session has got to (migration 022), from its first answer.
+
+    The step is always recorded -- after the result it records the rating --
+    but the answers only while the session is still in progress: a result or
+    "not enough to go on" is written by its own endpoint and never overwritten
+    from here. A missing or unknown id starts a new row.
+    """
+    if session_id is not None:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                update quiz_session
+                   set last_step = %s, updated_at = now(),
+                       served = case when outcome = 'in_progress' then %s else served end,
+                       loved = case when outcome = 'in_progress' then %s else loved end,
+                       disliked = case when outcome = 'in_progress' then %s else disliked end,
+                       verdicts = case when outcome = 'in_progress' then %s else verdicts end,
+                       reasons = case when outcome = 'in_progress' then %s else reasons end,
+                       events = case when outcome = 'in_progress' then %s else events end,
+                       deep_dives = case when outcome = 'in_progress' then %s else deep_dives end,
+                       comparisons = case when outcome = 'in_progress' then %s else comparisons end
+                 where id = %s
+                """,
+                (step, served, loved, disliked, Jsonb(verdicts), Jsonb(reasons), Jsonb(events),
+                 Jsonb(deep_dives), Jsonb(comparisons), session_id),
+            )
+            found = cur.rowcount
+        conn.commit()
+        if found:
+            return session_id
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            insert into quiz_session (
+                outcome, last_step, served, loved, disliked, comparisons, verdicts, reasons,
+                events, deep_dives, build, champion_prompt_version, game_prompt_version
+            )
+            values ('in_progress', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            returning id
+            """,
+            (step, served, loved, disliked, Jsonb(comparisons), Jsonb(verdicts), Jsonb(reasons),
+             Jsonb(events), Jsonb(deep_dives), Jsonb(build),
+             champion_prompt_version, game_prompt_version),
+        )
+        new_id = cur.fetchone()[0]  # type: ignore[index]
+    conn.commit()
+    return int(new_id)
+
+
+# Past this, a session still in progress counts as abandoned in the report.
+ABANDONED_AFTER = "1 hour"
+
+
+def session_dropoff(conn: psycopg.Connection, serving: str) -> dict[str, Any]:
+    """Where sessions on one serving mode stop (migration 022): how many
+    started, how many reached each ending, and for the abandoned the last step
+    reached. Separate from the headline, which counts completed sessions only."""
+    rows = conn.execute(
+        f"""
+        select outcome, coalesce(last_step, '-'), feels_right is not null,
+               outcome = 'in_progress' and updated_at < now() - interval '{ABANDONED_AFTER}'
+        from quiz_session
+        where build ->> 'serving' = %s
+        """,
+        (serving,),
+    ).fetchall()
+    out: dict[str, Any] = {"started": len(rows), "outcomes": {}, "abandoned_at": {},
+                           "still_going": 0, "rated": 0}
+    for outcome, step, rated, abandoned in rows:
+        out["outcomes"][outcome] = out["outcomes"].get(outcome, 0) + 1
+        if outcome == "in_progress":
+            if abandoned:
+                out["abandoned_at"][step] = out["abandoned_at"].get(step, 0) + 1
+            else:
+                out["still_going"] += 1
+        out["rated"] += bool(rated)
+    return out
 
 
 def insert_unresolved_session(
@@ -827,7 +923,7 @@ def update_unresolved_session(
             """
             update quiz_session
                set outcome = %s, served = %s, loved = %s, disliked = %s,
-                   verdicts = %s, reasons = %s, events = %s
+                   verdicts = %s, reasons = %s, events = %s, updated_at = now()
              where id = %s and point is null
             """,
             (outcome, served, loved, disliked, Jsonb(verdicts), Jsonb(reasons),
@@ -929,7 +1025,7 @@ def panel_sessions_to_check(
                    -- adds the column: absent reads as null, not an error
                    to_jsonb(quiz_session) -> 'actual_mains'
             from quiz_session
-            where riot_id is not null and point is not null
+            where riot_id is not null and point is not null and outcome = 'result'
                   {"" if include_checked else "and checked_at is null"}
             order by created_at
             """
