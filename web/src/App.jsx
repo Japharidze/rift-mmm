@@ -866,6 +866,19 @@ export default function App() {
     );
   }
 
+  // Between steps -- a follow-up answered, the next one not back yet -- a stage
+  // can briefly have nothing to show. It used to fall through to the round
+  // grid below, flashing the last round's cards, and on the live site's latency
+  // that was long enough to tap one and change a verdict by accident (found in
+  // the upgrade smoke test, 2026-09-30). Only the round stage draws cards.
+  if (stage !== "round") {
+    return (
+      <main>
+        <p className="progress">One moment…</p>
+      </main>
+    );
+  }
+
   // Stage 1: a round of cards. One question per card, "played it?", with the
   // verdict given in place on the card itself.
   const allPlayed = cards.length > 0 && cards.every(g => verdicts[g.id]);
