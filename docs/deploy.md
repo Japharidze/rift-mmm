@@ -181,3 +181,37 @@ result and storing a Riot id with its region. No errors.
   (found on the first live session, Sergi's own, id 21). Only that session
   saw the short version, and it was deleted; every kept round-2 session has
   all 28 cards.
+
+## Round 2 upgrade -- rehearsed 2026-09-30, awaiting the go
+
+The upgraded build (`panel-round-2`: 70 fixed cards in 5 rounds, deep dives,
+comparisons before the reveal, drop-off and visit logging) replaces the
+28-card build. Same process as the launch above, smaller:
+
+1. **Full dump first**, into `data/` (gitignored):
+   `pg_dump "<the public url>" -Fc --no-owner --no-acl -f data/prod-pre-upgrade-<date>.dump`
+2. **Merge `dev` into `main`.** The deploy runs migrations 021 (deep_dives),
+   022 (outcome `in_progress`, `last_step`, `updated_at`) and 023
+   (`page_visit`). The image now also carries `bank/deep_dives.yaml`.
+3. **`bank-import` from the laptop** -- the reviewed renown tiers (15
+   universal / 40 wide / 15 niche). No labels change: runs 23 and 24 stay
+   served, and `canonical` is not touched.
+4. **Smoke:** one full quiz on the live site (70 cards, deep dives,
+   comparisons, rating), check the row (`build.serving = panel-round-2`,
+   `deep_dives`, `last_step = rated`) and one `page_visit` row, then delete
+   both.
+
+**Rollback target: `main` at `b87827a`**, the 28-card build, schema at 020.
+Same order as above: redeploy `b87827a` first, then restore the pre-upgrade
+dump over an emptied schema. Sessions recorded on the upgrade are lost unless
+exported first.
+
+**Rehearsed 2026-09-30** on a full copy of production (20 sessions, schema at
+020): 021-023 applied cleanly and left the existing sessions untouched;
+bank-import applied the reviewed tiers; a full player (70 cards, 5 deep-dive
+answers, 3 comparisons), a loved-nothing player who went back and reached a
+result, and an abandoned one (in progress at round-3) all stored as intended;
+page opens counted; the dry-run panel report showed outcomes split by serving
+mode and the drop-off funnel. Then the rollback: schema back at 020, 20
+sessions, `b87827a` serving 14-card rounds and storing a result, a Riot id
+and a rating with no errors.
