@@ -126,7 +126,7 @@ NULL_SAMPLES, LABEL_SHUFFLES = 100, 1000
 MIN_EXPECTED = 2.0
 
 
-def load(conn: Any, recent: bool) -> tuple[dict[str, list[set[str]]], dict[str, tuple[float, float, float]]]:
+def load(conn: Any, recent: bool) -> tuple[dict[str, list[tuple[str, set[str]]]], dict[str, tuple[float, float, float]]]:
     """Per role, each player's pool restricted to champions whose primary role
     it is; and each champion's canonical MMM point for that role."""
     key_to_id = dict(conn.execute("select riot_key, id from champion").fetchall())
@@ -135,21 +135,22 @@ def load(conn: Any, recent: bool) -> tuple[dict[str, list[set[str]]], dict[str, 
     label = {c: points[(c, role)] for c, role in primary.items() if (c, role) in points}
     cutoff = "and m.last_play > p.fetched_at - interval '%s days'" % RECENT_DAYS if recent else ""
     rows = conn.execute(f"""
-        select m.puuid, m.champion_key from coplay_mastery m join coplay_player p using (puuid)
+        select m.puuid, m.champion_key, p.platform from coplay_mastery m join coplay_player p using (puuid)
         where m.points >= %s {cutoff}
         order by m.puuid, m.points desc""", (MIN_POINTS,)).fetchall()
     pools: dict[str, list[str]] = {}
-    for puuid, key in rows:
+    platform: dict[str, str] = {}
+    for puuid, key, plat in rows:
+        platform[puuid] = plat
         pool = pools.setdefault(puuid, [])
         if len(pool) < POOL and key_to_id.get(key) in label:
             pool.append(key_to_id[key])
-    by_role: dict[str, list[set[str]]] = {}
-    for pool in pools.values():
-        roles = Counter(primary[c] for c in pool)
-        for role in roles:
+    by_role: dict[str, list[tuple[str, set[str]]]] = {}
+    for puuid, pool in pools.items():
+        for role in Counter(primary[c] for c in pool):
             within = {c for c in pool if primary[c] == role}
             if len(within) >= 2:
-                by_role.setdefault(role, []).append(within)
+                by_role.setdefault(role, []).append((platform[puuid], within))
     return by_role, label
 
 
@@ -199,7 +200,7 @@ def spearman(x: list[float], y: list[float]) -> float:
     return num / den if den else 0.0
 
 
-def role_test(rows: list[set[str]], label: dict, seed: int = 0) -> dict[str, Any]:
+def role_test(rows: list[set[str]], label: dict, seed: int = 0, q2: bool = True) -> dict[str, Any]:
     rng = random.Random(seed)
     observed = _pairs(rows)
     null_rows = [set(r) for r in rows]
@@ -214,12 +215,16 @@ def role_test(rows: list[set[str]], label: dict, seed: int = 0) -> dict[str, Any
     chi = lambda c: sum((c.get(k, 0) - mean[k]) ** 2 / mean[k] for k in keys if mean[k] > 0)
     s_obs, s_null = chi(observed), [chi(s) for s in samples]
     z = {k: (observed.get(k, 0) - mean[k]) / sd[k] for k in keys}
+    usable = [k for k in keys if mean[k] >= MIN_EXPECTED]
+    # How many 3-sd pairs a random world produces on its own, for comparison.
+    null_strong = st.mean(sum(1 for k in usable if (s.get(k, 0) - mean[k]) / sd[k] > 3) for s in samples)
     out = {"players": len(rows), "champions": len({c for r in rows for c in r}),
            "excess": s_obs / st.mean(s_null), "p": (1 + sum(s >= s_obs for s in s_null)) / (1 + len(s_null)),
-           "strong_pairs": sum(1 for k in keys if mean[k] >= MIN_EXPECTED and z[k] > 3),
-           "pairs": sum(1 for k in keys if mean[k] >= MIN_EXPECTED)}
+           "strong_pairs": sum(1 for k in usable if z[k] > 3), "null_strong": null_strong,
+           "pairs": len(usable), "z": {k: z[k] for k in usable}}
+    if not q2:
+        return out
     # Q2: does co-play affinity (z) follow MMM closeness?
-    usable = [k for k in keys if mean[k] >= MIN_EXPECTED]
     champs = sorted({c for k in usable for c in k})
     def rho(lab: dict, dim: int | None) -> float:
         close = [-(math.dist(lab[a], lab[b]) if dim is None else abs(lab[a][dim] - lab[b][dim])) for a, b in usable]
@@ -244,12 +249,28 @@ def analyse(progress=print) -> None:
         for recent in (False, True):
             by_role, label = load(conn, recent)
             progress(f"\n{'RECENT (last %d days)' % RECENT_DAYS if recent else 'LIFETIME'} pools: top {POOL} by mastery, >= {MIN_POINTS} points")
-            progress(f"{'role':8} {'players':>7} {'champs':>6} {'Q1 excess':>9} {'p':>6} {'strong pairs':>12}   Q2 rho (p): all / micro / meso / macro")
+            progress(f"{'role':8} {'players':>7} {'champs':>6} {'excess':>6} {'EUNE':>5} {'EUW':>5} "
+                     f"{'3sd pairs (null)':>17} {'replication rho (p)':>20}   Q2 rho (p): all / micro / meso / macro")
             for role in ("top", "jungle", "mid", "bot", "support"):
-                rows = by_role.get(role, [])
+                tagged = by_role.get(role, [])
+                rows = [r for _, r in tagged]
                 if len(rows) < 50:
                     progress(f"{role:8} too few players ({len(rows)})"); continue
                 r = role_test(rows, label)
+                # Replication: the same test on each region alone; real taste
+                # shows the same pairs in both, flukes do not.
+                parts = {p: role_test([x for q, x in tagged if q == p], label, q2=False)
+                         for p in ("eun1", "euw1") if sum(q == p for q, _ in tagged) >= 50}
+                rep = "-"
+                if len(parts) == 2:
+                    common = sorted(set(parts["eun1"]["z"]) & set(parts["euw1"]["z"]))
+                    if len(common) >= 10:
+                        a = [parts["eun1"]["z"][k] for k in common]; b = [parts["euw1"]["z"][k] for k in common]
+                        real = spearman(a, b); rng = random.Random(1); perms = []
+                        for _ in range(LABEL_SHUFFLES):
+                            rng.shuffle(b); perms.append(spearman(a, b))
+                        rep = f"{real:+.2f} ({(1 + sum(x >= real for x in perms)) / (1 + len(perms)):.3f}) n={len(common)}"
+                ex = {p: f"{v['excess']:.2f}" for p, v in parts.items()}
                 q2 = " / ".join(f"{v[0]:+.2f} ({v[1]:.3f})" for v in r["rho"].values()) or "too few pairs"
-                progress(f"{role:8} {r['players']:7} {r['champions']:6} {r['excess']:9.2f} {r['p']:6.3f} "
-                         f"{r['strong_pairs']:5}/{r['pairs']:<6}   {q2}")
+                progress(f"{role:8} {r['players']:7} {r['champions']:6} {r['excess']:6.2f} {ex.get('eun1', '-'):>5} {ex.get('euw1', '-'):>5} "
+                         f"{r['strong_pairs']:5} ({r['null_strong']:4.1f})/{r['pairs']:<5} {rep:>20}   {q2}")
