@@ -114,6 +114,20 @@ matching or UI.
   are the regression test: a re-run that drifts from anchors means the prompt or
   model changed, not the game.
 
+## Standing rules (Sergi, 2026-10-01)
+
+- **Fix, test, deploy, then tell me** -- for anything that doesn't change how
+  answers turn into results: UI bugs, crashes, logging, report fixes.
+- **Approval first** -- for anything that touches evidence weights,
+  thresholds, labels, the bank or sentences. Each of those splits round 2 into
+  two builds.
+- **Deploy with `scripts/deploy.sh`** (the `deploy` skill). Refactors ship
+  alone, never bundled with a rule change.
+- **One topic per session.** Everything a new session needs is in this file,
+  `docs/` and memory.
+- **Mechanical work (deploys, imports, routine fixes) doesn't need the
+  strongest model;** design and analysis do.
+
 ## Commit style
 
 Conventional Commits, subject line only — no body, no footer beyond required

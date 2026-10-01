@@ -13,8 +13,9 @@ scripts/deploy.sh --bank     # bank/*.yaml changed (tiers, bias, deep dives' ban
 ```
 
 It dumps production (the rollback), pushes dev to main, waits for Railway,
-optionally runs `bank-import`, and does an API smoke. Forced: no check for
-players mid-quiz (Sergi, 2026-10-01).
+optionally runs `bank-import`, and does an API smoke. Forced: sessions active
+in the last 10 minutes print a WARNING line instead of blocking (Sergi,
+2026-10-01). Mention the warning when you report.
 
 Before running: everything is committed on dev and the tests passed
 (`uv run pytest -q`). Commit first if not.

@@ -4,7 +4,8 @@
 #   scripts/deploy.sh            dump, push dev -> main, wait for Railway, API smoke
 #   scripts/deploy.sh --bank     ... and r3m bank-import (bank/*.yaml changed)
 #
-# Forced: no check for players mid-quiz (Sergi, 2026-10-01). Still dumps first,
+# Forced: sessions active in the last 10 minutes are a warning, not a block
+# (Sergi, 2026-10-01). Still dumps first,
 # because migrations are one-way and the dump is the rollback (docs/deploy.md).
 # The smoke is API-only: a browser walk is for UI changes, run separately.
 set -euo pipefail
@@ -21,6 +22,11 @@ git merge-base --is-ancestor origin/main dev || { echo "FAIL: main is not an anc
 SHA=$(git rev-parse --short dev)
 PREV=$(git rev-parse --short origin/main)
 [ "$SHA" != "$PREV" ] || { echo "nothing to deploy: main is already $SHA"; exit 0; }
+
+# Not a block: a warning, so the caller decides. A deploy can break a session
+# in progress (an old page talking to a new API).
+active=$(psql "$DATABASE_URL" -Atc "select count(*) from quiz_session where updated_at > now() - interval '10 minutes'")
+[ "$active" = "0" ] || echo "WARNING: $active session(s) took a step in the last 10 minutes"
 
 DUMP="data/prod-pre-$SHA-$(date -u +%Y%m%d).dump"
 pg_dump "$DATABASE_URL" -Fc --no-owner --no-acl -f "$DUMP"
