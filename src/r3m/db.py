@@ -863,9 +863,8 @@ def session_dropoff(conn: psycopg.Connection, serving: str) -> dict[str, Any]:
         select outcome, coalesce(last_step, '-'), feels_right is not null,
                outcome = 'in_progress' and updated_at < now() - interval '{ABANDONED_AFTER}'
         from quiz_session
-        where build ->> 'serving' = %s
-        """,
-        (serving,),
+        where build ->> 'serving' = %(serving)s and """ + NOT_EXCLUDED,
+        {"serving": serving, "excluded": list(EXCLUDED_ACCOUNTS)},
     ).fetchall()
     visits = (conn.execute("select count(*) from page_visit where serving = %s", (serving,)).fetchone()[0]
               if has_table(conn, "page_visit") else None)
@@ -963,7 +962,7 @@ def session_outcomes(conn: psycopg.Connection) -> dict[str, dict[str, Any]]:
                  where not coalesce((d.value ->> 'read')::boolean, false)),
                coalesce(events, '[]'::jsonb) @> '[{"type": "outcome"}]'
         from quiz_session
-        """
+        where """ + NOT_EXCLUDED, {"excluded": list(EXCLUDED_ACCOUNTS)}
     ).fetchall()
     out: dict[str, dict[str, Any]] = {}
     for rnd, outcome, riot, unread, had_none in rows:
@@ -1028,6 +1027,10 @@ def champion_popularity(conn: psycopg.Connection) -> dict[str, int]:
 # runs, whose answers were given by someone who knows what the quiz measures.
 # #28: Sergi's first run of the upgraded build, 2026-09-30, with his Riot id.
 EXCLUDED_FROM_HEADLINE = (28,)
+# Accounts whose sessions count in nothing -- headline, outcomes, drop-off,
+# reading feedback: the builder's own, mostly testing (Sergi, 2026-10-01).
+EXCLUDED_ACCOUNTS = ("mazarin#8480",)
+NOT_EXCLUDED = ("coalesce(lower(regexp_replace(riot_id, '\\s', '', 'g')), '') <> all(%(excluded)s)")
 
 
 def reading_feedback(conn: psycopg.Connection, serving: str) -> dict[str, dict[str, int]]:
@@ -1036,9 +1039,8 @@ def reading_feedback(conn: psycopg.Connection, serving: str) -> dict[str, dict[s
     rows = conn.execute(
         """
         select id, events from quiz_session
-        where build ->> 'serving' = %s and events is not null
-        """,
-        (serving,),
+        where build ->> 'serving' = %(serving)s and events is not null and """ + NOT_EXCLUDED,
+        {"serving": serving, "excluded": list(EXCLUDED_ACCOUNTS)},
     ).fetchall()
     out: dict[str, dict[str, int]] = {}
     for _, events in rows:
@@ -1076,11 +1078,11 @@ def panel_sessions_to_check(
               -- Round 2 sessions on the 28-card build stay in the data but out of
               -- the headline (Sergi, 2026-09-30): only round 1 and panel-round-2.
               and coalesce(to_jsonb(quiz_session) -> 'build' ->> 'serving', '') <> 'panel-round-1'
-              and id <> all(%s)
+              and id <> all(%(ids)s) and {NOT_EXCLUDED}
                   {"" if include_checked else "and checked_at is null"}
             order by created_at
             """,
-            (list(EXCLUDED_FROM_HEADLINE),),
+            {"ids": list(EXCLUDED_FROM_HEADLINE), "excluded": list(EXCLUDED_ACCOUNTS)},
         )
         return [
             {"id": r[0], "riot_id": r[1],
