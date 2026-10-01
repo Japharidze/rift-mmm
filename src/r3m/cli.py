@@ -352,12 +352,16 @@ def _panel_check(args: argparse.Namespace) -> int:
         popularity = db.champion_popularity(conn)
         cache = panel.load_cache()
         api = RiotApi(platform=panel.PLATFORM)
+        # The same account fetched for another session is reused, not refetched.
+        known = ((lambda rid: db.latest_riot_mains(conn, rid))
+                 if db.has_table(conn, "riot_mains") else None)
         checks = []
         try:
             for s in sessions:
                 print(f"checking #{s['id']} ...", flush=True)
                 checks.append(panel.check_session(api, s, variant_list, cache=cache,
-                                                  refetch=args.refetch, popularity=popularity))
+                                                  refetch=args.refetch, popularity=popularity,
+                                                  known=known))
         except httpx.HTTPStatusError as exc:
             if exc.response.status_code in (401, 403):
                 print("Riot rejected the key: development keys expire every 24 hours. "
@@ -383,7 +387,45 @@ def _panel_check(args: argparse.Namespace) -> int:
                                   for ch, r, g in c.mains],
                 )
                 written += 1
-            print(f"\nstored mains for {written} session(s)")
+            recorded = 0
+            if db.has_table(conn, "riot_mains"):
+                for c in checks:
+                    if c.fetched:
+                        recorded += db.insert_riot_mains(
+                            conn, riot_id=c.fetched["riot_id"], resolved=c.fetched["resolved"],
+                            tag_guessed=c.fetched["tag_guessed"], fetched_at=c.fetched["fetched_at"],
+                            mains=c.fetched["mains"], source="fetched")
+            print(f"\nstored mains for {written} session(s); {recorded} new fetch(es) in riot_mains")
+    return 0
+
+
+def _mains_import(args: argparse.Namespace) -> int:
+    """Move the fetches in the local cache (data/panel-mains.json) into
+    riot_mains -- one row per account and fetch time, so an account cached
+    under several sessions becomes one row."""
+    cache = panel.load_cache()
+    if not cache:
+        print("nothing cached")
+        return 0
+    with db.connect() as conn:
+        if not db.has_table(conn, "riot_mains"):
+            print("riot_mains needs migration 024 on this database. Nothing imported.")
+            return 1
+        fetches = {}
+        for entry in cache.values():
+            fetches.setdefault((db.riot_key(entry["riot_id"]), entry.get("fetched_at")), entry)
+        added = 0
+        for (_, fetched_at), e in sorted(fetches.items(), key=lambda kv: str(kv[0])):
+            if not fetched_at:
+                print(f"  {e['riot_id']}: no fetch time in the cache, skipped")
+                continue
+            new = db.insert_riot_mains(conn, riot_id=e["riot_id"], resolved=e.get("resolved"),
+                                       tag_guessed=bool(e.get("tag_guessed")), fetched_at=fetched_at,
+                                       mains=[tuple(m) for m in e["mains"]], source="cache")
+            added += new
+            print(f"  {e['riot_id']:20} -> {e.get('resolved') or '?':20} {fetched_at}  "
+                  f"{sum(m[2] for m in e['mains'])} games  {'added' if new else 'already there'}")
+        print(f"{added} fetch(es) added from {len(cache)} cached session(s)")
     return 0
 
 
@@ -686,7 +728,8 @@ def main() -> int:
     )
     panel_cmd.add_argument(
         "--write", action="store_true",
-        help="store each player's mains on their session (default: report only)",
+        help="store each player's mains on their session and new fetches in riot_mains "
+             "(default: report only)",
     )
     panel_cmd.add_argument(
         "--all", action="store_true", help="include sessions already checked"
@@ -696,6 +739,12 @@ def main() -> int:
         help="ignore stored and cached mains and fetch from Riot again",
     )
     panel_cmd.set_defaults(func=_panel_check)
+
+    mains_cmd = sub.add_parser(
+        "mains-import",
+        help="move the cached Riot fetches (data/panel-mains.json) into the riot_mains table",
+    )
+    mains_cmd.set_defaults(func=_mains_import)
 
     place_cmd = sub.add_parser(
         "place", help="walk the podcast anchor candidates and place them by hand"

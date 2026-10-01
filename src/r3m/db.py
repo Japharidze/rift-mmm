@@ -1114,6 +1114,61 @@ def record_panel_check(
     conn.commit()
 
 
+def riot_key(riot_id: str) -> str:
+    """A Riot id normalised for joining (migration 024): lowercased, no
+    whitespace -- testers type "JohnRod #warud" and "johnrod#warud" alike."""
+    return "".join(riot_id.split()).lower()
+
+
+def insert_riot_mains(
+    conn: psycopg.Connection,
+    *,
+    riot_id: str,
+    resolved: str | None,
+    tag_guessed: bool,
+    fetched_at: str,
+    mains: list[tuple[str, str, int]],
+    source: str,
+) -> bool:
+    """Record one fetch of an account's mains. Append-only: a refetch is a new
+    row; the same fetch twice (same account, same time) is skipped. True if a
+    row was added."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            insert into riot_mains (riot_id, riot_key, resolved, resolved_key, tag_guessed,
+                                    fetched_at, games, mains, source)
+            values (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            on conflict (riot_key, fetched_at) do nothing
+            """,
+            (riot_id, riot_key(riot_id), resolved, riot_key(resolved) if resolved else None,
+             tag_guessed, fetched_at, sum(g for *_, g in mains),
+             Jsonb([{"champion_id": c, "role": r, "games": g} for c, r, g in mains]), source),
+        )
+        added = cur.rowcount
+    conn.commit()
+    return added > 0
+
+
+def latest_riot_mains(conn: psycopg.Connection, riot_id: str) -> dict[str, Any] | None:
+    """The most recent fetch for this account, matched on the id as typed or
+    as resolved; None if it was never fetched."""
+    key = riot_key(riot_id)
+    row = conn.execute(
+        """
+        select riot_id, resolved, tag_guessed, fetched_at, mains from riot_mains
+        where riot_key = %s or resolved_key = %s
+        order by fetched_at desc limit 1
+        """,
+        (key, key),
+    ).fetchone()
+    if row is None:
+        return None
+    return {"riot_id": row[0], "resolved": row[1], "tag_guessed": row[2],
+            "fetched_at": row[3].isoformat(timespec="seconds"),
+            "mains": [(m["champion_id"], m["role"], m["games"]) for m in row[4]]}
+
+
 def has_column(conn: psycopg.Connection, table: str, column: str) -> bool:
     with conn.cursor() as cur:
         cur.execute(

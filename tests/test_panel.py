@@ -191,3 +191,24 @@ def test_dropoff_is_its_own_block_with_completion_and_where_people_stopped():
     assert "abandoned at: round-4 2, deep 1" in text      # in the order players meet them
     assert "rated the champions: 5 of 6" in text
     assert "page opened 25 -> started 10 -> reached a result 6 (40% of opens answered a card)" in text
+
+
+# -- riot_mains (migration 024) ---------------------------------------------------------
+
+def test_riot_ids_are_normalised_for_joining():
+    from r3m import db
+    assert db.riot_key("JohnRod #warud") == db.riot_key("johnrod#warud") == "johnrod#warud"
+
+
+def test_an_account_already_in_the_table_is_not_fetched_again():
+    known = lambda rid: {"riot_id": rid, "resolved": "a#EUNE", "tag_guessed": False,
+                         "fetched_at": "2026-10-01T00:00:00+00:00", "mains": [("Ahri", "mid", 9)]}
+    check = panel.check_session(NoApi(), _session(5, "a#EUNE", ["cs2"]), CURRENT, cache={}, known=known)
+    assert check.source == "table" and check.mains == [("Ahri", "mid", 9)] and check.fetched is None
+
+
+def test_a_fresh_fetch_is_kept_for_recording():
+    api = FakeApi({("basabee", "EUNE"): "p1"}, [("Ahri", "MIDDLE")] * 5)
+    check = panel.check_session(api, _session(6, "basabee#EUNE", ["cs2"]), CURRENT, cache={},
+                                known=lambda rid: None)
+    assert check.source == "fetched" and check.fetched["mains"] == [("Ahri", "mid", 5)]

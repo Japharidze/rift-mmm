@@ -300,9 +300,11 @@ class SessionCheck:
     riot_id: str
     resolved: str | None = None
     tag_guessed: bool = False
-    source: str = "fetched"       # fetched | cache | stored
+    source: str = "fetched"       # fetched | cache | table | stored
     error: str | None = None
     mains: Mains = field(default_factory=list)
+    # Set only when this check called Riot: the fetch to record (riot_mains).
+    fetched: dict[str, Any] | None = None
     recommended: list[str] = field(default_factory=list)
     stored_point: Point | None = None
     by_variant: dict[str, VariantResult] = field(default_factory=dict)
@@ -345,7 +347,12 @@ def _resolve(api: Any, raw: str) -> tuple[str | None, str | None, bool]:
 
 def check_session(api: Any, session: dict[str, Any], variant_list: list[Variant], *,
                   cache: dict[str, Any] | None = None, refetch: bool = False,
-                  popularity: dict[str, int] | None = None) -> SessionCheck:
+                  popularity: dict[str, int] | None = None,
+                  known: Callable[[str], dict[str, Any] | None] | None = None) -> SessionCheck:
+    """Mains come from, in order: the session's stored copy, the local cache,
+    the riot_mains table (`known`, migration 024 -- the same account fetched
+    for another session), and only then Riot. A fresh fetch is kept on the
+    check (`fetched`) so the caller can record it."""
     out = SessionCheck(session_id=session["id"], riot_id=session["riot_id"],
                        stored_point=tuple(session["point"]),
                        recommended=[c["name"] for c in session.get("champions", [])])
@@ -357,6 +364,9 @@ def check_session(api: Any, session: dict[str, Any], variant_list: list[Variant]
     elif cached and cached.get("riot_id") == session["riot_id"] and not refetch:
         out.source, out.resolved, out.tag_guessed = "cache", cached["resolved"], cached["tag_guessed"]
         out.mains = [tuple(m) for m in cached["mains"]]  # type: ignore[misc]
+    elif known is not None and not refetch and (row := known(session["riot_id"])):
+        out.source, out.resolved, out.tag_guessed = "table", row["resolved"], row["tag_guessed"]
+        out.mains = list(row["mains"])
     else:
         puuid, out.resolved, out.tag_guessed = _resolve(api, session["riot_id"])
         if puuid is None:
@@ -364,10 +374,11 @@ def check_session(api: Any, session: dict[str, Any], variant_list: list[Variant]
             out.error = f"no account found (tried {tried})"
             return out
         out.mains = played(api, puuid)
+        out.fetched = {"riot_id": session["riot_id"], "resolved": out.resolved,
+                       "tag_guessed": out.tag_guessed, "mains": out.mains,
+                       "fetched_at": datetime.now(UTC).isoformat(timespec="seconds")}
         if cache is not None:
-            cache[key] = {"riot_id": session["riot_id"], "resolved": out.resolved,
-                          "tag_guessed": out.tag_guessed, "mains": out.mains,
-                          "fetched_at": datetime.now(UTC).isoformat(timespec="seconds")}
+            cache[key] = out.fetched
 
     for v in variant_list:
         try:
