@@ -6,13 +6,13 @@ later edit that breaks one fails here rather than drifting players quietly.
 
 import pytest
 
-from r3m import quiz, scoring
+from r3m import deep_dives, quiz, scoring
 
-ALLOWED = set(quiz.DIMENSIONS) | set(quiz.SPLITS)
+ALLOWED = set(quiz.DIMENSIONS) | set(deep_dives.SPLITS)
 
 
 def questions():
-    return [(family, q) for family, f in quiz.deep_dives().items() for q in f["questions"]]
+    return [(family, q) for family, f in deep_dives.deep_dives().items() for q in f["questions"]]
 
 
 # -- the fixture -------------------------------------------------------------------
@@ -20,7 +20,7 @@ def questions():
 @pytest.mark.parametrize("family,q", questions(), ids=lambda x: x if isinstance(x, str) else x["id"])
 def test_every_question_is_one_axis_two_opposite_equal_pulls(family, q):
     assert q["axis"] in ALLOWED, f"{q['id']} moves {q['axis']}, not one of the three or the two splits"
-    assert q["size"] in quiz.DEEP_DIVE_SIZE
+    assert q["size"] in deep_dives.DEEP_DIVE_SIZE
     assert len(q["options"]) == 2
     # A coin-flip answerer ends where they started.
     assert sorted(o["sign"] for o in q["options"]) == [-1, 1]
@@ -29,28 +29,28 @@ def test_every_question_is_one_axis_two_opposite_equal_pulls(family, q):
 def test_question_ids_are_unique_and_every_family_names_its_games():
     ids = [q["id"] for _, q in questions()]
     assert len(ids) == len(set(ids))
-    for f in quiz.deep_dives().values():
+    for f in deep_dives.deep_dives().values():
         assert f["games"] and f["name"]
 
 
 # -- who is asked what ------------------------------------------------------------------
 
 def test_only_a_game_loved_for_the_gameplay_is_asked_about():
-    assert quiz.deep_dive_next(["hades"], {"hades": "nostalgia"}, []) is None
-    assert quiz.deep_dive_next(["hades"], {"hades": "gameplay"}, [])["family"] == "hades"
+    assert deep_dives.deep_dive_next(["hades"], {"hades": "nostalgia"}, []) is None
+    assert deep_dives.deep_dive_next(["hades"], {"hades": "gameplay"}, [])["family"] == "hades"
     # No reason given counts as gameplay, as it does in the estimate.
-    assert quiz.deep_dive_next(["hades"], {}, [])["family"] == "hades"
+    assert deep_dives.deep_dive_next(["hades"], {}, [])["family"] == "hades"
     # Several reasons: asked whenever "how it plays" is among them.
-    assert quiz.deep_dive_next(["hades"], {"hades": ["world", "gameplay"]}, [])["family"] == "hades"
-    assert quiz.deep_dive_next(["hades"], {"hades": ["world", "people"]}, []) is None
+    assert deep_dives.deep_dive_next(["hades"], {"hades": ["world", "gameplay"]}, [])["family"] == "hades"
+    assert deep_dives.deep_dive_next(["hades"], {"hades": ["world", "people"]}, []) is None
     # A variant belongs to its family.
-    assert quiz.deep_dive_next(["chess-blitz"], {}, [])["family"] == "chess"
+    assert deep_dives.deep_dive_next(["chess-blitz"], {}, [])["family"] == "chess"
 
 
 def test_at_most_two_families_in_the_order_they_were_loved_and_never_a_question_twice():
     loved = ["cs2", "hades", "chess"]
     answered, families = [], []
-    while (q := quiz.deep_dive_next(loved, {}, answered)) is not None:
+    while (q := deep_dives.deep_dive_next(loved, {}, answered)) is not None:
         answered.append({"question": q["id"], "option": None})   # skipping still counts as asked
         families.append(q["family"])
     assert list(dict.fromkeys(families)) == ["cs2", "hades"]
@@ -65,31 +65,31 @@ def _est(point=(0.5, 0.5, 0.5)):
 
 
 def test_an_answer_moves_its_axis_by_its_size_and_nothing_else():
-    after = quiz.apply_deep_dives(_est(), [{"question": "cs2-between", "option": "buy"}])
+    after = deep_dives.apply_deep_dives(_est(), [{"question": "cs2-between", "option": "buy"}])
     assert after.point == (0.5, 0.5, 0.58)
-    after = quiz.apply_deep_dives(_est(), [{"question": "minecraft-pvp", "option": "own"}])
+    after = deep_dives.apply_deep_dives(_est(), [{"question": "minecraft-pvp", "option": "own"}])
     assert after.point == (0.5, 0.46, 0.5)
 
 
 def test_split_answers_and_skips_are_logged_but_move_nothing():
     answered = [{"question": "cs2-gun", "option": "awp"}, {"question": "cs2-rounds", "option": "lurk"},
                 {"question": "hades-boons", "option": None}]
-    assert quiz.apply_deep_dives(_est(), answered).point == (0.5, 0.5, 0.5)
+    assert deep_dives.apply_deep_dives(_est(), answered).point == (0.5, 0.5, 0.5)
 
 
 def test_all_deep_dives_together_move_a_dimension_at_most_the_cap():
     # Two medium macro answers from two families would stack to +0.16.
     answered = [{"question": "cs2-between", "option": "buy"}, {"question": "hades-boons", "option": "planned"},
                 {"question": "elden-build", "option": "planned"}]
-    after = quiz.apply_deep_dives(_est(), answered)
-    assert after.point[2] == pytest.approx(0.5 + quiz.DEEP_DIVE_CAP)
+    after = deep_dives.apply_deep_dives(_est(), answered)
+    assert after.point[2] == pytest.approx(0.5 + deep_dives.DEEP_DIVE_CAP)
     down = [{"question": "cs2-between", "option": "own"}, {"question": "hades-boons", "option": "moment"}]
-    assert quiz.apply_deep_dives(_est(), down).point[2] == pytest.approx(0.5 - quiz.DEEP_DIVE_CAP)
+    assert deep_dives.apply_deep_dives(_est(), down).point[2] == pytest.approx(0.5 - deep_dives.DEEP_DIVE_CAP)
 
 
 def test_opposite_answers_to_one_question_cancel():
-    up = quiz.apply_deep_dives(_est(), [{"question": "chess-time", "option": "fast"}])
-    down = quiz.apply_deep_dives(up, [{"question": "chess-time", "option": "slow"}])
+    up = deep_dives.apply_deep_dives(_est(), [{"question": "chess-time", "option": "fast"}])
+    down = deep_dives.apply_deep_dives(up, [{"question": "chess-time", "option": "slow"}])
     assert down.point == (0.5, 0.5, 0.5)
 
 

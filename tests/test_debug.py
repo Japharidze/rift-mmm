@@ -2,7 +2,7 @@
 
 import pytest
 
-from r3m import quiz
+from r3m import debug, deep_dives, quiz
 
 GAMES = [
     {"game_id": "cs2", "name": "CS2", "micro": 0.93, "meso": 0.72, "macro": 0.55, "bias": "medium"},
@@ -22,14 +22,14 @@ def view(**kw):
                 deep=[{"question": "cs2-between", "option": "buy"}, {"question": "cs2-gun", "option": "awp"}],
                 comparisons=[], rows=GAMES, champions=CHAMPIONS)
     args.update(kw)
-    return quiz.debug_view(**args)
+    return debug.debug_view(**args)
 
 
 def test_the_final_point_is_the_point_matching_uses():
     d = view()
     est = quiz.estimate(["cs2", "hades", "wow"], ["tekken", "among-us"], rows=GAMES,
                         reasons={"wow": ["world", "gameplay"]})
-    settled = quiz.settle(est, [{"question": "cs2-between", "option": "buy"},
+    settled = deep_dives.settle(est, [{"question": "cs2-between", "option": "buy"},
                                 {"question": "cs2-gun", "option": "awp"}], [], GAMES)
     assert d["points"]["final"] == list(settled.point)
     assert d["points"]["verdicts"] == list(est.point)

@@ -21,7 +21,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from r3m import db, quiz, reading
+from r3m import db, debug, deep_dives, quiz, reading
 from r3m.config import ROOT
 
 app = FastAPI(title="r3m", version="0.1.0")
@@ -82,7 +82,7 @@ def _build(games: list[dict[str, Any]]) -> dict[str, Any]:
                      "needed": quiz.NEEDED, "dislike_weight": quiz.DISLIKE_WEIGHT,
                      "dislike_margin": quiz.DISLIKE_MARGIN, "low_corner": quiz.LOW_CORNER,
                      "unconfirmed": quiz.UNCONFIRMED,
-                     "comparison_pull": quiz.COMPARISON_PULL, "deep_dive_cap": quiz.DEEP_DIVE_CAP,
+                     "comparison_pull": quiz.COMPARISON_PULL, "deep_dive_cap": deep_dives.DEEP_DIVE_CAP,
                      "confidence": {"rule": "close needs distance <= CLOSE, uncertainty <= confident_below, floor",
                                     "sigma": quiz.EVIDENCE_SIGMA,
                                     "confident_below": quiz.CONFIDENT_UNCERTAINTY,
@@ -353,7 +353,7 @@ class Result(BaseModel):
     unread: dict[str, list[Game]]
     # The reading (r3m.reading), shown after the champion rating.
     reading: list[Sentence] = Field(default_factory=list)
-    # ?debug=1 only (quiz.debug_view): how this result was reached. Never stored.
+    # ?debug=1 only (debug.debug_view): how this result was reached. Never stored.
     debug: dict[str, Any] | None = None
 
 
@@ -448,7 +448,7 @@ def quiz_sharpen(req: SharpenRequest) -> SharpenResponse:
         est = quiz.estimate(req.loved, req.disliked, rows=rows, reasons=req.reasons)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    est = quiz.settle(est, [a.model_dump() for a in req.deep_dives],
+    est = deep_dives.settle(est, [a.model_dump() for a in req.deep_dives],
                       [c.model_dump() for c in req.comparisons], rows)
     found = quiz.sharpen(est, used=req.used)
     if found is None:
@@ -468,7 +468,7 @@ def quiz_sharpen(req: SharpenRequest) -> SharpenResponse:
 @api.post("/quiz/deep", response_model=DeepResponse)
 def quiz_deep(req: DeepRequest) -> DeepResponse:
     """The next deep-dive question about a game loved for the gameplay, or none."""
-    q = quiz.deep_dive_next(req.loved, req.reasons, [a.model_dump() for a in req.answered])
+    q = deep_dives.deep_dive_next(req.loved, req.reasons, [a.model_dump() for a in req.answered])
     if q is None:
         return DeepResponse()
     return DeepResponse(question=q["id"], game=q["name"], text=q["text"],
@@ -498,7 +498,7 @@ def result(req: ResultRequest) -> Result:
     quiz.estimate(req.loved, req.disliked, rows=rows, reasons=req.reasons, trace=trace)
     verdicts_est = est
     deep = [a.model_dump() for a in req.deep_dives]
-    est = quiz.settle(est, deep, [c.model_dump() for c in req.comparisons], rows)
+    est = deep_dives.settle(est, deep, [c.model_dump() for c in req.comparisons], rows)
     matches = quiz.champions_for(est, n=req.n)
     # How much was answered: every verdict given (loved, fine, disliked); older
     # clients send no verdicts, so their picks stand in.
@@ -532,7 +532,7 @@ def result(req: ResultRequest) -> Result:
         },
     )
     if req.debug:
-        result.debug = quiz.debug_view(
+        result.debug = debug.debug_view(
             req.loved, req.disliked, req.reasons, [a.model_dump() for a in req.deep_dives],
             [c.model_dump() for c in req.comparisons], rows, _champions(), recognised=recognised)
 

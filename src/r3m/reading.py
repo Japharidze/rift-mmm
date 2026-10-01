@@ -27,7 +27,7 @@ from typing import Any
 
 import yaml
 
-from r3m import quiz
+from r3m import deep_dives, quiz
 from r3m.config import ROOT
 
 READING_FILE = ROOT / "bank" / "reading.yaml"
@@ -113,13 +113,13 @@ def read_player(
             continue
         answers = []
         for a in deep:
-            found = quiz._question(a.get("question", ""))
+            found = deep_dives._question(a.get("question", ""))
             if not found or a.get("option") is None or found[1]["axis"] != split:
                 continue
             family, q = found
             option = next((o for o in q["options"] if o["id"] == a["option"]), None)
             if option:
-                answers.append((option["sign"], quiz.deep_dives()[family]["name"]))
+                answers.append((option["sign"], deep_dives.deep_dives()[family]["name"]))
         signs = {s for s, _ in answers}
         if len(answers) < 2 or len(signs) != 1:
             continue

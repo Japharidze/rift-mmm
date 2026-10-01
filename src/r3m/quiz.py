@@ -28,14 +28,10 @@ about — monetisation, art style, the friend who made them play it.
 """
 
 import math
-from functools import cache
 from dataclasses import dataclass, field
 from typing import Any
 
-import yaml
-
 from r3m import db, scoring
-from r3m.config import ROOT
 
 DIMENSIONS = ("micro", "meso", "macro")
 # A game's answered reason: one for a dislike; for a love, the reasons ticked
@@ -637,6 +633,7 @@ PANEL_ROUND_2_RESERVED = ("fortnite", "minecraft", "grand-theft-auto-v", "terrar
 def panel_round_2_extra(rows: list[dict[str, Any]], n: int = 42) -> list[str]:
     """How PANEL_ROUND_2_EXTRA is chosen -- to regenerate it, not to serve:
     the reserved games, then spread order over the rest of the well-known."""
+    from r3m.selector import ROUND_ONE_FLOOR, recognition_prior
     pool = [r for r in servable_bank(rows) if r["game_id"] not in PANEL_ROUND_1_CARDS
             and r["game_id"] not in PANEL_ROUND_2_RESERVED
             and recognition_prior(r) >= ROUND_ONE_FLOOR]
@@ -729,6 +726,7 @@ def next_round(
         if champions is None:
             with db.connect() as conn:
                 champions = db.champion_points(conn)
+        from r3m.selector import select_round   # imports quiz: kept local
         return select_round(index, shown=shown or [], played=played, loved=loved,
                             disliked=disliked, reasons=reasons, rows=rows, champions=champions)
 
@@ -799,179 +797,6 @@ def _panel_round_2(index: int, rows: list[dict[str, Any]]) -> list[dict[str, Any
     decks = [deck(PANEL_ROUND_1_BANK, PANEL_ROUND_1_CARDS), deck(extra, extra)]
     decks = [d for d in decks if d]
     return decks[index] if index < len(decks) else None
-
-
-# ---------------------------------------------------------------------------
-# The card selector (docs/quiz-chain.md §4, "a card is a question").
-# SERVING = "selector". Built 2026-09-29, not yet switched on: panel round 2
-# serves round 1's cards so it tests the evidence mechanics alone.
-# ---------------------------------------------------------------------------
-
-# Recognition prior by hand tier (bank/renown.yaml) -- has a typical player in
-# the segment ever played it?
-RENOWN_PRIOR = {"universal": 0.85, "wide": 0.55, "niche": 0.25}
-# Steam lifetime reach mapped onto the same scale, log-linearly: the bank's
-# floor (20k reviews) reads as niche, 5M and above as universal. Valheim
-# (~500k) lands near 0.6.
-REACH_FLOOR, REACH_CEIL = 20_000, 5_000_000
-PRIOR_LOW, PRIOR_HIGH = 0.25, 0.85
-# Round 1 is the same for everyone and drawn only from games at least this
-# likely to be recognised: before a single answer there is nothing to adapt
-# to, and an obscure extreme is both a wasted glance and a weakly-known label.
-ROUND_ONE_FLOOR = 0.5
-# Later rounds: this share of each round is chosen for spread alone, among
-# games at least EXPLORE_FLOOR recognisable. The recognition estimate is learnt
-# from what people were shown, so it must never be the only door.
-EXPLORE_SHARE = 1 / 3
-EXPLORE_FLOOR = 0.4
-# Given a game was played, how likely each verdict is. Before any answer the
-# flat starting values; after, it depends on where the card sits relative to
-# the player's current point -- a far-off card is more often "fine" or disliked
-# than loved, and "fine" moves nothing. Panel round 2 measures all of these.
-P_LOVED, P_DISLIKED = 0.6, 0.4
-# Distance from the current point at which loving a card becomes as likely as
-# not, and how sharply that falls off. 0.35 is about seven champion-widths.
-LOVE_MIDPOINT, LOVE_SOFTNESS = 0.35, 0.08
-# value = recognition ** RECOGNITION_POWER x information. 1 is the plain
-# product; 0 ignores recognition (inside the field SCORED already narrowed);
-# above 1 leans on it. The dial the simulation sweeps (r3m simulate).
-RECOGNITION_POWER = 1.0
-
-
-def verdict_odds(row: dict[str, Any], point: tuple[float, float, float] | None) -> tuple[float, float]:
-    """(P loved, P disliked) for a played card, given the current point."""
-    if point is None:
-        return P_LOVED, P_DISLIKED
-    d = math.dist(point, (row["micro"], row["meso"], row["macro"]))
-    loved = 0.1 + 0.65 / (1 + math.exp((d - LOVE_MIDPOINT) / LOVE_SOFTNESS))
-    return loved, 0.5 * (1 - loved)
-# Cards scored in full each round. Scoring is two estimates and two
-# neighbourhoods per card, so the field is narrowed by recognition first.
-SCORED = 60
-
-
-def recognition_prior(row: dict[str, Any]) -> float:
-    """P(a player in the segment has played this), before any answers."""
-    if row.get("renown") in RENOWN_PRIOR:
-        return RENOWN_PRIOR[row["renown"]]
-    reach = row.get("reach")
-    if reach:
-        span = math.log10(REACH_CEIL) - math.log10(REACH_FLOOR)
-        t = (math.log10(reach) - math.log10(REACH_FLOOR)) / span
-        return PRIOR_LOW + (PRIOR_HIGH - PRIOR_LOW) * min(1.0, max(0.0, t))
-    return PRIOR_LOW
-
-
-def breadth(shown: list[str], played: list[str], by_id: dict[str, dict[str, Any]]) -> float:
-    """How much more (or less) this player recognises than the priors expect.
-
-    A ratio of actual to expected recognitions over the cards shown, smoothed
-    by one so the first round cannot swing it far. Someone who has played more
-    of what they were shown than a typical player would is likely to know the
-    next card too.
-    """
-    expected = sum(recognition_prior(by_id[g]) for g in shown if g in by_id)
-    actual = sum(1 for g in shown if g in played)
-    return (actual + 1) / (expected + 1)
-
-
-def recognition(row: dict[str, Any], k: float) -> float:
-    p = recognition_prior(row)
-    odds = p / (1 - p) * k
-    return odds / (1 + odds)
-
-
-def information(
-    row: dict[str, Any],
-    loved: list[str],
-    disliked: list[str],
-    reasons: Reasons,
-    rows: list[dict[str, Any]],
-    champions: list[dict[str, Any]],
-    now: set[str] | None,
-    est: "Estimate | None",
-) -> float:
-    """How much answering this card would change the result, 0 to 1.
-
-    Two parts, equally weighted. The expected share of the top five champions
-    its answer would displace (loved or disliked, weighted by how often a
-    played game is each) -- the same test a follow-up question has to pass. And
-    how much of the still-unread dimensions it would read: before anything is
-    loved there is no top five to move, and reading an unread dimension is
-    then the whole value.
-    """
-    g = row["game_id"]
-    p_love, p_hate = verdict_odds(row, est.point if est is not None else None)
-    if now is None:
-        shift = p_love
-    else:
-        love = _top(loved + [g], disliked, reasons, rows, champions)
-        hate = _top(loved, disliked + [g], reasons, rows, champions)
-        shift = (p_love * len(now - (love or now)) + p_hate * len(now - (hate or now))) / 5
-    need = {d: 1.0 if est is None else max(0.0, NEEDED - est.dimensions[d].informative) / NEEDED
-            for d in DIMENSIONS}
-    # demand, not opportunity: choosing what to serve asks what a dimension
-    # needs (see demand's docstring). opportunity rates a low-demand game as
-    # reading every dimension at once, which put tic-tac-toe and Solitaire at
-    # the top of every player's round 2.
-    reads = sum(demand(row, d) * need[d] for d in DIMENSIONS) / max(1e-9, sum(need.values()))
-    return 0.5 * shift + 0.5 * (reads if any(need.values()) else 0.0)
-
-
-def select_round(
-    index: int,
-    *,
-    shown: list[str],
-    played: list[str],
-    loved: list[str],
-    disliked: list[str],
-    reasons: Reasons,
-    rows: list[dict[str, Any]],
-    champions: list[dict[str, Any]],
-) -> list[dict[str, Any]] | None:
-    """One round of the recognition sweep under the selector, or None to stop."""
-    pool = [r for r in servable_bank(rows) if r["game_id"] not in set(shown)]
-    if index >= MAX_ROUNDS or not pool:
-        return None
-    if index == 0:
-        known = [r for r in pool if recognition_prior(r) >= ROUND_ONE_FLOOR]
-        return spread_order(known, ROUND)
-
-    est = None
-    if loved:
-        try:
-            est = estimate(loved, disliked, rows=rows, reasons=reasons)
-        except ValueError:
-            est = None
-    if len(played) >= ENOUGH_RECOGNISED and est is not None and not est.unread:
-        return None
-
-    by_id = {r["game_id"]: r for r in rows}
-    k = breadth(shown, played, by_id)
-    now = _top(loved, disliked, reasons, rows, champions) if loved else None
-    field = sorted(pool, key=lambda r: -recognition(r, k))[:SCORED]
-    value = {r["game_id"]: recognition(r, k) ** RECOGNITION_POWER * information(
-        r, loved, disliked, reasons, rows, champions, now, est) for r in field}
-
-    n_explore = round(ROUND * EXPLORE_SHARE)
-    chosen = sorted(field, key=lambda r: -value[r["game_id"]])[:ROUND - n_explore]
-
-    # Exploration: farthest from everything shown or chosen, among games a
-    # player could plausibly know -- spread, not value.
-    def gap(a: dict[str, Any], b: dict[str, Any]) -> float:
-        return sum((a[d] - b[d]) ** 2 for d in DIMENSIONS) ** 0.5
-    seen = [by_id[g] for g in shown if g in by_id] + chosen
-    taken = {r["game_id"] for r in chosen}
-    candidates = [r for r in pool if r["game_id"] not in taken
-                  and recognition(r, k) >= EXPLORE_FLOOR]
-    for _ in range(n_explore):
-        if not candidates:
-            break
-        far = max(candidates, key=lambda r: min((gap(r, s) for s in seen), default=1.0))
-        chosen.append(far)
-        seen.append(far)
-        candidates.remove(far)
-    return chosen
 
 
 # Follow-up questions in the whole quiz. Each costs a screen, so they go where
@@ -1245,108 +1070,6 @@ def apply_comparisons(
 
 
 # ---------------------------------------------------------------------------
-# Deep dives (docs/quiz-chain.md §3, §4): how someone played a game they loved.
-# ---------------------------------------------------------------------------
-
-DEEP_DIVES_FILE = ROOT / "bank" / "deep_dives.yaml"
-# One answer's pull on its axis. Below scoring.CLOSE, so like a comparison no
-# single answer relocates the point; the two options of a question pull the
-# same size in opposite directions, so a random answerer does not drift.
-DEEP_DIVE_SIZE = {"small": 0.04, "medium": 0.08}
-# All deep-dive answers together move one dimension at most this far (scoring's
-# CLOSE band) -- the principle already applied to comparisons: no single source
-# relocates the point. Two macro answers in two families stacked to +0.16 in a
-# test and lifted the point above every champion (2026-09-30, Sergi).
-DEEP_DIVE_CAP = 0.10
-# Families asked about per session: two families is six questions at most,
-# about thirty seconds.
-DEEP_DIVE_FAMILIES = 2
-# The two splits decided in docs/quiz-chain.md §2. Answers on them are logged
-# and not applied: matching does not use the splits yet, and logged answers
-# plus Riot-id mains are how split matching gets tested before it ships.
-SPLITS = ("micro_split", "meso_split")
-
-
-@cache
-def deep_dives() -> dict[str, dict[str, Any]]:
-    with DEEP_DIVES_FILE.open() as fh:
-        return yaml.safe_load(fh)
-
-
-def _question(qid: str) -> tuple[str, dict[str, Any]] | None:
-    for family, f in deep_dives().items():
-        for q in f["questions"]:
-            if q["id"] == qid:
-                return family, q
-    return None
-
-
-def deep_dive_next(
-    loved: list[str],
-    reasons: Reasons,
-    answered: list[dict[str, Any]],
-) -> dict[str, Any] | None:
-    """The next deep-dive question, or None.
-
-    Only about games loved for the gameplay: a love named for the people, the
-    world, nostalgia or what they had is not asked about -- the answer would
-    describe a game the player did not choose for how it plays. A love nobody
-    gave a reason for counts as gameplay, as it does in the estimate. Families
-    in the order their first game was loved, at most DEEP_DIVE_FAMILIES.
-    `answered` holds every question already put, answered or skipped.
-    """
-    asked = {a["question"] for a in answered}
-    families: list[str] = []
-    for g in loved:
-        given = reasons.get(g)
-        given = {given} if isinstance(given, str) else set(given or ())
-        if given and "gameplay" not in given:   # loved only for something else
-            continue
-        for family, f in deep_dives().items():
-            if g in f["games"] and family not in families:
-                families.append(family)
-    for family in families[:DEEP_DIVE_FAMILIES]:
-        for q in deep_dives()[family]["questions"]:
-            if q["id"] not in asked:
-                return {"family": family, "name": deep_dives()[family]["name"], **q}
-    return None
-
-
-def apply_deep_dives(est: "Estimate", answered: list[dict[str, Any]]) -> "Estimate":
-    """Fold deep-dive answers into the point: each moves its axis by its size,
-    in its option's direction, and all of them together move one dimension at
-    most DEEP_DIVE_CAP. Split answers and skips move nothing."""
-    delta = {d: 0.0 for d in DIMENSIONS}
-    for a in answered:
-        found = _question(a.get("question", ""))
-        if found is None or a.get("option") is None:
-            continue
-        _, q = found
-        option = next((o for o in q["options"] if o["id"] == a["option"]), None)
-        if option is None or q["axis"] in SPLITS or q["axis"] not in DIMENSIONS:
-            continue
-        delta[q["axis"]] += option["sign"] * DEEP_DIVE_SIZE[q["size"]]
-    delta = {d: max(-DEEP_DIVE_CAP, min(DEEP_DIVE_CAP, v)) for d, v in delta.items()}
-    if not any(delta.values()):
-        return est
-    dims = {
-        d: DimensionEstimate(
-            value=round(min(1.0, max(0.0, est.dimensions[d].value + delta[d])), 2),
-            informative=est.dimensions[d].informative,
-        )
-        for d in DIMENSIONS
-    }
-    return Estimate(loved=est.loved, disliked=est.disliked, unknown=est.unknown, dimensions=dims)
-
-
-def settle(est: "Estimate", deep: list[dict[str, Any]], comparisons: list[dict[str, str]],
-           rows: list[dict[str, Any]]) -> "Estimate":
-    """Everything after the verdicts, in the order it is asked: deep dives,
-    then comparisons, which pull relative to the point the dives left."""
-    return apply_comparisons(apply_deep_dives(est, deep), comparisons, rows)
-
-
-# ---------------------------------------------------------------------------
 # How well the point is known, and what that allows a label to claim.
 # ---------------------------------------------------------------------------
 
@@ -1389,85 +1112,3 @@ def confidence(distance: float, est: "Estimate", recognised: int, loves: int) ->
             and recognised >= CONFIDENT_RECOGNISED and loves >= CONFIDENT_LOVES):
         return "close"
     return "fair"
-
-
-# ---------------------------------------------------------------------------
-# Debug view (?debug=1): how a result was reached. Never shown to players.
-# ---------------------------------------------------------------------------
-
-def debug_view(
-    loved: list[str],
-    disliked: list[str],
-    reasons: Reasons,
-    deep: list[dict[str, Any]],
-    comparisons: list[dict[str, str]],
-    rows: list[dict[str, Any]],
-    champions: list[dict[str, Any]],
-    n_champions: int = 10,
-    recognised: int | None = None,
-) -> dict[str, Any]:
-    """Which games pushed which dimension, what each follow-up moved, and why
-    each champion ranks where it does -- to judge a "partly" by component.
-    Recomputed on the same functions the result uses, never re-derived."""
-    by_id = {r["game_id"]: r for r in rows}
-    trace: list[dict[str, Any]] = []
-    est = estimate(loved, disliked, rows=rows, reasons=reasons, trace=trace)
-    r2 = lambda x: round(x, 3)
-
-    # Evidence: each game's share of each dimension's total weight.
-    weight = {d: sum(t["weight"] for t in trace if t.get("dimension") == d) for d in DIMENSIONS}
-    games: dict[str, dict[str, Any]] = {}
-    for t in trace:
-        g = games.setdefault(t["game"], {"game": t["game"], "name": by_id[t["game"]]["name"],
-                                         "kind": t["kind"], "reason": t.get("reason"),
-                                         "love_weight": t.get("love_weight"),
-                                         "explained": t.get("explained", False), "dims": {}})
-        if "dimension" in t:
-            d = t["dimension"]
-            g["dims"][d] = {"votes": r2(t["value"]), "share": r2(t["weight"] / weight[d]) if weight[d] else 0}
-
-    # Follow-ups, in the order they apply.
-    after_deep = apply_deep_dives(est, deep)
-    dives = []
-    for a in deep:
-        found = _question(a.get("question", ""))
-        if not found:
-            continue
-        _, q = found
-        opt = next((o for o in q["options"] if o["id"] == a.get("option")), None)
-        dives.append({"question": q["text"], "answer": opt["text"] if opt else None, "axis": q["axis"],
-                      "move": (None if opt is None or q["axis"] in SPLITS
-                               else r2(opt["sign"] * DEEP_DIVE_SIZE[q["size"]])),
-                      "logged_only": q["axis"] in SPLITS})
-    steps, prev = [], after_deep.point
-    for k in range(1, len(comparisons) + 1):
-        now = apply_comparisons(after_deep, comparisons[:k], rows).point
-        c = comparisons[k - 1]
-        steps.append({"winner": by_id.get(c["winner"], {}).get("name", c["winner"]),
-                      "loser": by_id.get(c["loser"], {}).get("name", c["loser"]),
-                      "dimension": c.get("dimension"),
-                      "move": [r2(b - a) for a, b in zip(prev, now)]})
-        prev = now
-    final = settle(est, deep, comparisons, rows).point
-
-    ranked = scoring.neighbourhood(final, n=n_champions, rows=champions)
-    recognised = recognised if recognised is not None else len(loved) + len(disliked)
-    loves = counting_loves(est, reasons)
-    return {
-        "uncertainty": {"per_dimension": uncertainty(est), "point": point_uncertainty(est),
-                        "confident_below": CONFIDENT_UNCERTAINTY, "recognised": recognised,
-                        "counting_loves": loves,
-                        "floor": {"recognised": CONFIDENT_RECOGNISED, "loves": CONFIDENT_LOVES}},
-        "points": {"verdicts": list(est.point), "after_deep_dives": list(after_deep.point),
-                   "final": list(final)},
-        "read": {d: {"informative": est.dimensions[d].informative, "read": est.dimensions[d].read}
-                 for d in DIMENSIONS},
-        "evidence": sorted(games.values(), key=lambda g: (g["kind"], g["name"])),
-        "deep_dives": dives,
-        "comparisons": steps,
-        "champions": [{"name": m.name, "role": m.role, "distance": r2(m.distance),
-                       "confidence": confidence(m.distance, est, recognised, loves),
-                       "by_distance_alone": m.confidence,
-                       "gap": {d: r2(m.point[i] - final[i]) for i, d in enumerate(DIMENSIONS)}}
-                      for m in ranked],
-    }

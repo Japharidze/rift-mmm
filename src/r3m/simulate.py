@@ -4,8 +4,8 @@ The question: does a way of choosing cards find a player's true point when
 recognition is noisier and more taste-shaped than the selector assumes?
 
 **The players do not use the selector's model.** If a simulated player knew a
-game with exactly the probability `quiz.recognition` predicts, and loved it
-with exactly `quiz.verdict_odds`, the simulation would confirm its own
+game with exactly the probability `selector.recognition` predicts, and loved it
+with exactly `selector.verdict_odds`, the simulation would confirm its own
 assumptions and every weighting would look fine. So both are independent here:
 
 - *Recognition* starts from its own fame scale (different numbers for the
@@ -39,17 +39,17 @@ from dataclasses import dataclass, field
 from multiprocessing import Pool
 from typing import Any
 
-from r3m import quiz, scoring
+from r3m import quiz, scoring, selector
 
 Point = tuple[float, float, float]
 
 # -- the players' own world, deliberately not the selector's --------------------
 
 # P(played it) for a typical player, before breadth, taste and noise. Wider
-# apart than quiz.RENOWN_PRIOR (0.85 / 0.55 / 0.25) on purpose.
+# apart than selector.RENOWN_PRIOR (0.85 / 0.55 / 0.25) on purpose.
 FAME = {"universal": 0.9, "wide": 0.45, "niche": 0.12}
 # Steam reach by rank among the bank's Steam games, not log-linear like
-# quiz.recognition_prior: the top of the list is known far more than the rest.
+# selector.recognition_prior: the top of the list is known far more than the rest.
 REACH_LOW, REACH_HIGH, REACH_CURVE = 0.08, 0.8, 2.0
 UNRATED = 0.1
 # Logit-scale perturbations. BREADTH is per player (how much they play at all);
@@ -184,7 +184,7 @@ def policy(name: str, *, power: float = 1.0, explore: float = 1 / 3) -> Policy:
                 return None
             pool = [r for r in quiz.servable_bank(rows) if r["game_id"] not in set(shown)]
             by_id = {r["game_id"]: r for r in rows}
-            k = quiz.breadth(shown, played, by_id)
+            k = selector.breadth(shown, played, by_id)
             rnd = random.Random(f"{seed}-{index}")
             return sorted(pool, key=lambda r: -key(r, k, rnd))[:quiz.ROUND] or None
         return run
@@ -195,15 +195,15 @@ def policy(name: str, *, power: float = 1.0, explore: float = 1 / 3) -> Policy:
         return quiz.servable_bank(rows) if index == 0 else None
 
     def selector(index, *, shown, played, loved, disliked, rows, champions, seed):
-        quiz.RECOGNITION_POWER, quiz.EXPLORE_SHARE = power, explore
-        return quiz.select_round(index, shown=shown, played=played, loved=loved,
+        selector.RECOGNITION_POWER, selector.EXPLORE_SHARE = power, explore
+        return selector.select_round(index, shown=shown, played=played, loved=loved,
                                  disliked=disliked, reasons={}, rows=rows, champions=champions)
 
     return {
         "panel-round-1": dealt("panel-round-1"),
         "bank-dealt": dealt("bank"),
         "random": ranked(lambda r, k, rnd: rnd.random()),
-        "recognition-only": ranked(lambda r, k, rnd: quiz.recognition(r, k)),
+        "recognition-only": ranked(lambda r, k, rnd: selector.recognition(r, k)),
         "all-cards": everything,
         "selector": selector,
     }[name]
