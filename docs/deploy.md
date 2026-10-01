@@ -312,3 +312,15 @@ it. Live smoke passed (decks of 28 and 42, one reasons screen); smoke session
 - Live smoke passed (two loves: all "in the neighbourhood", uncertainty 0.31;
   nine loves: all "in the neighbourhood"). Smoke sessions 36-37 and page visits
   14-15 deleted. Production: 23 sessions.
+
+## riot_mains -- live 2026-10-01 18:10 UTC
+
+`main` at `8789ace`; migration 024 applied 18:10:16. Pre-deploy dump:
+`data/prod-pre-mains-2026-10-01.dump`. Rehearsed on a copy first.
+`riot_mains` holds one row per fetch of a Riot account (append-only), so mains
+belong to the player, not the session. `r3m mains-import` moved the six
+fetches from the laptop's `data/panel-mains.json` in (source `cache`); all 9
+sessions with a Riot id join to one of them. `panel-check` now reuses the table
+before calling Riot and, with `--write`, records new fetches there as well as
+on the session. Join: `riot_key` or `resolved_key` = the session's Riot id,
+lowercased with whitespace removed.
