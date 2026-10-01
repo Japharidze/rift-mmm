@@ -58,6 +58,14 @@ class RiotApi:
             f"{RANKED_SOLO}/{tier}/{division}?page={page}"
         )
 
+    def champion_masteries(self, puuid: str) -> list[dict[str, Any]]:
+        """Every champion this player has mastery on (champion-mastery-v4) --
+        the co-play experiment's pool data. One call per player."""
+        return self._get(
+            f"https://{self.platform}.api.riotgames.com/lol/champion-mastery/v4/"
+            f"champion-masteries/by-puuid/{quote(puuid)}"
+        )
+
     def account_by_riot_id(self, game_name: str, tag_line: str) -> dict[str, Any]:
         """account-v1: a Riot id (name#tag) to its puuid.
 

@@ -156,7 +156,20 @@ React frontend, same repo under /web.
 
 ## Current phase
 
-Phase 2: both gates passed, building the MVP. The game side is done —
+**2026-10-01: recruiting is paused; the project's future depends on the
+co-play experiment** (`src/r3m/coplay.py`). Round 2's first players showed each
+player's mains as spread out in the labelled MMM space as random champions
+(mean pairwise distance 0.24–0.41 vs 0.34 for random pairs). The experiment
+crawls champion mastery for ~5–10k mid-ladder EUNE/EUW players and asks, per
+role: Q1, do pools show taste beyond popularity (vs a null that keeps
+popularity and pool size)? Q2, only if yes, does that taste follow MMM label
+distance? Decision rules, fixed in advance: Q1 no in most roles (recent pools
+too) → the project ends with a write-up; Q1 yes, Q2 yes → labels confirmed, the
+problem was one point per player, next design is role first, champions within
+role; Q1 yes, Q2 no → taste exists but the labels don't capture it, MMM can't
+be the bridge as labelled.
+
+Phase 2 (before the pause): both gates passed, building the MVP. The game side is done —
 `game`/`game_label` tables, `anchors/games.yaml`, `labeling/games.py`
 (prompt games-v2), and `quiz.py` turn a player's picks into an MMM point and a
 confidence-banded style neighbourhood (`scoring.py`), all reachable from the

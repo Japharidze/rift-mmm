@@ -399,6 +399,18 @@ def _panel_check(args: argparse.Namespace) -> int:
     return 0
 
 
+def _coplay_crawl(args: argparse.Namespace) -> int:
+    from r3m import coplay
+    coplay.crawl(args.platform, args.target, progress=lambda m: print(m, flush=True))
+    return 0
+
+
+def _coplay_analyse(args: argparse.Namespace) -> int:
+    from r3m import coplay
+    coplay.analyse(progress=lambda m: print(m, flush=True))
+    return 0
+
+
 def _mains_import(args: argparse.Namespace) -> int:
     """Move the fetches in the local cache (data/panel-mains.json) into
     riot_mains -- one row per account and fetch time, so an account cached
@@ -745,6 +757,12 @@ def main() -> int:
         help="move the cached Riot fetches (data/panel-mains.json) into the riot_mains table",
     )
     mains_cmd.set_defaults(func=_mains_import)
+
+    coplay_cmd = sub.add_parser("coplay-crawl", help="co-play experiment: crawl champion mastery (local DB)")
+    coplay_cmd.add_argument("--platform", default="euw1")
+    coplay_cmd.add_argument("--target", type=int, default=5000)
+    coplay_cmd.set_defaults(func=_coplay_crawl)
+    sub.add_parser("coplay-analyse", help="co-play experiment: Q1 and Q2 per role (local DB)").set_defaults(func=_coplay_analyse)
 
     place_cmd = sub.add_parser(
         "place", help="walk the podcast anchor candidates and place them by hand"
