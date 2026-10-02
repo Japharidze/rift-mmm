@@ -401,7 +401,7 @@ def _panel_check(args: argparse.Namespace) -> int:
 
 def _coplay_crawl(args: argparse.Namespace) -> int:
     from r3m import coplay
-    coplay.crawl(args.platform, args.target, progress=lambda m: print(m, flush=True))
+    coplay.crawl(args.platform, args.target, progress=lambda m: print(m, flush=True), apex=args.apex)
     return 0
 
 
@@ -761,8 +761,10 @@ def main() -> int:
     coplay_cmd = sub.add_parser("coplay-crawl", help="co-play experiment: crawl champion mastery (local DB)")
     coplay_cmd.add_argument("--platform", default="euw1")
     coplay_cmd.add_argument("--target", type=int, default=5000)
+    coplay_cmd.add_argument("--apex", action="store_true", help="Master+ players, kept apart from the mid-ladder sample")
     coplay_cmd.set_defaults(func=_coplay_crawl)
     sub.add_parser("coplay-analyse", help="co-play experiment: Q1 and Q2 per role (local DB)").set_defaults(func=_coplay_analyse)
+    sub.add_parser("coplay-checks", help="co-play: class-tag baseline, tier split, Master+ (local DB)").set_defaults(func=lambda a: (__import__("r3m.coplay", fromlist=["x"]).checks(progress=lambda m: print(m, flush=True)), 0)[1])
 
     place_cmd = sub.add_parser(
         "place", help="walk the podcast anchor candidates and place them by hand"

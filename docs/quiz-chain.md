@@ -529,6 +529,23 @@ a genre for every deck game (§3); and search aliases — the names people type
   today's signal is noise.
 - Whether fill and retry games were answerable.
 
+## 8b. Co-play experiment (2026-10-02)
+
+Round 2's first players' mains sat as far apart in the labelled space as random
+champions, so the premise was tested on 10,000 ranked players' champion
+mastery instead (`docs/coplay.md`, `src/r3m/coplay.py`). Reading:
+
+- **Taste exists within a role** (Q1): pool structure far above shuffles that
+  keep popularity and pool size, replicating across EUNE and EUW (ρ 0.44–0.67),
+  the same on recent pools.
+- **MMM captures part of it** (Q2): micro in every role (~0.15–0.35), meso
+  partly (top and jungle), macro not at all within a role. Against replication
+  as the ceiling, about half to two-thirds in top and jungle, much less in bot.
+- **What failed was one point per player across all champions,** not the
+  labels. A within-role matcher is the candidate design, pending the class-tag
+  baseline (does MMM add anything beyond Riot's tags?) and the tier split.
+- Caveat: replication cannot rule out shared meta.
+
 ## 9. Decisions
 
 Settled 2026-09-28: the two cancelling dislike reasons ("never really played

@@ -156,8 +156,20 @@ React frontend, same repo under /web.
 
 ## Current phase
 
-**2026-10-01: recruiting is paused; the project's future depends on the
-co-play experiment** (`src/r3m/coplay.py`). Round 2's first players showed each
+**2026-10-02: co-play results in (`docs/coplay.md`) -- the project continues.**
+Q1 yes: within-role pool structure far above shuffles that keep popularity and
+pool size (19–51 strong pairs per role vs 1–2 by chance), replicating EUNE↔EUW
+(ρ 0.44–0.67), the same on recent and lifetime pools. Q2 partial: micro tracks
+co-play in every role (~0.15–0.35), meso partly (top/jungle ~0.14–0.18), macro
+not at all (~0). Against each role's replication ρ as the ceiling, MMM reaches
+about half to two-thirds of it in top and jungle, much less in bot. What failed
+was "one point per player across all champions", not the labels. Caveat:
+replication cannot rule out shared meta (the same patch in both regions).
+Checks before any redesign (Sergi decides after): Riot class-tag baseline (does
+MMM explain co-play beyond tags?), a tier split, and a small Master+ contrast.
+Recruiting stays paused.
+
+**2026-10-01: recruiting paused; the co-play experiment** (`src/r3m/coplay.py`). Round 2's first players showed each
 player's mains as spread out in the labelled MMM space as random champions
 (mean pairwise distance 0.24–0.41 vs 0.34 for random pairs). The experiment
 crawls champion mastery for ~5–10k mid-ladder EUNE/EUW players and asks, per

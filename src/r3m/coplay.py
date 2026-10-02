@@ -69,16 +69,29 @@ def _ladder(api: RiotApi, seeds=DEFAULT_SEEDS) -> Iterator[tuple[str, str, str]]
         page += 1
 
 
-def crawl(platform: str, target: int, progress=print) -> int:
-    """Fetch mastery until `target` players of this platform are stored.
-    Resumable: players already fetched are skipped, so a rerun continues."""
+APEX = "MASTER+"   # tier stored for Master, Grandmaster and Challenger players
+
+
+def _apex(api: RiotApi) -> Iterator[tuple[str, str, str]]:
+    """Master+ players, Challenger first. A contrast sample, kept apart from
+    the mid-ladder one in every analysis."""
+    for tier in ("challenger", "grandmaster", "master"):
+        for e in api.apex_league(tier):
+            if e.get("puuid"):
+                yield e["puuid"], APEX, "I"
+
+
+def crawl(platform: str, target: int, progress=print, apex: bool = False) -> int:
+    """Fetch mastery until `target` players of this platform are stored --
+    mid-ladder, or Master+ with `apex`. Resumable: players already fetched are
+    skipped, so a rerun continues."""
     api = RiotApi(platform=platform)
     with db.connect() as conn:
         ensure_schema(conn)
-        done = conn.execute("select count(*) from coplay_player where platform = %s and fetched_at is not null",
-                            (platform,)).fetchone()[0]
+        done = conn.execute("select count(*) from coplay_player where platform = %s and fetched_at is not null"
+                            " and (tier = %s) = %s", (platform, APEX, apex)).fetchone()[0]
         fetched = {r[0] for r in conn.execute("select puuid from coplay_player where fetched_at is not null")}
-        for puuid, tier, division in _ladder(api):
+        for puuid, tier, division in (_apex(api) if apex else _ladder(api)):
             if done >= target:
                 break
             if puuid in fetched:
@@ -120,13 +133,15 @@ from itertools import combinations
 # within RECENT_DAYS of the crawl: lifetime mastery measures time, not current
 # taste.
 POOL, MIN_POINTS, RECENT_DAYS = 5, 10_000, 365
+# The main sample; Master+ (APEX) is a contrast, never mixed in.
+MID_LADDER = ("GOLD", "PLATINUM", "EMERALD")
 NULL_SAMPLES, LABEL_SHUFFLES = 100, 1000
 # Q2 uses only pairs the null expects to see together at least this often --
 # rarer pairs give a co-play score that is mostly noise.
 MIN_EXPECTED = 2.0
 
 
-def load(conn: Any, recent: bool) -> tuple[dict[str, list[tuple[str, set[str]]]], dict[str, tuple[float, float, float]]]:
+def load(conn: Any, recent: bool, tiers: tuple[str, ...] | None = None) -> tuple[dict[str, list[tuple[str, set[str]]]], dict[str, tuple[float, float, float]]]:
     """Per role, each player's pool restricted to champions whose primary role
     it is; and each champion's canonical MMM point for that role."""
     key_to_id = dict(conn.execute("select riot_key, id from champion").fetchall())
@@ -136,8 +151,8 @@ def load(conn: Any, recent: bool) -> tuple[dict[str, list[tuple[str, set[str]]]]
     cutoff = "and m.last_play > p.fetched_at - interval '%s days'" % RECENT_DAYS if recent else ""
     rows = conn.execute(f"""
         select m.puuid, m.champion_key, p.platform from coplay_mastery m join coplay_player p using (puuid)
-        where m.points >= %s {cutoff}
-        order by m.puuid, m.points desc""", (MIN_POINTS,)).fetchall()
+        where m.points >= %s and p.tier = any(%s) {cutoff}
+        order by m.puuid, m.points desc""", (MIN_POINTS, list(tiers or MID_LADDER))).fetchall()
     pools: dict[str, list[str]] = {}
     platform: dict[str, str] = {}
     for puuid, key, plat in rows:
@@ -274,3 +289,77 @@ def analyse(progress=print) -> None:
                 q2 = " / ".join(f"{v[0]:+.2f} ({v[1]:.3f})" for v in r["rho"].values()) or "too few pairs"
                 progress(f"{role:8} {r['players']:7} {r['champions']:6} {r['excess']:6.2f} {ex.get('eun1', '-'):>5} {ex.get('euw1', '-'):>5} "
                          f"{r['strong_pairs']:5} ({r['null_strong']:4.1f})/{r['pairs']:<5} {rep:>20}   {q2}")
+
+
+# ---------------------------------------------------------------------------
+# Checks after the first results (2026-10-02): a class-tag baseline, a tier
+# split, a Master+ contrast.
+# ---------------------------------------------------------------------------
+
+def _pearson(x: list[float], y: list[float]) -> float:
+    mx, my = st.mean(x), st.mean(y)
+    num = sum((a - mx) * (b - my) for a, b in zip(x, y))
+    den = math.sqrt(sum((a - mx) ** 2 for a in x) * sum((b - my) ** 2 for b in y))
+    return num / den if den else 0.0
+
+
+def _partial(x: list[float], y: list[float], z: list[float]) -> float:
+    """Spearman correlation of x and y with z partialled out, on ranks."""
+    rx, ry, rz = _rank(x), _rank(y), _rank(z)
+    xy, xz, yz = _pearson(rx, ry), _pearson(rx, rz), _pearson(ry, rz)
+    den = math.sqrt(max(1e-12, (1 - xz * xz) * (1 - yz * yz)))
+    return (xy - xz * yz) / den
+
+
+def tag_test(z: dict, label: dict, tags: dict[str, set[str]], seed: int = 0) -> dict[str, Any]:
+    """Does MMM explain co-play beyond Riot's class tags? Per dimension: tags
+    alone, MMM alone, and MMM with tag similarity partialled out -- the last
+    against 1,000 shuffles of the MMM labels with the tags left in place."""
+    rng = random.Random(seed)
+    pairs = [k for k in z if k[0] in tags and k[1] in tags]
+    zs = [z[k] for k in pairs]
+    tag_sim = [len(tags[a] & tags[b]) / len(tags[a] | tags[b]) for a, b in pairs]
+    champs = sorted({c for k in pairs for c in k})
+    def close(lab: dict, dim: int | None) -> list[float]:
+        return [-(math.dist(lab[a], lab[b]) if dim is None else abs(lab[a][dim] - lab[b][dim])) for a, b in pairs]
+    out = {"pairs": len(pairs), "tags": spearman(zs, tag_sim)}
+    for name, dim in (("all", None), ("micro", 0), ("meso", 1), ("macro", 2)):
+        real = _partial(zs, close(label, dim), tag_sim)
+        perms = []
+        for _ in range(LABEL_SHUFFLES):
+            vals = [label[c] for c in champs]; rng.shuffle(vals)
+            perms.append(_partial(zs, close(dict(zip(champs, vals)), dim), tag_sim))
+        out[name] = (spearman(zs, close(label, dim)), real,
+                     (1 + sum(p >= real for p in perms)) / (1 + len(perms)))
+    return out
+
+
+ROLES = ("top", "jungle", "mid", "bot", "support")
+
+
+def checks(progress=print) -> None:
+    with db.connect() as conn:
+        tags = {c: set(t or []) for c, t in conn.execute("select id, tags from champion").fetchall()}
+        by_role, label = load(conn, recent=False)
+        progress("CHECK 1 -- class-tag baseline (lifetime pools, mid-ladder). Spearman with co-play:")
+        progress("  tags = tag similarity alone; MMM = label closeness alone; MMM|tags = MMM with tags partialled out (p)")
+        progress(f"{'role':8} {'pairs':>5} {'tags':>6}   {'all: MMM  MMM|tags':>22} {'micro':>20} {'meso':>20} {'macro':>20}")
+        for role in ROLES:
+            rows = [r for _, r in by_role.get(role, [])]
+            r = role_test(rows, label, q2=False)
+            t = tag_test(r["z"], label, tags)
+            cell = lambda v: f"{v[0]:+.2f} {v[1]:+.2f} ({v[2]:.3f})"
+            progress(f"{role:8} {t['pairs']:5} {t['tags']:+6.2f}   {cell(t['all']):>22} {cell(t['micro']):>20} "
+                     f"{cell(t['meso']):>20} {cell(t['macro']):>20}")
+
+        progress("\nCHECK 2 -- tier split (lifetime pools). Q1 excess, 3-sd pairs (null), Q2 rho all / micro / meso / macro")
+        for tier in MID_LADDER + (APEX,):
+            by_tier, _ = load(conn, recent=False, tiers=(tier,))
+            for role in ROLES:
+                rows = [r for _, r in by_tier.get(role, [])]
+                if len(rows) < 50:
+                    progress(f"{tier:9} {role:8} too few players ({len(rows)})"); continue
+                r = role_test(rows, label)
+                q2 = " / ".join(f"{v[0]:+.2f}" for v in r["rho"].values()) or "too few pairs"
+                progress(f"{tier:9} {role:8} {len(rows):5} players  excess {r['excess']:5.2f}  "
+                         f"3sd {r['strong_pairs']:3} ({r['null_strong']:.1f})/{r['pairs']:<4}  Q2 {q2}")

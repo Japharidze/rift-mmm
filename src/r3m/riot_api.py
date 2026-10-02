@@ -58,6 +58,12 @@ class RiotApi:
             f"{RANKED_SOLO}/{tier}/{division}?page={page}"
         )
 
+    def apex_league(self, tier: str) -> list[dict[str, Any]]:
+        """All entries of an apex ladder: 'challenger', 'grandmaster' or 'master'."""
+        return self._get(
+            f"https://{self.platform}.api.riotgames.com/lol/league/v4/{tier}leagues/by-queue/{RANKED_SOLO}"
+        ).get("entries", [])
+
     def champion_masteries(self, puuid: str) -> list[dict[str, Any]]:
         """Every champion this player has mastery on (champion-mastery-v4) --
         the co-play experiment's pool data. One call per player."""
