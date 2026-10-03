@@ -113,3 +113,80 @@ two would be complementary rather than MMM alone.
 Risks: tag similarity is coarse (≤2 tags per champion) and weak as a baseline;
 the partial correlation is rank-based and linear; tiers share regions and
 patch, so shared meta is still not ruled out.
+
+# Reading of the pair lists (Sergi, 2026-10-03)
+
+The strongest pairs per role are recognisable playstyle families: Irelia+Riven,
+Yasuo+Zed+Katarina, the control mages, the enchanters, the hook supports. The
+disagreements show what MMM misses:
+
+- **Melee vs ranged.** Yasuo sits 0.09–0.14 from Xerath and Orianna in MMM, yet
+  they are almost never in one pool.
+- **Simplicity.** Garen+Malphite, Amumu+Rammus, Malzahar+Veigar cluster.
+- **Over-separated families.** Nami+Yuumi sit 0.59 apart and are played together.
+
+**Corrected ceiling:** MMM explains roughly 15% of the reliable co-play
+structure in top and jungle, and 3–4% in mid, bot and support.
+
+# Checks A–C (2026-10-03)
+
+Raw output: `docs/coplay-checks2-2026-10-03.txt`. Lifetime pools, mid-ladder.
+Partial correlations are Spearman on ranks; p against 1,000 shuffles of the
+champion attribute.
+
+## A — melee/ranged and the micro split. **The split carries part of range, not all.**
+
+| role | melee/ranged | split AUC (ranged > melee) | split | split \| micro | range | range \| MMM, split |
+|---|---|---|---|---|---|---|
+| top | 37/5 | 0.69 | +0.14 | **+0.13** (0.001) | +0.07 | +0.09 (0.016) |
+| jungle | 31/8 | 0.62 | +0.11 | **+0.14** (0.005) | +0.02 | −0.02 (0.72) |
+| mid | 9/24 | 0.78 | +0.20 | **+0.22** (0.003) | +0.38 | **+0.37** (0.001) |
+| bot | 1/25 | 0.76 | +0.16 | **+0.14** (0.016) | +0.01 | +0.03 (0.41) |
+| support | 13/20 | 0.75 | +0.08 | +0.08 (0.065) | +0.25 | **+0.26** (0.001) |
+
+The split leans ranged (AUC 0.62–0.78) and explains co-play beyond plain micro
+in four roles of five. But in mid and support, melee/ranged explains a lot the
+split and MMM don't (+0.37, +0.26); in top a little; in jungle and bot there
+is almost no range variation to test.
+
+## B — simplicity (Riot difficulty). **Adds nothing beyond MMM.**
+
+| role | pairs | difficulty | difficulty \| MMM |
+|---|---|---|---|
+| top | 677 | +0.07 | +0.04 (0.16) |
+| jungle | 581 | +0.15 | +0.06 (0.11) |
+| mid | 378 | +0.06 | +0.07 (0.14) |
+| bot | 274 | +0.14 | +0.12 (0.050) |
+| support | 439 | +0.05 | +0.03 (0.26) |
+
+Riot's difficulty rating doesn't capture the simplicity clusters, or MMM
+already holds what it does capture.
+
+## C — label correction, feasibility. **Small moves, large gains, validated across regions.**
+
+Coordinates fitted to EUNE co-play, anchored to the current labels (λ), scored
+on EUW: ρ(EUW co-play, closeness) and mean move per champion.
+
+| role | current | λ 10 | λ 1 | λ 0.1 | most moved at λ 1 |
+|---|---|---|---|---|---|
+| top | +0.34 | +0.35 / 0.01 | **+0.39 / 0.07** | +0.46 / 0.19 | Kayle, Cho'Gath, Gangplank, Nasus |
+| jungle | +0.23 | +0.25 / 0.01 | **+0.34 / 0.05** | +0.44 / 0.15 | Xin Zhao, Udyr, Viego, Lee Sin |
+| mid | +0.09 | +0.12 / 0.01 | **+0.36 / 0.07** | +0.51 / 0.17 | Yasuo, Malzahar, Xerath, Anivia |
+| bot | +0.18 | +0.20 / 0.01 | **+0.33 / 0.06** | +0.48 / 0.15 | Brand, Smolder, Samira, Varus |
+| support | +0.16 | +0.18 / 0.01 | **+0.35 / 0.07** | +0.59 / 0.19 | Tahm Kench, Yuumi, Bard, Nami |
+
+Moves of 0.05–0.07 per champion -- about one nearest-neighbour distance --
+take held-out ρ to 0.33–0.39 in every role; moves of 0.15–0.19 reach 0.44–0.59,
+the replication ceiling. Three dimensions are kept throughout.
+
+## Answers
+
+- **Range:** partly inside MMM via the split; in mid and support, not enough.
+- **Difficulty:** doesn't explain co-play beyond MMM.
+- **Co-play correcting the labels:** feasible within three dimensions with
+  small moves, and it generalises across regions.
+
+Risks: both regions share one patch, so a correction can learn the meta, not
+taste; λ was not tuned, and 0.1 moves labels far enough to override the kit;
+the range test has no power in jungle and bot (almost no variation); Data
+Dragon difficulty is missing for some newer champions.

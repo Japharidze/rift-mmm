@@ -1,0 +1,25 @@
+CHECK A -- melee/ranged and the micro split (lifetime pools, mid-ladder)
+  split = micro_precision - micro_execution; AUC = P(ranged champion's split > melee's)
+role     melee/ranged   split m/r   AUC    split  split|micro (p)    range  range|MMM,split (p)
+top         37/5      -0.03/+0.09  0.69    +0.14   +0.13 (0.001)    +0.07      +0.09 (0.016)
+jungle      31/8      -0.07/+0.03  0.62    +0.11   +0.14 (0.005)    +0.02      -0.02 (0.716)
+mid          9/24     -0.17/+0.06  0.78    +0.20   +0.22 (0.003)    +0.38      +0.37 (0.001)
+bot          1/25     -0.20/+0.04  0.76    +0.16   +0.14 (0.016)    +0.01      +0.03 (0.412)
+support     13/20     +0.08/+0.22  0.75    +0.08   +0.08 (0.065)    +0.25      +0.26 (0.001)
+
+CHECK B -- simplicity: Riot difficulty (1-10, 0 = missing, dropped)
+role     pairs difficulty   difficulty|MMM (p)
+top        677      +0.07        +0.04 (0.162)
+jungle     581      +0.15        +0.06 (0.109)
+mid        378      +0.06        +0.07 (0.139)
+bot        274      +0.14        +0.12 (0.050)
+support    439      +0.05        +0.03 (0.258)
+
+CHECK C -- label correction, feasibility: fit coordinates on EUNE co-play, score on EUW
+  rho = Spearman(EUW co-play, -MMM distance); lam = anchor to current labels (higher = stays closer)
+role     current    lam 10: rho move   lam 1: rho move  lam 0.1: rho move   most moved at lam 1
+top        +0.34          +0.35 0.01        +0.39 0.07         +0.46 0.19   Kayle 0.17, Chogath 0.17, Gangplank 0.13, Nasus 0.13
+jungle     +0.23          +0.25 0.01        +0.34 0.05         +0.44 0.15   XinZhao 0.10, Udyr 0.10, Viego 0.09, LeeSin 0.09
+mid        +0.09          +0.12 0.01        +0.36 0.07         +0.51 0.17   Yasuo 0.15, Malzahar 0.14, Xerath 0.13, Anivia 0.11
+bot        +0.18          +0.20 0.01        +0.33 0.06         +0.48 0.15   Brand 0.11, Smolder 0.10, Samira 0.10, Varus 0.10
+support    +0.16          +0.18 0.01        +0.35 0.07         +0.59 0.19   TahmKench 0.14, Yuumi 0.14, Bard 0.13, Nami 0.12

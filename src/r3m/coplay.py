@@ -363,3 +363,144 @@ def checks(progress=print) -> None:
                 q2 = " / ".join(f"{v[0]:+.2f}" for v in r["rho"].values()) or "too few pairs"
                 progress(f"{tier:9} {role:8} {len(rows):5} players  excess {r['excess']:5.2f}  "
                          f"3sd {r['strong_pairs']:3} ({r['null_strong']:.1f})/{r['pairs']:<4}  Q2 {q2}")
+
+
+# ---------------------------------------------------------------------------
+# Checks after the pair lists (2026-10-03): melee/ranged and the micro split,
+# simplicity, and how far the labels would have to move. Analysis only.
+# ---------------------------------------------------------------------------
+
+def _solve(a: list[list[float]], b: list[float]) -> list[float]:
+    n = len(b); m = [row[:] + [b[i]] for i, row in enumerate(a)]
+    for c in range(n):
+        p = max(range(c, n), key=lambda r: abs(m[r][c])); m[c], m[p] = m[p], m[c]
+        if abs(m[c][c]) < 1e-12:
+            continue
+        for r in range(n):
+            if r != c:
+                f = m[r][c] / m[c][c]
+                m[r] = [x - f * y for x, y in zip(m[r], m[c])]
+    return [m[i][n] / m[i][i] if abs(m[i][i]) > 1e-12 else 0.0 for i in range(n)]
+
+
+def _resid(y: list[float], xs: list[list[float]]) -> list[float]:
+    cols = [[1.0] * len(y)] + xs
+    a = [[sum(ci * cj for ci, cj in zip(c1, c2)) for c2 in cols] for c1 in cols]
+    beta = _solve(a, [sum(ci * yi for ci, yi in zip(c, y)) for c in cols])
+    return [yi - sum(b * c[i] for b, c in zip(beta, cols)) for i, yi in enumerate(y)]
+
+
+def partial_rank(x: list[float], y: list[float], controls: list[list[float]]) -> float:
+    """Spearman of x and y with any number of controls partialled out."""
+    rc = [_rank(c) for c in controls]
+    return _pearson(_resid(_rank(x), rc), _resid(_rank(y), rc))
+
+
+def _perm_p(real: float, champs: list[str], attr: dict, stat, rng: random.Random, n: int = LABEL_SHUFFLES) -> float:
+    vals = [attr[c] for c in champs]; hits = 0
+    for _ in range(n):
+        rng.shuffle(vals)
+        hits += stat(dict(zip(champs, vals))) >= real
+    return (1 + hits) / (1 + n)
+
+
+def _auc(pos: list[float], neg: list[float]) -> float:
+    """P(a random ranged champion's split exceeds a random melee one's)."""
+    if not pos or not neg:
+        return float("nan")
+    return sum((p > q) + 0.5 * (p == q) for p in pos for q in neg) / (len(pos) * len(neg))
+
+
+def _fit(label: dict, z: dict, lam: float, iters: int = 3000, lr: float = 0.05) -> dict:
+    """Move coordinates so pair distance tracks co-play (high z -> close),
+    anchored to the current labels with strength lam. Clipped to [0, 1]."""
+    pairs = list(z)
+    champs = sorted({c for k in pairs for c in k})
+    x0 = {c: list(label[c]) for c in champs}; x = {c: list(v) for c, v in x0.items()}
+    d0 = [math.dist(label[a], label[b]) for a, b in pairs]; zs = [z[k] for k in pairs]
+    beta = st.pstdev(d0) / (st.pstdev(zs) or 1.0); zbar, dbar = st.mean(zs), st.mean(d0)
+    target = [max(0.0, dbar - beta * (zi - zbar)) for zi in zs]
+    for _ in range(iters):
+        g = {c: [0.0, 0.0, 0.0] for c in champs}
+        for (a, b), t in zip(pairs, target):
+            d = math.dist(x[a], x[b]) or 1e-9; f = 2 * (d - t) / (d * len(pairs))
+            for i in range(3):
+                g[a][i] += f * (x[a][i] - x[b][i]); g[b][i] -= f * (x[a][i] - x[b][i])
+        for c in champs:
+            for i in range(3):
+                g[c][i] += 2 * lam * (x[c][i] - x0[c][i]) / len(champs)
+                x[c][i] = min(1.0, max(0.0, x[c][i] - lr * g[c][i] * len(champs)))
+    return {c: tuple(v) for c, v in x.items()}
+
+
+def checks2(progress=print) -> None:
+    with db.connect() as conn:
+        primary = dict(conn.execute("select champion_id, role from champion_role where is_primary").fetchall())
+        raw = {c: (r, d) for c, r, d in conn.execute(
+            "select champion_id, (raw->'stats'->>'attackrange')::int, (raw->'info'->>'difficulty')::int from champion_patch").fetchall()}
+        prec = db.subtrait_values(conn, kind="champion", column="micro_precision")
+        exe = db.subtrait_values(conn, kind="champion", column="micro_execution")
+        by_role, label = load(conn, recent=False)
+    split = {c: prec[(c, r)] - exe[(c, r)] for c, r in primary.items() if (c, r) in prec and (c, r) in exe}
+    ranged = {c: float(raw[c][0] > 300) for c in raw}
+    difficulty = {c: float(raw[c][1]) for c in raw if raw[c][1]}       # 0 = missing in Data Dragon
+    rng = random.Random(0)
+    res: dict[str, Any] = {}
+    for role in ROLES:
+        tagged = by_role.get(role, [])
+        pooled = role_test([r for _, r in tagged], label, q2=False)
+        regions = {p: role_test([r for q, r in tagged if q == p], label, q2=False) for p in ("eun1", "euw1")}
+        res[role] = (pooled, regions)
+
+    progress("CHECK A -- melee/ranged and the micro split (lifetime pools, mid-ladder)")
+    progress("  split = micro_precision - micro_execution; AUC = P(ranged champion's split > melee's)")
+    progress(f"{'role':8} {'melee/ranged':>12} {'split m/r':>11} {'AUC':>5}   {'split':>6} {'split|micro (p)':>16}   {'range':>6} {'range|MMM,split (p)':>20}")
+    for role in ROLES:
+        z = res[role][0]["z"]
+        pairs = [k for k in z if all(c in split and c in ranged and c in label for c in k)]
+        champs = sorted({c for k in pairs for c in k})
+        zs = [z[k] for k in pairs]
+        micro = [-abs(label[a][0] - label[b][0]) for a, b in pairs]
+        mmm = [-math.dist(label[a], label[b]) for a, b in pairs]
+        sclose = lambda s: [-abs(s[a] - s[b]) for a, b in pairs]
+        same = lambda r: [float(r[a] == r[b]) for a, b in pairs]
+        m = [split[c] for c in champs if not ranged[c]]; rr = [split[c] for c in champs if ranged[c]]
+        p_split = partial_rank(zs, sclose(split), [micro])
+        p_range = partial_rank(zs, same(ranged), [mmm, sclose(split)])
+        pp_split = _perm_p(p_split, champs, split, lambda s: partial_rank(zs, sclose(s), [micro]), rng)
+        pp_range = _perm_p(p_range, champs, ranged, lambda r: partial_rank(zs, same(r), [mmm, sclose(split)]), rng)
+        fm = lambda v: f"{st.mean(v):+.2f}" if v else "  -"
+        progress(f"{role:8} {len(m):5}/{len(rr):<6} {fm(m):>5}/{fm(rr):<5} {_auc(rr, m):5.2f}   "
+                 f"{spearman(zs, sclose(split)):+6.2f} {p_split:+7.2f} ({pp_split:.3f})   "
+                 f"{spearman(zs, same(ranged)):+6.2f} {p_range:+10.2f} ({pp_range:.3f})")
+
+    progress("\nCHECK B -- simplicity: Riot difficulty (1-10, 0 = missing, dropped)")
+    progress(f"{'role':8} {'pairs':>5} {'difficulty':>10} {'difficulty|MMM (p)':>20}")
+    for role in ROLES:
+        z = res[role][0]["z"]
+        pairs = [k for k in z if all(c in difficulty and c in label for c in k)]
+        champs = sorted({c for k in pairs for c in k})
+        zs = [z[k] for k in pairs]; mmm = [-math.dist(label[a], label[b]) for a, b in pairs]
+        dclose = lambda d: [-abs(d[a] - d[b]) for a, b in pairs]
+        real = partial_rank(zs, dclose(difficulty), [mmm])
+        p = _perm_p(real, champs, difficulty, lambda d: partial_rank(zs, dclose(d), [mmm]), rng)
+        progress(f"{role:8} {len(pairs):5} {spearman(zs, dclose(difficulty)):+10.2f} {real:+12.2f} ({p:.3f})")
+
+    progress("\nCHECK C -- label correction, feasibility: fit coordinates on EUNE co-play, score on EUW")
+    progress("  rho = Spearman(EUW co-play, -MMM distance); lam = anchor to current labels (higher = stays closer)")
+    progress(f"{'role':8} {'current':>7}   {'lam 10: rho move':>17} {'lam 1: rho move':>17} {'lam 0.1: rho move':>18}   most moved at lam 1")
+    for role in ROLES:
+        _, regions = res[role]
+        fit_z, test_z = regions["eun1"]["z"], regions["euw1"]["z"]
+        fit_z = {k: v for k, v in fit_z.items() if all(c in label for c in k)}
+        test = [k for k in test_z if all(c in label for c in k)]
+        score = lambda lab: spearman([test_z[k] for k in test],
+                                     [-math.dist(lab.get(a, label[a]), lab.get(b, label[b])) for a, b in test])
+        cells, movers = [], ""
+        for lam in (10.0, 1.0, 0.1):
+            new = _fit(label, fit_z, lam)
+            moves = {c: math.dist(new[c], label[c]) for c in new}
+            cells.append(f"{score(new):+.2f} {st.mean(moves.values()):.2f}")
+            if lam == 1.0:
+                movers = ", ".join(f"{c} {moves[c]:.2f}" for c in sorted(moves, key=lambda c: -moves[c])[:4])
+        progress(f"{role:8} {score(label):+7.2f}   {cells[0]:>17} {cells[1]:>17} {cells[2]:>18}   {movers}")
