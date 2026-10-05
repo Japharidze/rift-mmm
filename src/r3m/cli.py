@@ -765,6 +765,7 @@ def main() -> int:
     coplay_cmd.set_defaults(func=_coplay_crawl)
     sub.add_parser("coplay-analyse", help="co-play experiment: Q1 and Q2 per role (local DB)").set_defaults(func=_coplay_analyse)
     sub.add_parser("coplay-checks2", help="co-play: melee/ranged, difficulty, label correction (local DB)").set_defaults(func=lambda a: (__import__("r3m.coplay", fromlist=["x"]).checks2(progress=lambda m: print(m, flush=True)), 0)[1])
+    sub.add_parser("coplay-spread", help="co-play: within-role spread of player pools in MMM vs a popularity null (local DB)").set_defaults(func=lambda a: (__import__("r3m.coplay", fromlist=["x"]).spread_check(progress=lambda m: print(m, flush=True)), 0)[1])
     sub.add_parser("coplay-checks", help="co-play: class-tag baseline, tier split, Master+ (local DB)").set_defaults(func=lambda a: (__import__("r3m.coplay", fromlist=["x"]).checks(progress=lambda m: print(m, flush=True)), 0)[1])
 
     place_cmd = sub.add_parser(

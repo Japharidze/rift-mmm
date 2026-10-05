@@ -1,0 +1,125 @@
+SPREAD CHECK -- within one role, are a player's champions close in MMM? (mid-ladder, lifetime pools)
+  spread = mean pairwise MMM distance (per dimension: mean |difference|); null = same-size pools drawn
+  from the same role, weighted by popularity (4000 draws per size); d = mean per-player
+  (real - null mean) / null sd, negative = tighter; tighter = share of players below the null median.
+  corrected = co-play correction (lam 1) fit on the other region's pools: EUNE fit -> EUW players and back.
+
+top  (real vs null overall; d; tighter; then micro, meso, macro real/null)
+  current                all n=2353  0.383 vs 0.412  d=-0.23  tighter=59%   0.22/0.25 0.16/0.17 0.20/0.20
+  current                  2 n=1343  0.382 vs 0.408  d=-0.14  tighter=55%   0.22/0.25 0.16/0.17 0.19/0.20
+  current                  3 n=627   0.389 vs 0.420  d=-0.27  tighter=62%   0.23/0.26 0.16/0.17 0.20/0.20
+  current                 4+ n=383   0.374 vs 0.415  d=-0.48  tighter=64%   0.22/0.26 0.15/0.17 0.20/0.20
+  corrected (eun1->euw1) all n=1323  0.356 vs 0.391  d=-0.34  tighter=63%   0.21/0.25 0.14/0.15 0.18/0.18
+  corrected (eun1->euw1)   2 n=712   0.359 vs 0.392  d=-0.22  tighter=59%   0.22/0.25 0.14/0.15 0.17/0.18
+  corrected (eun1->euw1)   3 n=359   0.361 vs 0.388  d=-0.29  tighter=60%   0.22/0.25 0.14/0.15 0.18/0.18
+  corrected (eun1->euw1)  4+ n=252   0.341 vs 0.390  d=-0.75  tighter=75%   0.20/0.25 0.13/0.15 0.18/0.18
+  corrected (euw1->eun1) all n=1030  0.360 vs 0.397  d=-0.31  tighter=63%   0.20/0.24 0.15/0.16 0.19/0.19
+  corrected (euw1->eun1)   2 n=631   0.358 vs 0.398  d=-0.26  tighter=62%   0.20/0.24 0.16/0.16 0.18/0.19
+  corrected (euw1->eun1)   3 n=268   0.363 vs 0.396  d=-0.34  tighter=63%   0.20/0.24 0.15/0.16 0.19/0.19
+  corrected (euw1->eun1)  4+ n=131   0.362 vs 0.395  d=-0.48  tighter=69%   0.20/0.24 0.15/0.16 0.20/0.19
+  melee, current         all n=2063  0.377 vs 0.412  d=-0.25  tighter=59%   0.23/0.26 0.14/0.16 0.20/0.21
+  melee, current           2 n=1214  0.376 vs 0.410  d=-0.17  tighter=55%   0.23/0.26 0.14/0.15 0.20/0.20
+  melee, current           3 n=547   0.382 vs 0.416  d=-0.29  tighter=63%   0.23/0.27 0.14/0.16 0.20/0.21
+  melee, current          4+ n=302   0.370 vs 0.413  d=-0.49  tighter=66%   0.22/0.27 0.14/0.16 0.20/0.21
+  melee, corrected euw1  all n=1188  0.350 vs 0.385  d=-0.33  tighter=62%
+  melee, corrected eun1  all n=875   0.355 vs 0.391  d=-0.29  tighter=61%
+  ranged, current        all n=52    0.394 vs 0.390  d=+0.04  tighter=44%   0.20/0.19 0.24/0.23 0.19/0.20
+  ranged, current          2 n=52    0.394 vs 0.390  d=+0.04  tighter=44%   0.20/0.19 0.24/0.23 0.19/0.20
+
+jungle  (real vs null overall; d; tighter; then micro, meso, macro real/null)
+  current                all n=2448  0.324 vs 0.342  d=-0.18  tighter=56%   0.20/0.22 0.18/0.19 0.09/0.09
+  current                  2 n=1442  0.332 vs 0.342  d=-0.06  tighter=52%   0.20/0.22 0.19/0.19 0.09/0.09
+  current                  3 n=616   0.314 vs 0.342  d=-0.27  tighter=59%   0.19/0.22 0.17/0.19 0.10/0.09
+  current                 4+ n=390   0.307 vs 0.341  d=-0.45  tighter=66%   0.19/0.21 0.16/0.19 0.10/0.09
+  corrected (eun1->euw1) all n=1236  0.298 vs 0.318  d=-0.23  tighter=59%   0.18/0.19 0.16/0.17 0.11/0.11
+  corrected (eun1->euw1)   2 n=748   0.302 vs 0.319  d=-0.13  tighter=55%   0.18/0.19 0.17/0.17 0.11/0.11
+  corrected (eun1->euw1)   3 n=284   0.291 vs 0.316  d=-0.33  tighter=65%   0.17/0.19 0.16/0.17 0.11/0.11
+  corrected (eun1->euw1)  4+ n=204   0.292 vs 0.318  d=-0.47  tighter=66%   0.18/0.19 0.15/0.17 0.11/0.11
+  corrected (euw1->eun1) all n=1212  0.296 vs 0.324  d=-0.33  tighter=64%   0.18/0.20 0.16/0.17 0.10/0.10
+  corrected (euw1->eun1)   2 n=694   0.303 vs 0.327  d=-0.18  tighter=59%   0.18/0.21 0.17/0.17 0.10/0.10
+  corrected (euw1->eun1)   3 n=332   0.287 vs 0.321  d=-0.43  tighter=66%   0.17/0.20 0.16/0.17 0.10/0.10
+  corrected (euw1->eun1)  4+ n=186   0.281 vs 0.320  d=-0.71  tighter=76%   0.17/0.20 0.15/0.17 0.10/0.10
+  melee, current         all n=2141  0.329 vs 0.344  d=-0.15  tighter=53%   0.20/0.21 0.18/0.19 0.09/0.09
+  melee, current           2 n=1340  0.340 vs 0.344  d=-0.03  tighter=48%   0.21/0.21 0.19/0.19 0.09/0.09
+  melee, current           3 n=532   0.311 vs 0.344  d=-0.31  tighter=61%   0.18/0.21 0.17/0.19 0.10/0.09
+  melee, current          4+ n=269   0.311 vs 0.344  d=-0.44  tighter=62%   0.19/0.21 0.17/0.19 0.10/0.09
+  melee, corrected euw1  all n=1075  0.303 vs 0.324  d=-0.23  tighter=59%
+  melee, corrected eun1  all n=1066  0.299 vs 0.321  d=-0.27  tighter=59%
+  ranged, current        all n=83    0.289 vs 0.296  d=-0.07  tighter=48%   0.21/0.22 0.12/0.12 0.10/0.11
+  ranged, current          2 n=72    0.292 vs 0.296  d=-0.03  tighter=46%   0.21/0.22 0.12/0.12 0.10/0.11
+  ranged, current          3 n=11    0.275 vs 0.301  d=-0.33  tighter=64%   0.20/0.22 0.09/0.12 0.13/0.11
+  ranged, corrected euw1 all n=41    0.256 vs 0.270  d=-0.12  tighter=54%
+  ranged, corrected eun1 all n=42    0.280 vs 0.298  d=-0.23  tighter=57%
+
+mid  (real vs null overall; d; tighter; then micro, meso, macro real/null)
+  current                all n=2458  0.266 vs 0.285  d=-0.14  tighter=58%   0.16/0.19 0.14/0.14 0.10/0.11
+  current                  2 n=1531  0.264 vs 0.285  d=-0.13  tighter=58%   0.16/0.19 0.14/0.14 0.10/0.10
+  current                  3 n=660   0.269 vs 0.285  d=-0.15  tighter=58%   0.16/0.19 0.14/0.14 0.11/0.11
+  current                 4+ n=267   0.271 vs 0.289  d=-0.21  tighter=60%   0.16/0.19 0.14/0.14 0.11/0.11
+  corrected (eun1->euw1) all n=1487  0.265 vs 0.300  d=-0.35  tighter=65%   0.17/0.21 0.12/0.12 0.10/0.11
+  corrected (eun1->euw1)   2 n=904   0.262 vs 0.300  d=-0.29  tighter=64%   0.17/0.21 0.12/0.13 0.09/0.10
+  corrected (eun1->euw1)   3 n=403   0.268 vs 0.300  d=-0.40  tighter=66%   0.17/0.21 0.12/0.12 0.10/0.11
+  corrected (eun1->euw1)  4+ n=180   0.271 vs 0.300  d=-0.51  tighter=67%   0.16/0.21 0.12/0.12 0.12/0.11
+  corrected (euw1->eun1) all n=971   0.275 vs 0.311  d=-0.33  tighter=64%   0.18/0.23 0.13/0.13 0.10/0.10
+  corrected (euw1->eun1)   2 n=627   0.276 vs 0.312  d=-0.25  tighter=60%   0.19/0.23 0.13/0.13 0.10/0.10
+  corrected (euw1->eun1)   3 n=257   0.277 vs 0.309  d=-0.37  tighter=68%   0.18/0.22 0.13/0.13 0.10/0.10
+  corrected (euw1->eun1)  4+ n=87    0.259 vs 0.309  d=-0.79  tighter=77%   0.17/0.22 0.12/0.13 0.10/0.10
+  melee, current         all n=985   0.197 vs 0.205  d=-0.08  tighter=33%   0.08/0.09 0.14/0.14 0.07/0.08
+  melee, current           2 n=807   0.197 vs 0.204  d=-0.07  tighter=31%   0.09/0.09 0.14/0.14 0.07/0.08
+  melee, current           3 n=163   0.199 vs 0.210  d=-0.14  tighter=42%   0.08/0.10 0.14/0.14 0.08/0.09
+  melee, current          4+ n=15    0.206 vs 0.216  d=-0.15  tighter=67%   0.10/0.11 0.14/0.14 0.08/0.09
+  melee, corrected euw1  all n=720   0.201 vs 0.211  d=-0.12  tighter=32%
+  melee, corrected eun1  all n=265   0.230 vs 0.252  d=-0.22  tighter=56%
+  ranged, current        all n=1014  0.291 vs 0.306  d=-0.11  tighter=54%   0.19/0.20 0.13/0.14 0.12/0.13
+  ranged, current          2 n=708   0.292 vs 0.307  d=-0.09  tighter=54%   0.19/0.20 0.13/0.14 0.12/0.13
+  ranged, current          3 n=225   0.288 vs 0.305  d=-0.16  tighter=56%   0.18/0.20 0.13/0.13 0.12/0.12
+  ranged, current         4+ n=81    0.294 vs 0.306  d=-0.16  tighter=53%   0.17/0.20 0.14/0.13 0.13/0.13
+  ranged, corrected euw1 all n=511   0.251 vs 0.264  d=-0.14  tighter=55%
+  ranged, corrected eun1 all n=503   0.231 vs 0.239  d=-0.11  tighter=55%
+
+bot  (real vs null overall; d; tighter; then micro, meso, macro real/null)
+  current                all n=3385  0.276 vs 0.285  d=-0.12  tighter=56%   0.19/0.20 0.12/0.12 0.10/0.10
+  current                  2 n=1464  0.276 vs 0.285  d=-0.08  tighter=52%   0.19/0.20 0.12/0.12 0.10/0.10
+  current                  3 n=921   0.274 vs 0.284  d=-0.14  tighter=56%   0.19/0.20 0.12/0.12 0.10/0.10
+  current                 4+ n=1000  0.277 vs 0.284  d=-0.15  tighter=60%   0.19/0.20 0.12/0.12 0.10/0.10
+  corrected (eun1->euw1) all n=1440  0.254 vs 0.264  d=-0.19  tighter=56%   0.16/0.17 0.12/0.12 0.10/0.10
+  corrected (eun1->euw1)   2 n=634   0.254 vs 0.263  d=-0.09  tighter=50%   0.16/0.17 0.12/0.12 0.10/0.10
+  corrected (eun1->euw1)   3 n=379   0.254 vs 0.265  d=-0.19  tighter=58%   0.16/0.17 0.12/0.12 0.10/0.10
+  corrected (eun1->euw1)  4+ n=427   0.252 vs 0.265  d=-0.34  tighter=64%   0.16/0.17 0.12/0.12 0.10/0.10
+  corrected (euw1->eun1) all n=1945  0.263 vs 0.276  d=-0.22  tighter=58%   0.16/0.17 0.12/0.12 0.12/0.12
+  corrected (euw1->eun1)   2 n=830   0.261 vs 0.276  d=-0.16  tighter=54%   0.16/0.18 0.12/0.12 0.12/0.12
+  corrected (euw1->eun1)   3 n=542   0.265 vs 0.276  d=-0.19  tighter=59%   0.16/0.17 0.12/0.12 0.12/0.12
+  corrected (euw1->eun1)  4+ n=573   0.264 vs 0.275  d=-0.33  tighter=63%   0.16/0.17 0.12/0.12 0.12/0.12
+  melee, current         too few pools (0)
+  ranged, current        all n=3377  0.276 vs 0.285  d=-0.12  tighter=56%   0.19/0.20 0.12/0.12 0.10/0.10
+  ranged, current          2 n=1465  0.276 vs 0.284  d=-0.06  tighter=52%   0.19/0.20 0.12/0.12 0.10/0.10
+  ranged, current          3 n=919   0.274 vs 0.286  d=-0.16  tighter=57%   0.19/0.20 0.12/0.12 0.10/0.11
+  ranged, current         4+ n=993   0.277 vs 0.286  d=-0.18  tighter=60%   0.20/0.20 0.12/0.12 0.10/0.10
+  ranged, corrected euw1 all n=1436  0.254 vs 0.266  d=-0.20  tighter=57%
+  ranged, corrected eun1 all n=1941  0.263 vs 0.277  d=-0.23  tighter=58%
+
+support  (real vs null overall; d; tighter; then micro, meso, macro real/null)
+  current                all n=2435  0.295 vs 0.313  d=-0.16  tighter=56%   0.19/0.20 0.15/0.16 0.12/0.12
+  current                  2 n=1103  0.292 vs 0.313  d=-0.13  tighter=55%   0.19/0.20 0.14/0.16 0.12/0.12
+  current                  3 n=627   0.297 vs 0.313  d=-0.15  tighter=55%   0.18/0.20 0.15/0.16 0.12/0.13
+  current                 4+ n=705   0.297 vs 0.313  d=-0.22  tighter=59%   0.19/0.20 0.15/0.16 0.11/0.12
+  corrected (eun1->euw1) all n=1094  0.284 vs 0.310  d=-0.36  tighter=64%   0.17/0.18 0.13/0.15 0.13/0.15
+  corrected (eun1->euw1)   2 n=472   0.290 vs 0.310  d=-0.16  tighter=57%   0.17/0.18 0.13/0.14 0.14/0.15
+  corrected (eun1->euw1)   3 n=278   0.283 vs 0.308  d=-0.32  tighter=63%   0.16/0.18 0.14/0.14 0.13/0.15
+  corrected (eun1->euw1)  4+ n=344   0.276 vs 0.310  d=-0.65  tighter=72%   0.17/0.18 0.13/0.15 0.12/0.15
+  corrected (euw1->eun1) all n=1341  0.289 vs 0.306  d=-0.22  tighter=56%   0.16/0.17 0.13/0.14 0.15/0.15
+  corrected (euw1->eun1)   2 n=631   0.292 vs 0.307  d=-0.12  tighter=50%   0.16/0.18 0.13/0.14 0.16/0.15
+  corrected (euw1->eun1)   3 n=349   0.289 vs 0.306  d=-0.21  tighter=58%   0.16/0.17 0.13/0.14 0.15/0.16
+  corrected (euw1->eun1)  4+ n=361   0.283 vs 0.305  d=-0.42  tighter=63%   0.16/0.17 0.13/0.14 0.14/0.16
+  melee, current         all n=588   0.251 vs 0.263  d=-0.10  tighter=54%   0.15/0.16 0.14/0.15 0.08/0.09
+  melee, current           2 n=435   0.249 vs 0.262  d=-0.10  tighter=53%   0.15/0.16 0.14/0.15 0.08/0.09
+  melee, current           3 n=122   0.258 vs 0.265  d=-0.07  tighter=58%   0.15/0.16 0.16/0.15 0.08/0.09
+  melee, current          4+ n=31    0.250 vs 0.264  d=-0.22  tighter=55%   0.15/0.16 0.13/0.15 0.09/0.09
+  melee, corrected euw1  all n=277   0.251 vs 0.266  d=-0.18  tighter=53%
+  melee, corrected eun1  all n=311   0.228 vs 0.235  d=-0.05  tighter=51%
+  ranged, current        all n=1585  0.315 vs 0.334  d=-0.16  tighter=55%   0.20/0.21 0.15/0.16 0.13/0.14
+  ranged, current          2 n=886   0.314 vs 0.334  d=-0.12  tighter=52%   0.20/0.21 0.14/0.16 0.14/0.14
+  ranged, current          3 n=426   0.325 vs 0.331  d=-0.05  tighter=51%   0.20/0.20 0.16/0.16 0.14/0.14
+  ranged, current         4+ n=273   0.299 vs 0.336  d=-0.45  tighter=71%   0.19/0.21 0.16/0.17 0.11/0.14
+  ranged, corrected euw1 all n=698   0.300 vs 0.318  d=-0.25  tighter=60%
+  ranged, corrected eun1 all n=887   0.296 vs 0.317  d=-0.23  tighter=57%
