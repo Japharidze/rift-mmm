@@ -141,7 +141,8 @@ NULL_SAMPLES, LABEL_SHUFFLES = 100, 1000
 MIN_EXPECTED = 2.0
 
 
-def load(conn: Any, recent: bool, tiers: tuple[str, ...] | None = None) -> tuple[dict[str, list[tuple[str, set[str]]]], dict[str, tuple[float, float, float]]]:
+def load(conn: Any, recent: bool, tiers: tuple[str, ...] | None = None,
+         era: tuple[int | None, int | None] | None = None) -> tuple[dict[str, list[tuple[str, set[str]]]], dict[str, tuple[float, float, float]]]:
     """Per role, each player's pool restricted to champions whose primary role
     it is; and each champion's canonical MMM point for that role."""
     key_to_id = dict(conn.execute("select riot_key, id from champion").fetchall())
@@ -149,6 +150,10 @@ def load(conn: Any, recent: bool, tiers: tuple[str, ...] | None = None) -> tuple
     points = {(r["champion_id"], r["role"]): (r["micro"], r["meso"], r["macro"]) for r in db.champion_points(conn)}
     label = {c: points[(c, role)] for c, role in primary.items() if (c, role) in points}
     cutoff = "and m.last_play > p.fetched_at - interval '%s days'" % RECENT_DAYS if recent else ""
+    if era:   # (played within N days, last played more than M days ago)
+        within, older = era
+        if within: cutoff += " and m.last_play > p.fetched_at - interval '%d days'" % within
+        if older: cutoff += " and m.last_play <= p.fetched_at - interval '%d days'" % older
     rows = conn.execute(f"""
         select m.puuid, m.champion_key, p.platform from coplay_mastery m join coplay_player p using (puuid)
         where m.points >= %s and p.tier = any(%s) {cutoff}
@@ -504,3 +509,41 @@ def checks2(progress=print) -> None:
             if lam == 1.0:
                 movers = ", ".join(f"{c} {moves[c]:.2f}" for c in sorted(moves, key=lambda c: -moves[c])[:4])
         progress(f"{role:8} {score(label):+7.2f}   {cells[0]:>17} {cells[1]:>17} {cells[2]:>18}   {movers}")
+
+
+# ---------------------------------------------------------------------------
+# Meta check (2026-10-05): is co-play taste, or the current patch? Pools split
+# by when each champion was last played.
+# ---------------------------------------------------------------------------
+
+OLD_ERA, RECENT_ERA = (None, 365), (90, None)
+
+
+def meta_check(progress=print) -> None:
+    with db.connect() as conn:
+        old, label = load(conn, recent=False, era=OLD_ERA)
+        new, _ = load(conn, recent=False, era=RECENT_ERA)
+    progress("META CHECK -- pools from champions last played > 1 year ago (old) vs within 90 days (recent)")
+    progress("  replication = Spearman of pair co-play between eras (p vs 1,000 shuffles);")
+    progress("  MMM = Spearman(co-play, MMM closeness) per era; correction = fit on old (lam 1), score on recent")
+    progress(f"{'role':8} {'old/recent players':>18} {'replication (p) n':>22} {'MMM old':>8} {'MMM recent':>10} "
+             f"{'recent: current -> corrected (move)':>36}")
+    rng = random.Random(0)
+    for role in ROLES:
+        ro, rn = [r for _, r in old.get(role, [])], [r for _, r in new.get(role, [])]
+        if len(ro) < 50 or len(rn) < 50:
+            progress(f"{role:8} too few players ({len(ro)}/{len(rn)})"); continue
+        zo, zn = role_test(ro, label, q2=False)["z"], role_test(rn, label, q2=False)["z"]
+        common = sorted(k for k in set(zo) & set(zn) if all(c in label for c in k))
+        a, b = [zo[k] for k in common], [zn[k] for k in common]
+        real = spearman(a, b); perms = []
+        for _ in range(LABEL_SHUFFLES):
+            bb = b[:]; rng.shuffle(bb); perms.append(spearman(a, bb))
+        p = (1 + sum(x >= real for x in perms)) / (1 + len(perms))
+        mmm = lambda z, lab: spearman([z[k] for k in z if all(c in label for c in k)],
+                                      [-math.dist(lab.get(k[0], label[k[0]]), lab.get(k[1], label[k[1]]))
+                                       for k in z if all(c in label for c in k)])
+        fitted = _fit(label, {k: v for k, v in zo.items() if all(c in label for c in k)}, 1.0)
+        move = st.mean(math.dist(fitted[c], label[c]) for c in fitted)
+        progress(f"{role:8} {len(ro):8}/{len(rn):<9} {real:+8.2f} ({p:.3f}) n={len(common):<4} "
+                 f"{mmm(zo, {}):+8.2f} {mmm(zn, {}):+10.2f}   {mmm(zn, {}):+.2f} -> {mmm(zn, fitted):+.2f} ({move:.2f})")

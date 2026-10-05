@@ -1,0 +1,9 @@
+META CHECK -- pools from champions last played > 1 year ago (old) vs within 90 days (recent)
+  replication = Spearman of pair co-play between eras (p vs 1,000 shuffles);
+  MMM = Spearman(co-play, MMM closeness) per era; correction = fit on old (lam 1), score on recent
+role     old/recent players      replication (p) n  MMM old MMM recent  recent: current -> corrected (move)
+top          2520/1840         +0.30 (0.001) n=555     +0.20      +0.28   +0.28 -> +0.34 (0.06)
+jungle       2992/1797         +0.32 (0.001) n=469     +0.19      +0.32   +0.32 -> +0.38 (0.05)
+mid          1490/1927         +0.39 (0.001) n=284     -0.00      +0.15   +0.15 -> +0.32 (0.08)
+bot          1980/2610         +0.46 (0.001) n=236     +0.06      +0.15   +0.15 -> +0.26 (0.05)
+support      1604/2016         +0.44 (0.001) n=397     +0.06      +0.16   +0.16 -> +0.29 (0.07)

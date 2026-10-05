@@ -190,3 +190,30 @@ Risks: both regions share one patch, so a correction can learn the meta, not
 taste; λ was not tuned, and 0.1 moves labels far enough to override the kit;
 the range test has no power in jungle and bot (almost no variation); Data
 Dragon difficulty is missing for some newer champions.
+
+# Meta check (2026-10-05) — **co-play is mostly taste, not the current patch**
+
+Raw output: `docs/coplay-meta-2026-10-05.txt`. Each player's pool split into
+champions last played more than a year ago (old era) and within the last 90
+days (recent era) -- different patches and metas by construction.
+
+| role | old / recent players | pair co-play, old ↔ recent | MMM old | MMM recent | recent: current → corrected on old (move) |
+|---|---|---|---|---|---|
+| top | 2,520 / 1,840 | +0.30 | +0.20 | +0.28 | +0.28 → **+0.34** (0.06) |
+| jungle | 2,992 / 1,797 | +0.32 | +0.19 | +0.32 | +0.32 → **+0.38** (0.05) |
+| mid | 1,490 / 1,927 | +0.39 | −0.00 | +0.15 | +0.15 → **+0.32** (0.08) |
+| bot | 1,980 / 2,610 | +0.46 | +0.06 | +0.15 | +0.15 → **+0.26** (0.05) |
+| support | 1,604 / 2,016 | +0.44 | +0.06 | +0.16 | +0.16 → **+0.29** (0.07) |
+
+The same pairs co-occur across eras more than a year apart (ρ 0.30–0.46,
+p 0.001 in every role), and the small label correction learned on the old era
+improves agreement on the recent one by 0.06–0.17 with moves of 0.05–0.08.
+Both survive a change of meta.
+
+Lower than the EUNE↔EUW replication (0.44–0.67): some of that was shared meta,
+so **0.30–0.46 is the meta-free ceiling**. MMM tracks recent pools better than
+old ones, plausibly because old pools mix champions from older kits.
+
+Risks: an era split is within the same players, so it tests persistence of
+taste and cannot rule out long-lived metas; champions reworked since the old
+era are compared under their current labels.
