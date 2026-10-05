@@ -196,3 +196,16 @@ button.link { border: none; padding: 0; text-decoration: underline;
 .sentence.small { font-size: .85rem; color: var(--dim); border-bottom: none; padding: .2rem 0; }
 .sentence.off .text { text-decoration: line-through; color: var(--dim); }
 .sentence .notme { flex: none; font-size: .8rem; }
+
+/* The blind ranking test: six identical cards, ranked by tapping in order. */
+.blind-q { margin-top: 2rem; }
+.blind { padding: .6rem 0; border-bottom: 1px solid var(--line); }
+.blindcard { display: flex; align-items: center; gap: .75rem; width: 100%;
+  margin: 0 0 .5rem; padding: .5rem; text-align: left; }
+.blindcard img { border-radius: 6px; flex: none; }
+.blindcard .blindtext { flex: 1; display: flex; flex-direction: column; }
+.blindcard .rank { flex: none; width: 2rem; height: 2rem; border-radius: 50%;
+  border: 1px solid var(--line); display: flex; align-items: center;
+  justify-content: center; font-weight: 600; }
+.blindcard.on { border-color: var(--pick); box-shadow: inset 0 0 0 1px var(--pick); }
+.blindcard.on .rank { border-color: var(--pick); color: var(--pick); }

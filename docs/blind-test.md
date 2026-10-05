@@ -27,7 +27,9 @@ one screen is added before the reveal.
   completed session whose quiz point is **farthest** from this tester's
   (required at least 0.15 away; if none is, the farthest available, and the
   distance is logged). Any champion in both sets is replaced by that other
-  tester's next-ranked champion, until the sets are disjoint.
+  tester's next-ranked champion, until the sets are disjoint. Their top 3 is
+  recomputed from their stored point with the labels serving now, so own and
+  yoked come from the same labels (round 1 was scored on older ones).
 - The first testers are yoked to stored sessions (round 1 and round 2, Sergi's
   own excluded), so nobody waits for a partner.
 
@@ -38,13 +40,16 @@ name, and **one neutral line about the kit**. No MMM words, no labels, no
 lane, no "fits you", no confidence tag. Order randomised per tester (seeded,
 logged).
 
-**Open point -- the neutral kit line needs a source.** Riot's title and blurb
-are lore; its tags are exactly the labels the test must not show. Options:
-(a) I write 173 one-line kit descriptions (no MMM words, no class names; no
-API spend) and you spot-check them; (b) no line at all, portrait and name
-only. (a) fits the brief; (b) is simplest and identical for all six.
+The line comes from `bank/kit_lines.yaml` (173 lines, written from the kit
+text, spot-checked by Sergi 2026-10-05): a fixed opener on every line --
+"Up close:", "From range:", or "Up close and from range:" for the four
+form-switchers -- then two or three concrete actions. A champion whose line is
+removed from the file is never shown.
 
 ## Logged
+
+Built 2026-10-05: `r3m.blind`, `/api/quiz/blind` and `/api/quiz/rank`,
+`quiz_session.blind` (migration 025), the "blind" step in the drop-off funnel.
 
 Per tester: the experience answer, the six champions with their source (own
 or yoked) and the tester's rank for each, familiarity per champion, display

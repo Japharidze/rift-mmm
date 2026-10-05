@@ -24,6 +24,7 @@ COPY anchors/ anchors/
 # The deep-dive questions are read at runtime; the rest of bank/ is import-only.
 COPY bank/deep_dives.yaml bank/deep_dives.yaml
 COPY bank/reading.yaml bank/reading.yaml
+COPY bank/kit_lines.yaml bank/kit_lines.yaml
 COPY docs/ docs/
 COPY --from=web /web/dist web/dist
 RUN uv sync --frozen --no-dev

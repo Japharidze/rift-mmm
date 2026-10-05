@@ -1225,3 +1225,61 @@ def set_canonical(conn: psycopg.Connection, *, kind: str, ids: Sequence[int]) ->
         )
         cur.execute("update label_run set canonical = true where id = any(%s)", (list(ids),))
     conn.commit()
+
+
+def blind_pool(conn: psycopg.Connection, exclude: int) -> list[tuple[int, list[float]]]:
+    """Completed sessions another tester can be yoked to (docs/blind-test.md):
+    any with a result and a point, round 1 or 2, never the builder's own."""
+    rows = conn.execute(
+        """
+        select id, point from quiz_session
+        where outcome = 'result' and point is not null and id <> %(me)s
+          and id <> all(%(ids)s) and """ + NOT_EXCLUDED,
+        {"me": exclude, "ids": list(EXCLUDED_FROM_HEADLINE), "excluded": list(EXCLUDED_ACCOUNTS)},
+    ).fetchall()
+    return [(i, list(p)) for i, p in rows]
+
+
+def blind_start(conn: psycopg.Connection, session_id: int, blind: dict[str, Any]) -> dict[str, Any] | None:
+    """Attach the six cards to a session still in progress, or return the ones
+    already attached (a reload sees the same six). None when the session has a
+    result: whoever has seen their result never ranks."""
+    row = conn.execute(
+        "select outcome, blind from quiz_session where id = %s for update", (session_id,)
+    ).fetchone()
+    if row is None or row[0] != "in_progress":
+        return None
+    if row[1] is not None:
+        return row[1]
+    conn.execute("update quiz_session set blind = %s where id = %s", (Jsonb(blind), session_id))
+    conn.commit()
+    return blind
+
+
+def blind_rank(conn: psycopg.Connection, session_id: int, answers: dict[str, Any]) -> bool:
+    """Store the experience answer, ranks and familiarity -- only before the
+    result, only once, and only for the six cards this session was shown."""
+    row = conn.execute("select blind from quiz_session where id = %s", (session_id,)).fetchone()
+    if row is None or row[0] is None:
+        return False
+    if {c["champion_id"] for c in row[0]["cards"]} != set(answers["ranks"]):
+        return False
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            update quiz_session set blind = blind || %s
+             where id = %s and outcome = 'in_progress' and blind is not null
+               and not blind ? 'ranks'
+            """,
+            (Jsonb(answers), session_id),
+        )
+        found = cur.rowcount
+    conn.commit()
+    return bool(found)
+
+
+def latest_patch(conn: psycopg.Connection) -> str | None:
+    row = conn.execute(
+        "select version from patch order by string_to_array(version, '.')::int[] desc limit 1"
+    ).fetchone()
+    return row[0] if row else None

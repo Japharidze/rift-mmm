@@ -21,7 +21,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from r3m import db, debug, deep_dives, quiz, reading
+from r3m import blind, db, debug, deep_dives, quiz, reading
 from r3m.config import ROOT
 
 app = FastAPI(title="r3m", version="0.1.0")
@@ -582,6 +582,72 @@ def result(req: ResultRequest) -> Result:
         logging.exception("could not record panel session")
 
     return result
+
+
+class BlindCard(BaseModel):
+    champion_id: str
+    name: str
+    line: str
+    portrait: str | None = None
+
+
+class BlindResponse(BaseModel):
+    # Empty when the test cannot run (no stored session yet, nobody to yoke
+    # to, the result already seen): the page goes straight to the result.
+    cards: list[BlindCard] = Field(default_factory=list)
+
+
+class RankRequest(BaseModel):
+    session_id: int
+    experience: Literal["never", "few", "regularly"]
+    # champion_id -> 1..6, and -> how well the tester knew it beforehand.
+    ranks: dict[str, int]
+    familiarity: dict[str, Literal["played", "heard", "new"]]
+
+
+PORTRAIT = "https://ddragon.leagueoflegends.com/cdn/{version}/img/champion/{id}.png"
+
+
+@api.post("/quiz/blind", response_model=BlindResponse)
+def quiz_blind(req: ResultRequest) -> BlindResponse:
+    """The six cards of the blind ranking test (docs/blind-test.md), before the
+    reveal. Takes the same answers as /quiz/result so "own" is exactly the
+    top of the result the tester is about to see."""
+    if req.session_id is None:
+        return BlindResponse()
+    rows = _games()
+    try:
+        est = quiz.estimate(req.loved, req.disliked, rows=rows, reasons=req.reasons)
+    except ValueError:
+        return BlindResponse()
+    est = deep_dives.settle(est, [a.model_dump() for a in req.deep_dives],
+                            [c.model_dump() for c in req.comparisons], rows)
+    try:
+        with db.connect() as conn:
+            made = blind.cards(est.point, db.blind_pool(conn, req.session_id), _champions())
+            stored = made and db.blind_start(conn, req.session_id, made)
+            version = db.latest_patch(conn)
+    except Exception:  # noqa: BLE001 - see /quiz/result: the test is ours, the result is theirs
+        logging.exception("could not start blind ranking")
+        return BlindResponse()
+    if not stored or "ranks" in stored:
+        return BlindResponse()
+    lines = blind.kit_lines()
+    return BlindResponse(cards=[
+        BlindCard(champion_id=c["champion_id"], name=c["name"], line=lines[c["champion_id"]],
+                  portrait=PORTRAIT.format(version=version, id=c["champion_id"]) if version else None)
+        for c in stored["cards"]])
+
+
+@api.post("/quiz/rank")
+def quiz_rank(req: RankRequest) -> dict[str, bool]:
+    """Store the ranking. Refused once the session has a result."""
+    if sorted(req.ranks.values()) != list(range(1, len(req.ranks) + 1)) or set(req.familiarity) != set(req.ranks):
+        raise HTTPException(status_code=400, detail="ranks must be 1..n over the cards shown")
+    with db.connect() as conn:
+        ok = db.blind_rank(conn, req.session_id, {
+            "experience": req.experience, "ranks": req.ranks, "familiarity": req.familiarity})
+    return {"stored": ok}
 
 
 @api.post("/visit")

@@ -41,6 +41,10 @@ const CONFIDENCE = {
   distant: "the nearest thing, not a fit",
 };
 
+// The blind ranking test (docs/blind-test.md): asked once, before the six.
+const EXPERIENCE = [["never", "Never"], ["few", "A few games"], ["regularly", "Regularly"]];
+const FAMILIARITY = [["played", "Played it"], ["heard", "Heard of it"], ["new", "New to me"]];
+
 // Matches quiz.SHARPEN_MAX: comparisons asked before the reveal. Past three this
 // stops reading as narrowing it down and starts reading as another round. Was:
 // an answer already given and starts reading as a fourth round of questions.
@@ -487,27 +491,69 @@ export default function App() {
       .finally(() => setBusy(false));
   }, [fail, log, endWithout]);
 
+  // The blind ranking test (docs/blind-test.md): before the first reveal only,
+  // six champions -- three from this result, three from another tester's --
+  // shown alike and ranked. Nothing to show, or any failure, goes straight to
+  // the result: the test is ours, the result is theirs.
+  const blindDone = useRef(false);
+  const pendingReveal = useRef(null);
+  const [blindCards, setBlindCards] = useState(null);
+  const [experience, setExperience] = useState(null);
+  const [ranked, setRanked] = useState([]);
+  const [familiar, setFamiliar] = useState({});
+  const reveal = useCallback((comps, v, rs, seen, deep = []) => {
+    if (blindDone.current) return showResult(comps, v, rs, seen, deep);
+    blindDone.current = true;
+    const { loved: l, disliked: d } = lists(v);
+    setBusy(true);
+    stored.current.then(() => post("/quiz/blind", {
+      loved: l, disliked: d, reasons: rs, verdicts: answered(v), served: seen,
+      comparisons: comps, deep_dives: deep, session_id: sessionId.current,
+    }))
+      .then(r => {
+        if (!r.cards.length) return showResult(comps, v, rs, seen, deep);
+        log("blind_shown", { cards: r.cards.map(c => c.champion_id) });
+        pendingReveal.current = [comps, v, rs, seen, deep];
+        setBlindCards(r.cards); setExperience(null); setRanked([]); setFamiliar({});
+        setBusy(false);
+        setStage("blind");
+        window.scrollTo(0, 0);
+      })
+      .catch(() => showResult(comps, v, rs, seen, deep));
+  }, [showResult, log]);
+
+  const tapRank = id => setRanked(r => (r.includes(id) ? r.filter(x => x !== id) : [...r, id]));
+  const submitRank = () => {
+    const ranks = Object.fromEntries(ranked.map((id, i) => [id, i + 1]));
+    log("blind_ranked", { experience, ranks, familiarity: familiar });
+    setBusy(true);
+    stored.current
+      .then(() => post("/quiz/rank", { session_id: sessionId.current, experience, ranks, familiarity: familiar }))
+      .catch(() => {})
+      .then(() => showResult(...pendingReveal.current));
+  };
+
   // Before the reveal: the player narrowing it down. Up to SHARPEN_MAX pairs,
   // each from games they recognised, each chosen for the axis that would
   // change the answer; none left, or "can't choose", and the result shows.
   const startCompare = useCallback((v, rs, seen, deep, comps) => {
     const { loved: l, disliked: d } = lists(v);
-    if (comps.length >= SHARPEN_MAX) return showResult(comps, v, rs, seen, deep);
+    if (comps.length >= SHARPEN_MAX) return reveal(comps, v, rs, seen, deep);
     setBusy(true);
     post("/quiz/sharpen", {
       loved: l, disliked: d, reasons: rs, comparisons: comps, deep_dives: deep,
       used: comps.flatMap(c => [c.winner, c.loser]),
     })
       .then(p => {
-        if (!p.dimension) { setPair(null); return showResult(comps, v, rs, seen, deep); }
+        if (!p.dimension) { setPair(null); return reveal(comps, v, rs, seen, deep); }
         log("pair", { games: p.pair.map(g => g.id), dimension: p.dimension });
         setPair(p);
         setStage("compare");
         window.scrollTo(0, 0);
       })
-      .catch(() => showResult(comps, v, rs, seen, deep))
+      .catch(() => reveal(comps, v, rs, seen, deep))
       .finally(() => setBusy(false));
-  }, [showResult, log]);
+  }, [reveal, log]);
 
   // Deep dives: how they played the games they loved for the gameplay.
   const startDeep = useCallback((v, rs, seen, deep) => {
@@ -735,8 +781,8 @@ export default function App() {
     if (!pair) return;
     log("comparison", { games: pair.pair.map(g => g.id), winner: null });
     setPair(null);
-    showResult(comparisons, verdicts, reasons, seenAll, deepAnswers);
-  }, [pair, comparisons, verdicts, reasons, seenAll, deepAnswers, showResult, log]);
+    reveal(comparisons, verdicts, reasons, seenAll, deepAnswers);
+  }, [pair, comparisons, verdicts, reasons, seenAll, deepAnswers, reveal, log]);
 
   const answerDeep = useCallback(option => {
     if (!deepQ) return;
@@ -753,6 +799,7 @@ export default function App() {
     setComparisons([]); setPair(null); setFresh([]); setDeepQ(null); setDeepAnswers([]);
     setSkipped([]); setAsking([]); setTicks({}); setRated(null); setOutcome(null); setNotMe({});
     lastKeys.current = null; sessionId.current = null;
+    blindDone.current = false; setBlindCards(null);
     events.current = []; started.current = Date.now(); stored.current = Promise.resolve();
     shownCards.current = [];
     generation.current += 1;
@@ -887,6 +934,48 @@ export default function App() {
         </>}
         <DebugView d={result.debug} />
         <button onClick={restart}>Start again</button>
+      </main>
+    );
+  }
+
+  // Identical cards in a seeded random order: portrait, name, one line from the
+  // kit. Nothing says which three are this player's (docs/blind-test.md).
+  if (stage === "blind" && blindCards) {
+    const ready = experience && ranked.length === blindCards.length
+      && blindCards.every(c => familiar[c.champion_id]);
+    return (
+      <main>
+        <h1>How much League have you played?</h1>
+        <div className="reasons inline">
+          {EXPERIENCE.map(([v, text]) => (
+            <button key={v} className={experience === v ? "on" : ""} aria-pressed={experience === v}
+                    onClick={() => setExperience(v)}>{text}</button>
+          ))}
+        </div>
+        <h1 className="blind-q">Which would you most like to try?</h1>
+        <p className="progress">Tap all six in order, favourite first. Tap again to take one back.</p>
+        {blindCards.map(c => {
+          const r = ranked.indexOf(c.champion_id);
+          return (
+            <div className="blind" key={c.champion_id}>
+              <button className={`blindcard${r >= 0 ? " on" : ""}`} onClick={() => tapRank(c.champion_id)}>
+                {c.portrait && <img src={c.portrait} alt="" width="56" height="56" />}
+                <span className="blindtext"><strong>{c.name}</strong><span className="gloss">{c.line}</span></span>
+                <span className="rank">{r >= 0 ? r + 1 : ""}</span>
+              </button>
+              <div className="reasons inline">
+                {FAMILIARITY.map(([v, text]) => (
+                  <button key={v} className={familiar[c.champion_id] === v ? "on" : ""}
+                          aria-pressed={familiar[c.champion_id] === v}
+                          onClick={() => setFamiliar(f => ({ ...f, [c.champion_id]: v }))}>{text}</button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+        <div className="actions">
+          <button className="next" onClick={submitRank} disabled={!ready || busy}>Show my result</button>
+        </div>
       </main>
     );
   }
