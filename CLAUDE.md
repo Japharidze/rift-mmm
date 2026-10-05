@@ -75,9 +75,24 @@ matching or UI.
   champions feel right?" rating and the anchors, and a change must beat a
   popularity baseline ("recommend what is most played"), not only the
   know-nothing point. Details in `docs/quiz-chain.md` §8.
-- **The product picks the lane; the champion is the answer.** *Superseded for
-  the redesign (2026-10-05): role is asked, in situation language -- see
-  Current phase.* Output = MMM
+- **The only input is gaming experience** (2026-10-06). No role questions, no
+  "situation" questions, nothing about League. This is the product's defining
+  rule. Role is never asked: it emerges from the answers.
+- **The answer is a co-play family, not a point** (2026-10-06). Families are
+  groups of champions within a role that real players' pools hold together
+  (co-play, `docs/coplay.md`); MMM is the bridge from games to families and the
+  explanation of the match. A point per player failed across roles and is only
+  slightly better than random within a role (`docs/coplay-spread-2026-10-05.txt`).
+- **Role is a stopping condition, not a question** (2026-10-06). Score every
+  family across all roles. If the leading families span unrelated roles, ask
+  more game questions (the hypothesis-testing loop); stop when the leaders
+  agree on one role, or a primary plus a secondary. If the budget runs out,
+  show the best family with one clearly labelled alternative.
+- **Champion labels stay as they are** (per champion×role, 2026-10-06):
+  comparison within a role mostly cancels the role shift, so no relabelling.
+- **The product picks the lane; the champion is the answer.** *Superseded
+  (2026-10-06): role emerges from the families, see above. The 2026-10-05
+  "role is asked, in situation language" is superseded too.* Output = MMM
   point → style neighbourhood → champion×role, the lane chosen by the product
   (labels are champion×role) and mentioned lightly: a wrong lane costs little, a
   wrong champion is the failure. The recommendation may be an ordered path
@@ -160,6 +175,13 @@ React frontend, same repo under /web.
 
 ## Current phase
 
+**2026-10-06: the answer is a co-play family (Sergi; frozen decisions above).**
+The spread check (`docs/coplay-spread-2026-10-05.txt`) found a player's
+champions within one role only slightly tighter in MMM than random (d −0.1 to
+−0.35). Next: build families per role from co-play, write the family scoring
+rule on paper, and check feasibility on the panel players with a Riot id
+(`docs/families.md`). No live changes until Sergi decides.
+
 **2026-10-05: decisions for the redesign (Sergi), after checks A–C
 (`docs/coplay.md`).** The micro split carries part of melee/ranged, not
 enough in mid and support; Riot difficulty adds nothing beyond MMM; small
@@ -172,9 +194,9 @@ co-play label corrections (~0.06 per champion) raise held-out agreement to
 - **Difficulty stays out of matching;** it may still order the path.
 - **Label correction: small moves only (~0.06)**, validated on held-out data;
   the larger moves override the kit and are more exposed to meta.
-- **Role is asked, in newcomer language** -- situations ("a long one-on-one
-  duel / roaming the map / a protected damage dealer / helping a teammate"),
-  never lane names. Game taste predicts role too weakly to infer it (Gate 1).
+- ~~**Role is asked, in newcomer language**~~ -- superseded 2026-10-06: the
+  only input is gaming experience; role emerges from co-play families (frozen
+  decisions).
 
 Next, in order: (1) a blind ranking test on the current build with **yoked
 controls** -- each tester ranks six champions, three from their own result and

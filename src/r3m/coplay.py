@@ -241,7 +241,10 @@ def role_test(rows: list[set[str]], label: dict, seed: int = 0, q2: bool = True)
     out = {"players": len(rows), "champions": len({c for r in rows for c in r}),
            "excess": s_obs / st.mean(s_null), "p": (1 + sum(s >= s_obs for s in s_null)) / (1 + len(s_null)),
            "strong_pairs": sum(1 for k in usable if z[k] > 3), "null_strong": null_strong,
-           "pairs": len(usable), "z": {k: z[k] for k in usable}}
+           "pairs": len(usable), "z": {k: z[k] for k in usable},
+           # Every pair the observed or null pools contain: the clustering in
+           # r3m.families needs an affinity for all of them, rare ones included.
+           "z_all": z}
     if not q2:
         return out
     # Q2: does co-play affinity (z) follow MMM closeness?
