@@ -18,7 +18,9 @@ matching or UI.
 
 ## Frozen decisions — do not relitigate in code
 
-- **Three dimensions only.** micro, meso, macro. Other traits (risk, carry,
+- **Three dimensions only.** micro, meso, macro. (Melee/ranged is a champion
+  attribute like role -- a stored fact that filters, never a dimension;
+  2026-10-05.) Other traits (risk, carry,
   tempo, difficulty) may exist as labelling inputs, never as matching dimensions
   or UI concepts.
 - **Riot's class tags are never a labelling input.** Mage, Fighter, Assassin,
@@ -73,7 +75,9 @@ matching or UI.
   champions feel right?" rating and the anchors, and a change must beat a
   popularity baseline ("recommend what is most played"), not only the
   know-nothing point. Details in `docs/quiz-chain.md` §8.
-- **The product picks the lane; the champion is the answer.** Output = MMM
+- **The product picks the lane; the champion is the answer.** *Superseded for
+  the redesign (2026-10-05): role is asked, in situation language -- see
+  Current phase.* Output = MMM
   point → style neighbourhood → champion×role, the lane chosen by the product
   (labels are champion×role) and mentioned lightly: a wrong lane costs little, a
   wrong champion is the failure. The recommendation may be an ordered path
@@ -155,6 +159,30 @@ the whole transformation layer; plain SQL views cover the rest.
 React frontend, same repo under /web.
 
 ## Current phase
+
+**2026-10-05: decisions for the redesign (Sergi), after checks A–C
+(`docs/coplay.md`).** The micro split carries part of melee/ranged, not
+enough in mid and support; Riot difficulty adds nothing beyond MMM; small
+co-play label corrections (~0.06 per champion) raise held-out agreement to
+0.33–0.39 in every role, keeping three dimensions. Decided:
+
+- **Range is a champion attribute, like role** -- a stored Riot fact
+  (attack range), never a dimension. One plain question ("fight up close or
+  from a distance?") filters by it.
+- **Difficulty stays out of matching;** it may still order the path.
+- **Label correction: small moves only (~0.06)**, validated on held-out data;
+  the larger moves override the kit and are more exposed to meta.
+- **Role is asked, in newcomer language** -- situations ("a long one-on-one
+  duel / roaming the map / a protected damage dealer / helping a teammate"),
+  never lane names. Game taste predicts role too weakly to infer it (Gate 1).
+
+Next, in order: (1) a blind ranking test on the current build with **yoked
+controls** -- each tester ranks six champions, three from their own result and
+three from another tester's, which tests personalisation itself, not whether
+the quiz's champions are generally appealing; (2) meanwhile, the meta check by
+splitting pools on last-played date (a recrawl after the next patch is the
+stronger version, later); (3) then the redesign: role and range asked,
+within-role matching on micro + split + meso, small co-play corrections.
 
 **2026-10-02: co-play results in (`docs/coplay.md`) -- the project continues.**
 Q1 yes: within-role pool structure far above shuffles that keep popularity and
