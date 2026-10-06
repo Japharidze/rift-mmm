@@ -241,7 +241,10 @@ def role_test(rows: list[set[str]], label: dict, seed: int = 0, q2: bool = True)
     out = {"players": len(rows), "champions": len({c for r in rows for c in r}),
            "excess": s_obs / st.mean(s_null), "p": (1 + sum(s >= s_obs for s in s_null)) / (1 + len(s_null)),
            "strong_pairs": sum(1 for k in usable if z[k] > 3), "null_strong": null_strong,
-           "pairs": len(usable), "z": {k: z[k] for k in usable}}
+           "pairs": len(usable), "z": {k: z[k] for k in usable},
+           # Every pair the observed or null pools contain: the clustering in
+           # r3m.families needs an affinity for all of them, rare ones included.
+           "z_all": z}
     if not q2:
         return out
     # Q2: does co-play affinity (z) follow MMM closeness?
@@ -547,3 +550,113 @@ def meta_check(progress=print) -> None:
         move = st.mean(math.dist(fitted[c], label[c]) for c in fitted)
         progress(f"{role:8} {len(ro):8}/{len(rn):<9} {real:+8.2f} ({p:.3f}) n={len(common):<4} "
                  f"{mmm(zo, {}):+8.2f} {mmm(zn, {}):+10.2f}   {mmm(zn, {}):+.2f} -> {mmm(zn, fitted):+.2f} ({move:.2f})")
+
+
+# ---------------------------------------------------------------------------
+# Spread check (2026-10-05): can one point per role work? Within one role, are
+# a player's champions close together in MMM, or as spread as random?
+# ---------------------------------------------------------------------------
+
+SPREAD_DRAWS = 4000
+
+
+def _spread(pool: list[str], lab: dict) -> tuple[float, float, float, float]:
+    """Mean pairwise distance: overall, then per dimension (|difference|)."""
+    pairs = list(combinations(pool, 2))
+    return (st.mean(math.dist(lab[a], lab[b]) for a, b in pairs),
+            *(st.mean(abs(lab[a][i] - lab[b][i]) for a, b in pairs) for i in range(3)))
+
+
+def _draw(champs: list[str], weights: list[float], k: int, rng: random.Random) -> list[str]:
+    """k distinct champions, each draw weighted by popularity."""
+    cs, ws, out = champs[:], weights[:], []
+    for _ in range(k):
+        i = rng.choices(range(len(cs)), ws)[0]
+        out.append(cs.pop(i)); ws.pop(i)
+    return out
+
+
+def _spread_vs_null(pools: list[list[str]], lab: dict, rng: random.Random) -> dict[str, Any]:
+    """Real pools against popularity-weighted random pools of the same size,
+    drawn from the same population (the champions these pools come from)."""
+    pop = Counter(c for p in pools for c in p)
+    champs = sorted(pop); weights = [pop[c] for c in champs]
+    null: dict[int, list[tuple]] = {}
+    for k in sorted({len(p) for p in pools}):
+        if k <= len(champs):
+            null[k] = [_spread(_draw(champs, weights, k, rng), lab) for _ in range(SPREAD_DRAWS)]
+    rows = []
+    for p in pools:
+        if len(p) not in null:
+            continue
+        real, ns = _spread(p, lab), null[len(p)]
+        mu = [st.mean(n[i] for n in ns) for i in range(4)]
+        sd = st.pstdev([n[0] for n in ns]) or 1.0
+        rows.append((len(p), real, mu, (real[0] - mu[0]) / sd, real[0] < st.median(n[0] for n in ns)))
+    out: dict[str, Any] = {}
+    for name, keep in (("all", lambda k: True), ("2", lambda k: k == 2), ("3", lambda k: k == 3), ("4+", lambda k: k >= 4)):
+        rs = [r for r in rows if keep(r[0])]
+        if not rs:
+            continue
+        out[name] = {"n": len(rs),
+                     "real": [st.mean(r[1][i] for r in rs) for i in range(4)],
+                     "null": [st.mean(r[2][i] for r in rs) for i in range(4)],
+                     "d": st.mean(r[3] for r in rs),
+                     "tighter": sum(r[4] for r in rs) / len(rs)}
+    return out
+
+
+def spread_check(progress=print) -> None:
+    with db.connect() as conn:
+        by_role, label = load(conn, recent=False)
+        ranged = {c: r > 300 for c, r in conn.execute(
+            "select distinct on (champion_id) champion_id, (raw->'stats'->>'attackrange')::int "
+            "from champion_patch order by champion_id, patch_version desc").fetchall()}
+    rng = random.Random(0)
+    progress("SPREAD CHECK -- within one role, are a player's champions close in MMM? (mid-ladder, lifetime pools)")
+    progress("  spread = mean pairwise MMM distance (per dimension: mean |difference|); null = same-size pools drawn")
+    progress(f"  from the same role, weighted by popularity ({SPREAD_DRAWS} draws per size); d = mean per-player")
+    progress("  (real - null mean) / null sd, negative = tighter; tighter = share of players below the null median.")
+    progress("  corrected = co-play correction (lam 1) fit on the other region's pools: EUNE fit -> EUW players and back.")
+
+    def line(tag: str, res: dict) -> None:
+        for size in ("all", "2", "3", "4+"):
+            if size not in res:
+                continue
+            r = res[size]
+            dims = " ".join(f"{a:.2f}/{b:.2f}" for a, b in zip(r["real"][1:], r["null"][1:]))
+            progress(f"  {tag:22} {size:>3} n={r['n']:<5} {r['real'][0]:.3f} vs {r['null'][0]:.3f}  "
+                     f"d={r['d']:+.2f}  tighter={r['tighter']:.0%}   {dims}")
+
+    for role in ROLES:
+        tagged = [(p, sorted(s)) for p, s in by_role.get(role, [])]
+        progress(f"\n{role}  (real vs null overall; d; tighter; then micro, meso, macro real/null)")
+        line("current", _spread_vs_null([s for _, s in tagged], label, rng))
+        # Cross-region correction: each region scored with labels fit on the other.
+        merged: dict[str, Any] = {}
+        corrected_by = {}
+        for fit_on, test_on in (("eun1", "euw1"), ("euw1", "eun1")):
+            z = role_test([set(s) for p, s in tagged if p == fit_on], label, q2=False)["z"]
+            fitted = _fit(label, {k: v for k, v in z.items() if all(c in label for c in k)}, 1.0)
+            lab = {**label, **fitted}
+            corrected_by[test_on] = lab
+            res = _spread_vs_null([s for p, s in tagged if p == test_on], lab, rng)
+            line(f"corrected ({fit_on}->{test_on})", res)
+            for size, r in res.items():
+                merged.setdefault(size, []).append(r)
+        # Within role and melee/ranged: the pool split by range, each half (2+)
+        # against a null from the same role and range.
+        for is_ranged, name in ((False, "melee"), (True, "ranged")):
+            pools = [[c for c in s if ranged.get(c) == is_ranged] for _, s in tagged]
+            pools = [p for p in pools if len(p) >= 2]
+            if len(pools) < 30:
+                progress(f"  {name + ', current':22} too few pools ({len(pools)})"); continue
+            line(f"{name}, current", _spread_vs_null(pools, label, rng))
+            for region in ("euw1", "eun1"):
+                rp = [[c for c in s if ranged.get(c) == is_ranged] for p, s in tagged if p == region]
+                rp = [p for p in rp if len(p) >= 2]
+                if len(rp) >= 30:
+                    res = _spread_vs_null(rp, corrected_by[region], rng)
+                    progress(f"  {name + ', corrected ' + region:22} all n={res['all']['n']:<5} "
+                             f"{res['all']['real'][0]:.3f} vs {res['all']['null'][0]:.3f}  d={res['all']['d']:+.2f}  "
+                             f"tighter={res['all']['tighter']:.0%}")

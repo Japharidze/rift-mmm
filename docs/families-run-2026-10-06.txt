@@ -1,0 +1,75 @@
+FAMILIES -- co-play clusters per role (mid-ladder, lifetime pools; a champion counts in every role it has a row for)
+  average linkage; k by weighted modularity over 3-10; core = 30+ pools, * = attached rare champion
+  consensus over 100 player resamples (closed-form null); firmness = mean rate a member lands with its
+  family-mates across resamples; ? = member below 0.5
+  centre = mean MMM (micro/meso/macro), spread = mean distance to centre; canonical | co-play corrected (lam 1)
+
+TOP  players 2860, core 45, attached 1, k=4  (modularity 3:0.256 4:0.303 5:0.301 6:0.301 7:0.300 8:0.282 9:0.278 10:0.268)
+  stability (adjusted Rand): eune~euw 0.55 (null95 0.15); old~recent 0.28 (null95 0.07); eune~full 0.48 (null95 0.11); euw~full 0.60 (null95 0.11); old~full 0.26 (null95 0.08); recent~full 0.51 (null95 0.06)
+  top-1      pop  44%  melee (24% ranged)  canon 0.36/0.41/0.53 spread 0.26 | corr 0.36/0.42/0.54 spread 0.23
+             firmness 0.55: Garen, Teemo, Malphite, Nasus, Kayle?, Shen, Volibear, Dr. Mundo, Tryndamere, Cho'Gath, Urgot, Tahm Kench, Yorick, Ornn, Illaoi, Gnar, Trundle, Kled?, Kennen?, Quinn?, Heimerdinger
+  top-2      pop  30%  melee (14% ranged)  canon 0.61/0.49/0.45 spread 0.19 | corr 0.63/0.48/0.47 spread 0.20
+             firmness 0.59: Jax?, Vayne, Riven, Irelia, Renekton, Fiora, Camille, Jayce, Cassiopeia?, Gwen, Olaf?, Ambessa, K'Sante, Rumble
+  top-3      pop  19%  melee (0% ranged)  canon 0.52/0.46/0.37 spread 0.20 | corr 0.50/0.43/0.35 spread 0.19
+             firmness 0.72: Darius, Mordekaiser, Yone, Sett, Pantheon, Aatrox, Zaahen*
+  top-4      pop   8%  melee (0% ranged)  canon 0.58/0.62/0.65 spread 0.28 | corr 0.56/0.63/0.62 spread 0.23
+             firmness 0.75: Gangplank, Sion, Gragas, Singed
+
+JUNGLE  players 2908, core 45, attached 1, k=7  (modularity 3:0.184 4:0.193 5:0.226 6:0.224 7:0.229 8:0.226 9:0.215 10:0.208)
+  stability (adjusted Rand): eune~euw 0.19 (null95 0.05); old~recent 0.29 (null95 0.08); eune~full 0.81 (null95 0.11); euw~full 0.26 (null95 0.06); old~full 0.30 (null95 0.07); recent~full 0.49 (null95 0.10)
+  jungle-1   pop  39%  melee (11% ranged)  canon 0.35/0.41/0.63 spread 0.16 | corr 0.35/0.41/0.63 spread 0.15
+             firmness 0.45: Master Yi?, Diana?, Nocturne, Warwick?, Jarvan IV, Amumu, Volibear?, Vi, Xin Zhao, Shyvana, Wukong?, Hecarim?, Zac?, Fiddlesticks?, Rammus?, Sejuani?, Ivern?, Bel'Veth?
+  jungle-2   pop  24%  mixed (44% ranged)  canon 0.58/0.56/0.70 spread 0.19 | corr 0.58/0.56/0.72 spread 0.16
+             firmness 0.54: Lee Sin, Kha'Zix, Rengar, Graves, Evelynn?, Elise, Nidalee, Kindred, Rek'Sai?
+  jungle-3   pop  19%  melee (0% ranged)  canon 0.61/0.58/0.66 spread 0.16 | corr 0.62/0.56/0.66 spread 0.15
+             firmness 0.60: Kayn?, Ekko, Sylas, Viego?, Talon, Qiyana
+  jungle-4   pop   9%  mixed (50% ranged)  canon 0.35/0.51/0.70 spread 0.25 | corr 0.35/0.51/0.72 spread 0.21
+             firmness 0.34: Shaco?, Udyr?, Quinn?, Karthus?
+  jungle-5   pop   4%  melee (33% ranged)  canon 0.40/0.48/0.65 spread 0.20 | corr 0.38/0.51/0.61 spread 0.19
+             firmness 0.30: Nunu & Willump?, Zyra?, Trundle?, Skarner*
+  jungle-6   pop   3%  melee (0% ranged)  canon 0.58/0.52/0.52 spread 0.18 | corr 0.55/0.52/0.45 spread 0.15
+             firmness 0.56: Aatrox, Cho'Gath
+  jungle-7   pop   3%  melee (33% ranged)  canon 0.40/0.40/0.56 spread 0.12 | corr 0.43/0.39/0.53 spread 0.12
+             firmness 0.58: Briar, Lillia, Naafiri
+
+MID  players 3309, core 38, attached 1, k=4  (modularity 3:0.314 4:0.316 5:0.312 6:0.303 7:0.292 8:0.281 9:0.270 10:0.262)
+  stability (adjusted Rand): eune~euw 0.37 (null95 0.09); old~recent 0.21 (null95 0.08); eune~full 0.23 (null95 0.08); euw~full 0.38 (null95 0.08); old~full 0.18 (null95 0.09); recent~full 0.59 (null95 0.14)
+  mid-1      pop  47%  ranged (91% ranged)  canon 0.53/0.51/0.56 spread 0.22 | corr 0.51/0.52/0.55 spread 0.18
+             firmness 0.49: Lux?, Ahri, Veigar?, Malzahar?, LeBlanc, Xerath?, Syndra, Vladimir?, Orianna, Viktor, Cassiopeia, Ryze, Anivia, Twisted Fate?, Lissandra, Kassadin?, Azir, Annie?, Aurelion Sol?, Mel?, Vex?, Galio, Taliyah?
+  mid-2      pop  40%  melee (0% ranged)  canon 0.72/0.61/0.53 spread 0.13 | corr 0.78/0.59/0.58 spread 0.15
+             firmness 0.76: Yasuo, Zed, Katarina, Akali, Yone, Ekko, Sylas
+  mid-3      pop   6%  ranged (67% ranged)  canon 0.70/0.56/0.50 spread 0.19 | corr 0.68/0.56/0.51 spread 0.18
+             firmness 0.52: Zoe, Hwei, Qiyana?, Akshan, Naafiri?, Aurora, Locke*
+  mid-4      pop   6%  melee (0% ranged)  canon 0.59/0.55/0.53 spread 0.13 | corr 0.57/0.53/0.51 spread 0.16
+             firmness 0.55: Diana, Fizz
+
+BOT  players 3695, core 30, attached 0, k=3  (modularity 3:0.310 4:0.291 5:0.289 6:0.275 7:0.267 8:0.260 9:0.258 10:0.235)
+  stability (adjusted Rand): eune~euw 0.14 (null95 0.11); old~recent 0.62 (null95 0.20); eune~full 0.19 (null95 0.11); euw~full 0.30 (null95 0.14); old~full 0.35 (null95 0.10); recent~full 0.20 (null95 0.07)
+  bot-1      pop  79%  ranged (100% ranged)  canon 0.50/0.44/0.44 spread 0.19 | corr 0.52/0.44/0.45 spread 0.17
+             firmness 0.81: Caitlyn, Ezreal, Jhin, Vayne, Kai'Sa, Jinx, Miss Fortune, Lucian, Ashe, Tristana, Xayah, Sivir, Yunara
+  bot-2      pop  11%  ranged (100% ranged)  canon 0.53/0.49/0.46 spread 0.18 | corr 0.51/0.50/0.44 spread 0.20
+             firmness 0.62: Senna, Brand, Veigar, Smolder?, Varus?, Viktor, Ziggs, Corki, Mel
+  bot-3      pop  10%  ranged (88% ranged)  canon 0.61/0.41/0.45 spread 0.19 | corr 0.61/0.39/0.46 spread 0.17
+             firmness 0.74: Twitch, Draven, Samira, Aphelios, Kog'Maw, Zeri, Kalista, Nilah
+
+SUPPORT  players 2604, core 34, attached 1, k=4  (modularity 3:0.312 4:0.323 5:0.317 6:0.306 7:0.286 8:0.274 9:0.270 10:0.258)
+  stability (adjusted Rand): eune~euw 0.53 (null95 0.09); old~recent 0.17 (null95 0.10); eune~full 0.63 (null95 0.09); euw~full 0.59 (null95 0.08); old~full 0.31 (null95 0.06); recent~full 0.52 (null95 0.09)
+  support-1  pop  35%  melee (20% ranged)  canon 0.56/0.58/0.53 spread 0.23 | corr 0.53/0.57/0.53 spread 0.20
+             firmness 0.88: Thresh, Leona, Blitzcrank, Nautilus, Pyke, Bard, Braum, Rakan, Alistar, Rell, Renata Glasc*
+  support-2  pop  32%  ranged (92% ranged)  canon 0.39/0.45/0.42 spread 0.21 | corr 0.40/0.45/0.41 spread 0.17
+             firmness 0.72: Nami, Lulu, Janna, Senna?, Zyra, Karma, Soraka, Yuumi, Sona, Milio, Zilean, Taric
+  support-3  pop  25%  ranged (100% ranged)  canon 0.59/0.56/0.37 spread 0.14 | corr 0.60/0.54/0.33 spread 0.15
+             firmness 0.63: Lux, Morgana, Brand, Vel'Koz, Seraphine, Neeko
+  support-4  pop   8%  melee (17% ranged)  canon 0.42/0.51/0.47 spread 0.11 | corr 0.43/0.55/0.53 spread 0.14
+             firmness 0.56: Swain, Pantheon, Tahm Kench, Poppy, Maokai?, Camille
+
+FEASIBILITY -- panel players with a Riot id (latest result session each; Sergi excluded)
+  true role = most games in their 40 recent games; true family = the family in that role holding most of
+  those games. Rank of the true family among all families (1 = top); chance = (F+1)/2.
+  basabee          read mimema true bot/bot-1 (10/40 games)  A fam 14 role 5  A+pop fam  5 role 3  B fam 13 role 5  popularity fam  1 role 1   A top: jungle-3
+  duqana#eune      read mimema true bot/bot-1 (6/40 games)  A fam 15 role 5  A+pop fam  4 role 3  B fam  4 role 3  popularity fam  1 role 1   A top: mid-2
+  johnrod#warud    read mimema true mid/mid-3 (13/40 games)  A fam 15 role 2  A+pop fam 15 role 1  B fam  9 role 5  popularity fam 18 role 2   A top: jungle-2
+  koekamundo       read mimema true mid/mid-1 (12/40 games)  A fam  7 role 2  A+pop fam  1 role 1  B fam 14 role 5  popularity fam  2 role 2   A top: jungle-3
+  ulkiora#eune     read mimema true support/support-2 (12/40 games)  A fam 22 role 4  A+pop fam 15 role 3  B fam 17 role 5  popularity fam  7 role 5   A top: mid-2
+  mean rank of the true family (of 22; chance 11.5): A 14.6  A+pop 8.0  B 11.4  popularity 5.8
+  mean rank of the true role (of 5; chance 3.0): A 3.6  A+pop 2.2  B 4.6  popularity 2.2
